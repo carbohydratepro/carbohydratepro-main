@@ -4,11 +4,7 @@
 Docker-Desktopを使用したDjangoアプリケーション作成手順
 
 ### 1. プロジェクト立ち上げ
-```text
-git clone https://github.com/carbohydratepro/work
-cd work
-docker-compose up --build
-```
+
 #### 前提条件
 * Docker Desktopがインストールされていること
 * GitHubがインストールされていること

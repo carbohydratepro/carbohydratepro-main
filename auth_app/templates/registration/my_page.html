@@ -1,0 +1,56 @@
+{% extends "registration/base.html" %}
+
+<!-- コンテンツ -->
+{% block content %}
+<div class="container p-3">
+  <h1>マイページ</h1>
+  <hr>
+
+  <!-- アカウント情報 -->
+  <div class="row">
+    <div class="col"><h4>■　登録情報</h4></div>
+    <div class="col text-right"><a href="{% url 'edit' user.pk %}">変更</a></div>
+  </div>
+  <table class="table table-bordered">
+    <tbody>
+      <tr>
+        <td>ユーザー名</td>
+        <td>{{ user.username }}</td>
+      </tr>
+      <tr>
+        <td>メールアドレス</td>
+        <td>{{ user.email }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- パスワード -->
+  <div class="row mt-4">
+    <div class="col"><h4>■　パスワード</h4></div>
+    <div class="col text-right"><a href="{% url 'password_change' %}">変更</a></div>
+  </div>
+  <table class="table table-bordered">
+    <tbody>
+      <tr>
+        <td style="width: 50%;">パスワード</td>
+        <td style="width: 50%;">非表示</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- 権限 -->
+  <div class="row mt-4">
+    <div class="col"><h4>■　権限</h4></div>
+  </div>
+  <table class="table table-bordered">
+    <tbody>
+      <tr>
+        <td>管理者権限</td>
+        <td>{{ user.is_superuser }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+</div>
+{% endblock %}

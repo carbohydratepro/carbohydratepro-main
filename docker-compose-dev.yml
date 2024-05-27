@@ -6,7 +6,7 @@ version: '3'
 
 services:
   db:
-    image: postgres:16
+    image: postgres:13
     environment:
       - POSTGRES_DB=mydatabase
       - POSTGRES_USER=myuser
@@ -16,7 +16,7 @@ services:
 
   gunicorn:
     build: .
-    image: gunicorn:22.0.0
+    image: gunicorn:20.1.0
     container_name: gunicorn
     volumes:
       - .:/code/
@@ -28,7 +28,7 @@ services:
       - db
 
   nginx:
-    image: nginx:1.26.0
+    image: nginx:1.17.7
     container_name: nginx
     depends_on:
       - gunicorn

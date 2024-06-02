@@ -47,6 +47,20 @@ sudo chmod +x /usr/local/bin/docker-compose
 
 sudo yum install git -y
 git clone [project URL]
+
+cd carbohydratepro
+```
+
+※権限が足りない場合
+```text
+sudo usermod -aG docker ec2-user
+newgrp docker
+
+sudo systemctl restart docker
+sudo systemctl status docker
+
+
+
 ```
 
 

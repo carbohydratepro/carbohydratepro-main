@@ -26,6 +26,29 @@ docker-compose -f docker-compose-dev.yml [down, build, up, exec...]
 ```
 
 ### 2. 本番環境時コマンド
+```text
+docker-compose [down, build, up, exec...]
+```
+
+### 3. 本番環境セットアップ
+接続
+```text
+ssh -i [sshkey] username@ip
+```
+環境セットアップ
+```linux
+sudo yum update -y
+sudo amazon-linux-extras install docker
+sudo service docker start
+sudo usermod -a -G docker ec2-user
+
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.11.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+sudo yum install git -y
+git clone [project URL]
+```
+
 
 
 ### 101. メンテナンスモード及び実行
@@ -48,13 +71,10 @@ docker-compose -f docker-compose-dev.yml [down, build, up, exec...]
    | ライブラリ | Bootstrap |  |
    | データベース | PostgeSQL | 13 |
    | クラウド/インフラ | DockerDesktop |  |
-   | クラウド/インフラ | AWS |  |
-   | クラウド/インフラ | AWS/EC2 |  |
-   | クラウド/インフラ | AWS/CloudFront |  |
-   | クラウド/インフラ | AWS/RDS |  |
-   | クラウド/インフラ | AWS/Route 53 |  |
-   | クラウド/インフラ | AWS/CostExplorer |  |
+   | クラウド/インフラ | Amazon lightsail |  |
    | サーバー | Nginx | 1.17.7 |
    | サーバー | Gunicorn | 20.1.0 |
    
 ### 参考
+###### AWS LightSailへのRemote-SSH接続
+https://qiita.com/AsazuTaiga/items/6f1ba65897ddaf7b48b4

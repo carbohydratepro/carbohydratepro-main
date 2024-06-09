@@ -1,7 +1,10 @@
 {% extends "app/base.html" %}
-<!-- コンテンツ -->
 {% block content %}
-
-<h1>ホームページ</h1>
-
+<ul>
+    {% for transaction in transactions %}
+    <li>{{ transaction.date }}: {{ transaction.amount }} - <a href="{% url 'edit_transaction' transaction.id %}">Edit</a> | <a href="{% url 'delete_transaction' transaction.id %}">Delete</a></li>
+    {% endfor %}
+</ul>
+<a href="{% url 'create_transaction' %}">新規登録</a>
+<a href="{% url 'settings' %}">設定</a>
 {% endblock %}

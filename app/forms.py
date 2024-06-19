@@ -18,7 +18,7 @@ class PaymentMethodForm(forms.ModelForm):
 class CategoryForm(forms.ModelForm):
     class Meta:
         model = Category
-        fields = ['name', 'major_category']
+        fields = ['name']
 
 # user：取引を行ったユーザー
 # amount：金額

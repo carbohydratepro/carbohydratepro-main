@@ -6,6 +6,11 @@
     {% csrf_token %}
     <h3>Add Payment Method</h3>
     {{ payment_form.as_p }}
+    <button type="submit">Save</button>
+</form>
+
+<form method="post">
+    {% csrf_token %}
     <h3>Add Purpose</h3>
     {{ purpose_form.as_p }}
     <button type="submit">Save</button>

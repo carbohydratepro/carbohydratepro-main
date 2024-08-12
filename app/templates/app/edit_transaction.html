@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Transaction</title>
+</head>
+<body>
+    <h1>Edit Transaction</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Save</button>
+    </form>
+    <a href="{% url 'index' %}">Back to Transactions</a>
+</body>
+</html>

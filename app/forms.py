@@ -4,12 +4,24 @@ from .models import Transaction, PaymentMethod, Category
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
-        fields = ['date', 'amount', 'purpose', 'transaction_type', 'payment_method']
+        fields = ['date', 'amount', 'purpose', 'transaction_type', 'category', 'major_category', 'payment_method']
         widgets = {
             'date': forms.DateInput(attrs={'type': 'date'}),
             'amount': forms.NumberInput(attrs={'step': '1.0'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)  # 'user' キーワード引数を取得
+        super(TransactionForm, self).__init__(*args, **kwargs)
+        if user is not None:
+            self.fields['payment_method'].queryset = PaymentMethod.objects.filter(user=user)
+            self.fields['payment_method'].empty_label = None  # 空のラベルを非表示にする
+            self.fields['payment_method'].required = True  # フィールドを必須にする
+            self.fields['category'].queryset = Category.objects.filter(user=user)
+            self.fields['category'].empty_label = None  # 空のラベルを非表示にする
+            self.fields['category'].required = True  # フィールドを必須にする
+
+            
 class PaymentMethodForm(forms.ModelForm):
     class Meta:
         model = PaymentMethod
@@ -19,6 +31,9 @@ class CategoryForm(forms.ModelForm):
     class Meta:
         model = Category
         fields = ['name']
+
+
+
 
 # user：取引を行ったユーザー
 # amount：金額

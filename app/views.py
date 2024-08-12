@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from .forms import TransactionForm, PaymentMethodForm, CategoryForm
 from .models import Transaction
@@ -11,14 +11,14 @@ def index(request):
 @login_required
 def create_transaction(request):
     if request.method == 'POST':
-        form = TransactionForm(request.POST)
+        form = TransactionForm(request.POST, user=request.user)
         if form.is_valid():
             transaction = form.save(commit=False)
             transaction.user = request.user
             transaction.save()
             return redirect('index')  # 投稿後は一覧画面にリダイレクト
     else:
-        form = TransactionForm()
+        form = TransactionForm(user=request.user)
     return render(request, 'app/create_transaction.html', {'form': form})
 
 @login_required
@@ -42,3 +42,23 @@ def settings_view(request):
         'payment_form': payment_form,
         'purpose_form': purpose_form
     })
+
+@login_required
+def edit_transaction(request, transaction_id):
+    transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
+    if request.method == 'POST':
+        form = TransactionForm(request.POST, instance=transaction, user=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect('index')
+    else:
+        form = TransactionForm(instance=transaction, user=request.user)
+    return render(request, 'app/edit_transaction.html', {'form': form})
+
+@login_required
+def delete_transaction(request, transaction_id):
+    transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
+    if request.method == 'POST':
+        transaction.delete()
+        return redirect('index')
+    return render(request, 'app/confirm_delete.html', {'transaction': transaction})

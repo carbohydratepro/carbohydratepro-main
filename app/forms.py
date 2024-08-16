@@ -6,13 +6,15 @@ class TransactionForm(forms.ModelForm):
         model = Transaction
         fields = ['date', 'amount', 'purpose', 'transaction_type', 'category', 'major_category', 'payment_method']
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date'}),
-            'amount': forms.NumberInput(attrs={'step': '1.0'}),
+            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'amount': forms.NumberInput(attrs={'step': '1.0', 'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)  # 'user' キーワード引数を取得
         super(TransactionForm, self).__init__(*args, **kwargs)
+        
+        # ユーザーに基づいてクエリセットをフィルタリング
         if user is not None:
             self.fields['payment_method'].queryset = PaymentMethod.objects.filter(user=user)
             self.fields['payment_method'].empty_label = None  # 空のラベルを非表示にする
@@ -21,17 +23,35 @@ class TransactionForm(forms.ModelForm):
             self.fields['category'].empty_label = None  # 空のラベルを非表示にする
             self.fields['category'].required = True  # フィールドを必須にする
 
-            
+        # すべてのフィールドに 'form-control' クラスを追加
+        for field_name, field in self.fields.items():
+            if 'class' in field.widget.attrs:
+                field.widget.attrs['class'] += ' form-control'
+            else:
+                field.widget.attrs['class'] = 'form-control'
+
+
 class PaymentMethodForm(forms.ModelForm):
     class Meta:
         model = PaymentMethod
         fields = ['name']
-
+        
+    # bootstrap4対応で、classを指定
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs['class'] = 'form-control'  
+            
 class CategoryForm(forms.ModelForm):
     class Meta:
         model = Category
+        
         fields = ['name']
-
+    # bootstrap4対応で、classを指定
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs['class'] = 'form-control'  
 
 
 

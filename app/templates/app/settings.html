@@ -5,28 +5,9 @@
 <div class="container mt-5">
     <h2 class="mb-4">設定</h2>
 
-    <!-- 支払方法の新規作成フォーム -->
-    <form method="post" class="mb-4">
-        {% csrf_token %}
-        <h3>支払方法を追加</h3>
-        <div class="form-group">
-            {{ payment_form.non_field_errors }}
-            {% for field in payment_form %}
-                <div class="form-group">
-                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field|add_class:"form-control" }}
-                    <small class="form-text text-muted">{{ field.help_text }}</small>
-                    {% if field.errors %}
-                        <div class="alert alert-danger mt-2">{{ field.errors }}</div>
-                    {% endif %}
-                </div>
-            {% endfor %}
-        </div>
-        <button type="submit" class="btn btn-primary">Save</button>
-    </form>
+    <!-- 支払方法のテーブル -->
+    <h3>支払方法</h3>
 
-    <!-- 支払方法の一覧表示 -->
-    <h3>登録済みの支払方法</h3>
     <table class="table table-striped">
         <thead>
             <tr>
@@ -35,6 +16,7 @@
             </tr>
         </thead>
         <tbody>
+            <!-- 支払方法の行 -->
             {% for payment in payments %}
             <tr>
                 <td>{{ payment.name }}</td>
@@ -44,7 +26,7 @@
                 </td>
             </tr>
 
-            <!-- 編集モーダル -->
+            <!-- 支払方法編集モーダル -->
             <div class="modal fade" id="editPaymentModal{{ payment.id }}" tabindex="-1" role="dialog" aria-labelledby="editPaymentModalLabel{{ payment.id }}" aria-hidden="true">
                 <div class="modal-dialog" role="document">
                     <div class="modal-content">
@@ -57,8 +39,10 @@
                                 </button>
                             </div>
                             <div class="modal-body">
-                                {{ payment_form.non_field_errors }}
-                                {{ payment_form.as_p }}
+                                <div class="form-group">
+                                    <label for="payment-name-{{ payment.id }}">支払方法</label>
+                                    <input type="text" name="payment-name" class="form-control" id="payment-name-{{ payment.id }}" value="{{ payment.name }}">
+                                </div>
                                 <input type="hidden" name="payment_id" value="{{ payment.id }}">
                                 <input type="hidden" name="edit_payment" value="true">
                             </div>
@@ -71,7 +55,7 @@
                 </div>
             </div>
 
-            <!-- 削除モーダル -->
+            <!-- 支払方法削除モーダル -->
             <div class="modal fade" id="deletePaymentModal{{ payment.id }}" tabindex="-1" role="dialog" aria-labelledby="deletePaymentModalLabel{{ payment.id }}" aria-hidden="true">
                 <div class="modal-dialog" role="document">
                     <div class="modal-content">
@@ -97,31 +81,30 @@
                 </div>
             </div>
             {% endfor %}
+            {% if payment_form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ payment_form.non_field_errors }}
+            </div>
+            {% endif %}
+            <!-- 新しい支払方法の追加行 -->
+            <tr>
+                <form method="post">
+                    {% csrf_token %}
+                    <td>
+                        <input type="text" name="payment-name" placeholder="新しい支払方法" class="form-control">
+                    </td>
+                    <td>
+                        <input type="hidden" name="payment" value="true">
+                        <button type="submit" class="btn btn-sm btn-primary">追加</button>
+                    </td>
+                </form>
+                
+            </tr>
         </tbody>
     </table>
 
-    <!-- 使用用途の新規作成フォーム -->
-    <form method="post" class="mt-4">
-        {% csrf_token %}
-        <h3>使用用途を追加</h3>
-        <div class="form-group">
-            {{ purpose_form.non_field_errors }}
-            {% for field in purpose_form %}
-                <div class="form-group">
-                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field|add_class:"form-control" }}
-                    <small class="form-text text-muted">{{ field.help_text }}</small>
-                    {% if field.errors %}
-                        <div class="alert alert-danger mt-2">{{ field.errors }}</div>
-                    {% endif %}
-                </div>
-            {% endfor %}
-        </div>
-        <button type="submit" class="btn btn-primary">Save</button>
-    </form>
-
-    <!-- 使用用途の一覧表示 -->
-    <h3>登録済みの使用用途</h3>
+    <!-- 使用用途のテーブル -->
+    <h3 class="mt-5">使用用途</h3>
     <table class="table table-striped">
         <thead>
             <tr>
@@ -130,6 +113,7 @@
             </tr>
         </thead>
         <tbody>
+            <!-- 使用用途の行 -->
             {% for purpose in purposes %}
             <tr>
                 <td>{{ purpose.name }}</td>
@@ -137,8 +121,9 @@
                     <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editPurposeModal{{ purpose.id }}">編集</button>
                     <button class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deletePurposeModal{{ purpose.id }}">削除</button>
                 </td>
-                </tr>
-            <!-- 編集モーダル -->
+            </tr>
+
+            <!-- 使用用途編集モーダル -->
             <div class="modal fade" id="editPurposeModal{{ purpose.id }}" tabindex="-1" role="dialog" aria-labelledby="editPurposeModalLabel{{ purpose.id }}" aria-hidden="true">
                 <div class="modal-dialog" role="document">
                     <div class="modal-content">
@@ -151,8 +136,10 @@
                                 </button>
                             </div>
                             <div class="modal-body">
-                                {{ purpose_form.non_field_errors }}
-                                {{ purpose_form.as_p }}
+                                <div class="form-group">
+                                    <label for="purpose-name-{{ purpose.id }}">使用用途</label>
+                                    <input type="text" name="purpose-name" class="form-control" id="purpose-name-{{ purpose.id }}" value="{{ purpose.name }}">
+                                </div>
                                 <input type="hidden" name="purpose_id" value="{{ purpose.id }}">
                                 <input type="hidden" name="edit_purpose" value="true">
                             </div>
@@ -165,7 +152,7 @@
                 </div>
             </div>
 
-            <!-- 削除モーダル -->
+            <!-- 使用用途削除モーダル -->
             <div class="modal fade" id="deletePurposeModal{{ purpose.id }}" tabindex="-1" role="dialog" aria-labelledby="deletePurposeModalLabel{{ purpose.id }}" aria-hidden="true">
                 <div class="modal-dialog" role="document">
                     <div class="modal-content">
@@ -191,6 +178,26 @@
                 </div>
             </div>
             {% endfor %}
+
+            <!-- 新しい使用用途の追加行 -->
+            <tr>
+                <form method="post">
+                    {% csrf_token %}
+                    <td>
+                        <input type="text" name="purpose-name" placeholder="新しい使用用途" class="form-control">
+                    </td>
+                    <td>
+                        <input type="hidden" name="purpose" value="true">
+                        <button type="submit" class="btn btn-sm btn-primary">追加</button>
+                    </td>
+                </form>
+            </tr>
+                
+            {% if purpose_form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ purpose_form.non_field_errors }}
+            </div>
+            {% endif %}
         </tbody>
     </table>
 </div>

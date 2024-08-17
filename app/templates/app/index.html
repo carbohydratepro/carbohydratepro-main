@@ -1,10 +1,41 @@
 {% extends "app/base.html" %}
 {% block content %}
-<ul>
-    {% for transaction in transactions %}
-    <li>{{ transaction.date }}: {{ transaction.amount }} - <a href="{% url 'edit_transaction' transaction.id %}">Edit</a> | <a href="{% url 'delete_transaction' transaction.id %}">Delete</a></li>
-    {% endfor %}
-</ul>
-<a href="{% url 'create_transaction' %}">新規登録</a>
-<a href="{% url 'settings' %}">設定</a>
+<div class="container mt-5">
+    <h2 class="mb-4">投稿一覧</h2>
+    <div style="overflow-x: auto;">
+        <table class="table table-striped" style="table-layout: fixed; width: 100%; font-size: 14px;">
+            <thead>
+                <tr>
+                    <th style="width: 10%; padding: 8px;">日付</th>
+                    <th style="width: 10%; padding: 8px;">メインカテゴリ</th>
+                    <th style="width: 10%; padding: 8px;">カテゴリ</th>
+                    <th style="width: 20%; padding: 8px;">使用用途</th>
+                    <th style="width: 10%; padding: 8px;">取引タイプ</th>
+                    <th style="width: 10%; padding: 8px;">支払方法</th>
+                    <th style="width: 10%; padding: 8px;">金額</th>
+                    <th style="width: 20%; padding: 8px;">アクション</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.date|date:'Y-m-d' }}">{{ transaction.date|date:"Y-m-d" }}</td>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.get_major_category_display }}">{{ transaction.get_major_category_display }}</td>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.category }}">{{ transaction.category }}</td>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.purpose }}">{{ transaction.purpose }}</td>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.get_transaction_type_display }}">{{ transaction.get_transaction_type_display }}</td>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.payment_method }}">{{ transaction.payment_method }}</td>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.amount|floatformat:0 }}">{{ transaction.amount|floatformat:0 }}</td>
+                    <td style="padding: 8px;">
+                        <a href="{% url 'edit_transaction' transaction.id %}" class="btn btn-sm btn-warning">編集</a>
+                        <a href="{% url 'delete_transaction' transaction.id %}" class="btn btn-sm btn-danger">削除</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <a href="{% url 'create_transaction' %}" class="btn btn-primary">新規登録</a>
+    <a href="{% url 'settings' %}" class="btn btn-primary">設定</a>
+</div>
 {% endblock %}

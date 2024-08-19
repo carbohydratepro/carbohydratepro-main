@@ -1,7 +1,158 @@
 {% extends "app/base.html" %}
-<!-- コンテンツ -->
+{% load static %}
 {% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">投稿一覧</h2>
 
-<h1>ホームページ</h1>
+    <!-- フィルター用フォーム -->
+    <form id="filterForm" class="form-inline mb-4">
+        <label for="target_date" class="mr-2">対象月:</label>
+        <input type="month" id="target_date" name="target_date" class="form-control mr-2" value="{{ default_target_date }}">
+    </form>
 
+    <!-- グラフ表示エリア -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <canvas id="categoryPieChart" style="max-height: 300px;"></canvas> <!-- 円グラフの高さを指定 -->
+        </div>
+        <div class="col-md-9">
+            <canvas id="expenseBarChart" style="max-height: 300px;"></canvas> <!-- 棒グラフの高さを円グラフと同じに -->
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <canvas id="majorCategoryChart" style="max-height: 300px;"></canvas> <!-- メインカテゴリグラフの高さを指定 -->
+        </div>
+        <div class="col-md-9">
+            <canvas id="balanceLineChart" style="max-height: 300px;"></canvas> <!-- 折れ線グラフの高さを円グラフと同じに -->
+        </div>
+    </div>
+
+    <!-- 投稿一覧 -->
+    <div style="overflow-x: auto;">
+        <table class="table table-striped" style="table-layout: fixed; width: 100%; font-size: 14px;">
+            <thead>
+                <tr>
+                    <th style="width: 15%; padding: 8px;">日付</th>
+                    <th style="width: 15%; padding: 8px;">メインカテゴリ</th>
+                    <th style="width: 15%; padding: 8px;">カテゴリ</th>
+                    <th style="width: 20%; padding: 8px;">使用用途</th>
+                    <th style="width: 15%; padding: 8px;">取引タイプ</th>
+                    <th style="width: 10%; padding: 8px;">支払方法</th>
+                    <th style="width: 10%; padding: 8px;">金額</th>
+                    <th style="width: 10%; padding: 8px;">アクション</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                <tr>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.date|date:'Y-m-d' }}">{{ transaction.date|date:"Y-m-d" }}</td>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.get_major_category_display }}">{{ transaction.get_major_category_display }}</td>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.category }}">{{ transaction.category }}</td>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.purpose }}">{{ transaction.purpose }}</td>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.get_transaction_type_display }}">{{ transaction.get_transaction_type_display }}</td>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.payment_method }}">{{ transaction.payment_method }}</td>
+                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.amount|floatformat:0 }}">{{ transaction.amount|floatformat:0 }}</td>
+                    <td style="padding: 8px;">
+                        <a href="{% url 'edit_transaction' transaction.id %}" class="btn btn-sm btn-warning">編集</a>
+                        <a href="{% url 'delete_transaction' transaction.id %}" class="btn btn-sm btn-danger">削除</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <a href="{% url 'create_transaction' %}" class="btn btn-primary">新規登録</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    var categoryData = {{ category_data_json|safe }};
+    var expenseData = {{ expense_data_json|safe }};
+    var balanceData = {{ balance_data_json|safe }};
+    var majorCategoryData = {{ major_category_data_json|safe }};
+
+    // カテゴリの割合を表す円グラフ
+    var ctxPie = document.getElementById('categoryPieChart').getContext('2d');
+    var categoryPieChart = new Chart(ctxPie, {
+        type: 'pie',
+        data: categoryData,
+        options: {
+            responsive: true,
+        }
+    });
+
+    // 支出を表す棒グラフ
+    var ctxBar = document.getElementById('expenseBarChart').getContext('2d');
+    var expenseBarChart = new Chart(ctxBar, {
+        type: 'bar',
+        data: expenseData,
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    type: 'category',
+                    ticks: {
+                        autoSkip: true,
+                        maxTicksLimit: 10, // 日付のみ表示し、ラベルを減らす
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 99, 132, 0.2)' // 薄い赤線を追加
+                    },
+                    ticks: {
+                        autoSkip: true,
+                        maxTicksLimit: 5 // 縦軸のラベルを減らす
+                    }
+                }
+            }
+        }
+    });
+
+    // メインカテゴリを表すグラフ
+    var ctxMajorCategory = document.getElementById('majorCategoryChart').getContext('2d');
+    var majorCategoryChart = new Chart(ctxMajorCategory, {
+        type: 'pie',
+        data: majorCategoryData,
+        options: {
+            responsive: true,
+        }
+    });
+
+    // 所持金の遷移を表す折れ線グラフ
+    var ctxLine = document.getElementById('balanceLineChart').getContext('2d');
+    var balanceLineChart = new Chart(ctxLine, {
+        type: 'line',
+        data: balanceData,
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    type: 'category',
+                    ticks: {
+                        autoSkip: true,
+                        maxTicksLimit: 10, // 日付のみ表示し、ラベルを減らす
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 99, 132, 0.2)' // 薄い赤線を追加
+                    },
+                    ticks: {
+                        autoSkip: true,
+                        maxTicksLimit: 5 // 縦軸のラベルを減らす
+                    }
+                }
+            }
+        }
+    });
+
+    // フィルター変更時に自動的にグラフを更新
+    document.getElementById('filterForm').addEventListener('change', function() {
+        this.submit();
+    });
+</script>
 {% endblock %}

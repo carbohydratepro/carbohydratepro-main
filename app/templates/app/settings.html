@@ -1,0 +1,204 @@
+{% extends "app/base.html" %}
+{% load app_filters %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">設定</h2>
+
+    <!-- 支払方法のテーブル -->
+    <h3>支払方法</h3>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>支払方法</th>
+                <th>アクション</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 支払方法の行 -->
+            {% for payment in payments %}
+            <tr>
+                <td>{{ payment.name }}</td>
+                <td>
+                    <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editPaymentModal{{ payment.id }}">編集</button>
+                    <button class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deletePaymentModal{{ payment.id }}">削除</button>
+                </td>
+            </tr>
+
+            <!-- 支払方法編集モーダル -->
+            <div class="modal fade" id="editPaymentModal{{ payment.id }}" tabindex="-1" role="dialog" aria-labelledby="editPaymentModalLabel{{ payment.id }}" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="editPaymentModalLabel{{ payment.id }}">支払方法の編集</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label for="payment-name-{{ payment.id }}">支払方法</label>
+                                    <input type="text" name="payment-name" class="form-control" id="payment-name-{{ payment.id }}" value="{{ payment.name }}">
+                                </div>
+                                <input type="hidden" name="payment_id" value="{{ payment.id }}">
+                                <input type="hidden" name="edit_payment" value="true">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>
+                                <button type="submit" class="btn btn-primary">保存</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 支払方法削除モーダル -->
+            <div class="modal fade" id="deletePaymentModal{{ payment.id }}" tabindex="-1" role="dialog" aria-labelledby="deletePaymentModalLabel{{ payment.id }}" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="deletePaymentModalLabel{{ payment.id }}">支払方法の削除</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                本当に削除しますか？: {{ payment.name }}
+                                <input type="hidden" name="payment_id" value="{{ payment.id }}">
+                                <input type="hidden" name="delete_payment" value="true">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>
+                                <button type="submit" class="btn btn-danger">削除</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% if payment_form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ payment_form.non_field_errors }}
+            </div>
+            {% endif %}
+            <!-- 新しい支払方法の追加行 -->
+            <tr>
+                <form method="post">
+                    {% csrf_token %}
+                    <td>
+                        <input type="text" name="payment-name" placeholder="新しい支払方法" class="form-control">
+                    </td>
+                    <td>
+                        <input type="hidden" name="payment" value="true">
+                        <button type="submit" class="btn btn-sm btn-primary">追加</button>
+                    </td>
+                </form>
+                
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- 使用用途のテーブル -->
+    <h3 class="mt-5">使用用途</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>使用用途</th>
+                <th>アクション</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 使用用途の行 -->
+            {% for purpose in purposes %}
+            <tr>
+                <td>{{ purpose.name }}</td>
+                <td>
+                    <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editPurposeModal{{ purpose.id }}">編集</button>
+                    <button class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deletePurposeModal{{ purpose.id }}">削除</button>
+                </td>
+            </tr>
+
+            <!-- 使用用途編集モーダル -->
+            <div class="modal fade" id="editPurposeModal{{ purpose.id }}" tabindex="-1" role="dialog" aria-labelledby="editPurposeModalLabel{{ purpose.id }}" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="editPurposeModalLabel{{ purpose.id }}">使用用途の編集</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label for="purpose-name-{{ purpose.id }}">使用用途</label>
+                                    <input type="text" name="purpose-name" class="form-control" id="purpose-name-{{ purpose.id }}" value="{{ purpose.name }}">
+                                </div>
+                                <input type="hidden" name="purpose_id" value="{{ purpose.id }}">
+                                <input type="hidden" name="edit_purpose" value="true">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>
+                                <button type="submit" class="btn btn-primary">保存</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 使用用途削除モーダル -->
+            <div class="modal fade" id="deletePurposeModal{{ purpose.id }}" tabindex="-1" role="dialog" aria-labelledby="deletePurposeModalLabel{{ purpose.id }}" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="deletePurposeModalLabel{{ purpose.id }}">使用用途の削除</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                本当に削除しますか？: {{ purpose.name }}
+                                <input type="hidden" name="purpose_id" value="{{ purpose.id }}">
+                                <input type="hidden" name="delete_purpose" value="true">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>
+                                <button type="submit" class="btn btn-danger">削除</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- 新しい使用用途の追加行 -->
+            <tr>
+                <form method="post">
+                    {% csrf_token %}
+                    <td>
+                        <input type="text" name="purpose-name" placeholder="新しい使用用途" class="form-control">
+                    </td>
+                    <td>
+                        <input type="hidden" name="purpose" value="true">
+                        <button type="submit" class="btn btn-sm btn-primary">追加</button>
+                    </td>
+                </form>
+            </tr>
+                
+            {% if purpose_form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ purpose_form.non_field_errors }}
+            </div>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

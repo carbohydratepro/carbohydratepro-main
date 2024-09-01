@@ -63,6 +63,7 @@
         </table>
     </div>
     <a href="{% url 'create_transaction' %}" class="btn btn-primary">新規登録</a>
+    <a href="{% url 'settings' %}" class="btn btn-primary">設定</a>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -79,6 +80,12 @@
         data: categoryData,
         options: {
             responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'カテゴリ別割合'
+                }
+            }
         }
     });
 
@@ -118,6 +125,12 @@
         data: majorCategoryData,
         options: {
             responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'メインカテゴリ'
+                }
+            }
         }
     });
 

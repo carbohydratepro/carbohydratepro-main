@@ -28,7 +28,21 @@ def index(request):
 
     # グラフ用データの作成
     category_data = transactions.values('category__name').annotate(total=Sum('amount')).order_by('-total')
+    
+    # メインカテゴリを日本語表記で取得
     major_category_data = transactions.values('major_category').annotate(total=Sum('amount')).order_by('-total')
+    major_category_labels = {
+        'variable': '変動費',
+        'fixed': '固定費',
+        'special': '特別費'
+    }
+    major_category_data_json = json.dumps({
+        'labels': [major_category_labels[entry['major_category']] for entry in major_category_data],
+        'datasets': [{
+            'data': [float(entry['total']) for entry in major_category_data],  # Decimalをfloatに変換
+            'backgroundColor': ['#4BC0C0', '#FF9F40', '#9966FF'],
+        }]
+    })
 
     expense_data = []
     balance_data = []
@@ -37,23 +51,15 @@ def index(request):
     for date in date_range:
         daily_expense = transactions.filter(date__date=date, transaction_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
         daily_income = transactions.filter(date__date=date, transaction_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
-        current_balance += float(daily_income) - float(daily_expense) # Decimalをfloatに変換
-        expense_data.append(float(daily_expense)) # Decimalをfloatに変換
-        balance_data.append(float(current_balance)) # Decimalをfloatに変換
-    
+        current_balance += float(daily_income) - float(daily_expense)  # Decimalをfloatに変換
+        expense_data.append(float(daily_expense))  # Decimalをfloatに変換
+        balance_data.append(float(current_balance))  # Decimalをfloatに変換
+
     category_data_json = json.dumps({
         'labels': [entry['category__name'] for entry in category_data],
         'datasets': [{
             'data': [float(entry['total']) for entry in category_data],  # Decimalをfloatに変換
             'backgroundColor': ['#FF6384', '#36A2EB', '#FFCE56'],
-        }]
-    })
-
-    major_category_data_json = json.dumps({
-        'labels': [entry['major_category'] for entry in major_category_data],
-        'datasets': [{
-            'data': [float(entry['total']) for entry in major_category_data],  # Decimalをfloatに変換
-            'backgroundColor': ['#4BC0C0', '#FF9F40', '#9966FF'],
         }]
     })
 
@@ -84,7 +90,6 @@ def index(request):
         'balance_data_json': balance_data_json,
         'default_target_date': target_date.strftime('%Y-%m')  # 今日の日付をテンプレートに渡す
     })
-
     
 @login_required
 def create_transaction(request):

@@ -12,19 +12,19 @@
 
     <!-- グラフ表示エリア -->
     <div class="row mb-4">
-        <div class="col-md-3">
-            <canvas id="categoryPieChart" style="max-height: 300px;"></canvas> <!-- 円グラフの高さを指定 -->
+        <div class="col-md-3 col-sm-12">
+            <canvas id="categoryPieChart" class="chart-canvas"></canvas>
         </div>
-        <div class="col-md-9">
-            <canvas id="expenseBarChart" style="max-height: 300px;"></canvas> <!-- 棒グラフの高さを円グラフと同じに -->
+        <div class="col-md-9 col-sm-12">
+            <canvas id="expenseBarChart" class="chart-canvas"></canvas>
         </div>
     </div>
     <div class="row mb-4">
-        <div class="col-md-3">
-            <canvas id="majorCategoryChart" style="max-height: 300px;"></canvas> <!-- メインカテゴリグラフの高さを指定 -->
+        <div class="col-md-3 col-sm-12">
+            <canvas id="majorCategoryChart" class="chart-canvas"></canvas>
         </div>
-        <div class="col-md-9">
-            <canvas id="balanceLineChart" style="max-height: 300px;"></canvas> <!-- 折れ線グラフの高さを円グラフと同じに -->
+        <div class="col-md-9 col-sm-12">
+            <canvas id="balanceLineChart" class="chart-canvas"></canvas>
         </div>
     </div>
 
@@ -167,5 +167,5 @@
     document.getElementById('filterForm').addEventListener('change', function() {
         this.submit();
     });
-</script>
+</script>  
 {% endblock %}

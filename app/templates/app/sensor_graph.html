@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析 - 温度、湿度、照度グラフ</title>
+    <!-- 必要なCSSとJSのインクルード -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- jQuery、Bootstrap、Chart.js、Bootstrap Datepickerの読み込み -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-4">温度、湿度、照度の分析</h1>
+
+        <!-- 日付選択用のDatepicker -->
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" id="datepicker" placeholder="日付を選択" name="date">
+            <div class="input-group-append">
+                <span class="input-group-text"><i class="fa fa-calendar"></i></span>
+            </div>
+        </div>
+
+        <!-- 温度・湿度グラフ -->
+        <canvas id="tempHumChart" width="400" height="200"></canvas>
+
+        <!-- 照度グラフ -->
+        <canvas id="illuminanceChart" width="400" height="200" class="mt-4"></canvas>
+    </div>
+
+    <script>
+        // 今日の日付を取得して初期値として設定
+        const today = new Date().toISOString().split('T')[0];
+        $('#datepicker').val(today);
+
+        // Datepickerの初期化
+        $('#datepicker').datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true,
+            todayHighlight: true
+        }).on('changeDate', function(e) {
+            var selectedDate = $('#datepicker').val();
+            updateGraphs(selectedDate);
+        });
+
+        // 初期ロード時に今日の日付でグラフを表示
+        $(document).ready(function() {
+            updateGraphs(today);
+        });
+
+        // フェードインアニメーション設定
+        const fadeInOptions = {
+            duration: 1500,
+            easing: 'easeInOutQuad'
+        };
+
+        // 温度・湿度グラフの初期化
+        var tempHumCtx = document.getElementById('tempHumChart').getContext('2d');
+        var tempHumChart = new Chart(tempHumCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: '温度 (°C)',
+                        data: [],
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        yAxisID: 'temperature',
+                    },
+                    {
+                        label: '湿度 (%)',
+                        data: [],
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        yAxisID: 'humidity',
+                    }
+                ]
+            },
+            options: {
+                animations: {
+                    tension: fadeInOptions,
+                    opacity: fadeInOptions,
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '時間 (1時間ごと)'
+                        }
+                    },
+                    temperature: {
+                        type: 'linear',
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: '温度 (°C)'
+                        }
+                    },
+                    humidity: {
+                        type: 'linear',
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: '湿度 (%)'
+                        },
+                        grid: {
+                            drawOnChartArea: false,
+                        }
+                    }
+                }
+            }
+        });
+
+        // 照度グラフの初期化
+        var illumCtx = document.getElementById('illuminanceChart').getContext('2d');
+        var illuminanceChart = new Chart(illumCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: '照度 (lx)',
+                        data: [],
+                        borderColor: 'rgba(255, 206, 86, 1)',
+                        backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                        yAxisID: 'illuminance',
+                    }
+                ]
+            },
+            options: {
+                animations: {
+                    tension: fadeInOptions,
+                    opacity: fadeInOptions,
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '時間 (1時間ごと)'
+                        }
+                    },
+                    illuminance: {
+                        type: 'linear',
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: '照度 (lx)'
+                        },
+                        suggestedMax: 1000,
+                    }
+                }
+            }
+        });
+
+        // データを取得してグラフを更新する関数
+        function updateGraphs(date) {
+            $.ajax({
+                url: '{% url "get_sensor_data" %}',
+                data: { date: date },
+                success: function(response) {
+                    // 温度・湿度データをグラフに設定
+                    tempHumChart.data.labels = response.timestamps;
+                    tempHumChart.data.datasets[0].data = response.temperatures;
+                    tempHumChart.data.datasets[1].data = response.humidities;
+                    tempHumChart.update();
+
+                    // 照度データをグラフに設定
+                    illuminanceChart.data.labels = response.timestamps;
+                    illuminanceChart.data.datasets[0].data = response.illuminance;
+                    illuminanceChart.update();
+                },
+                error: function(xhr) {
+                    console.log('Error:', xhr);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

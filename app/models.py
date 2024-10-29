@@ -38,3 +38,14 @@ class Transaction(models.Model):
     
     def __str__(self):
         return f"{self.user.email} - {self.amount} - {self.transaction_type}"
+
+
+
+class SensorData(models.Model):
+    timestamp = models.DateTimeField()  
+    temperature = models.FloatField()
+    humidity = models.FloatField()
+    illuminance = models.FloatField(default=None)  # 照度の追加
+
+    def __str__(self):
+        return f"{self.timestamp} - Temp: {self.temperature}°C, Humidity: {self.humidity}%, Illuminance: {self.illuminance} lx"

@@ -53,6 +53,11 @@ class CategoryForm(forms.ModelForm):
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'  
 
+class DateForm(forms.Form):
+    date = forms.DateField(widget=forms.TextInput(attrs={
+        'type': 'date',
+        'class': 'form-control'
+    }))
 
 
 # user：取引を行ったユーザー

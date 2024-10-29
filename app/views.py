@@ -1,12 +1,20 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, F, Q
+from django.db.models import Sum, F, Q, Avg
 from django.utils.timezone import make_aware
 from .forms import TransactionForm, PaymentMethodForm, CategoryForm
 from .models import Transaction, PaymentMethod, Category
 from datetime import datetime, timedelta
 
 import json
+
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .serializers import SensorDataSerializer
+from .forms import DateForm
+from .models import SensorData
+from django.http import JsonResponse
 
 @login_required
 def index(request):
@@ -196,3 +204,58 @@ def delete_transaction(request, transaction_id):
         return redirect('index')
     return render(request, 'app/confirm_delete.html', {'transaction': transaction})
 
+@api_view(['POST'])
+def receive_data(request):
+    serializer = SensorDataSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()  # 照度を含むデータを保存
+        return Response({"message": "Data saved successfully"}, status=201)
+    return Response(serializer.errors, status=400)
+
+
+# グラフ表示用ビュー
+def display_graph(request):
+    form = DateForm(request.GET or None)
+    return render(request, 'app/sensor_graph.html', {'form': form})
+
+# 選択された日付に基づいてデータを取得するAPI
+@api_view(['GET'])
+def get_sensor_data(request):
+    selected_date = request.GET.get('date', None)
+    
+    if selected_date:
+        # 選択された日付に基づいてデータを取得
+        date_obj = datetime.strptime(selected_date, '%Y-%m-%d')
+
+        # 24時間分のデータを格納するリストを初期化
+        timestamps = [f"{hour}:00" for hour in range(24)]
+        temperatures = []
+        humidities = []
+        illuminances = []
+
+        # 各時間帯ごとにデータを集計
+        for hour in range(24):
+            start_time = datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=hour)
+            end_time = start_time + timedelta(hours=1)
+
+            # 各時間のデータの平均値を取得
+            avg_data = SensorData.objects.filter(timestamp__range=(start_time, end_time)).aggregate(
+                avg_temperature=Avg('temperature'),
+                avg_humidity=Avg('humidity'),
+                avg_illuminance=Avg('illuminance')
+            )
+            
+            # 平均値をリストに追加 (Noneの場合は0にする)
+            temperatures.append(avg_data['avg_temperature'] or 0)
+            humidities.append(avg_data['avg_humidity'] or 0)
+            illuminances.append(avg_data['avg_illuminance'] or 0)
+
+        # 24時間分のデータをレスポンスに返す
+        return Response({
+            'timestamps': timestamps,
+            'temperatures': temperatures,
+            'humidities': humidities,
+            'illuminance': illuminances
+        })
+    
+    return Response({'error': 'Invalid date'}, status=400)

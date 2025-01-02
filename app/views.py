@@ -2,11 +2,12 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, F, Q, Avg
 from django.utils.timezone import make_aware
-from .forms import TransactionForm, PaymentMethodForm, CategoryForm
-from .models import Transaction, PaymentMethod, Category
+from .forms import TransactionForm, PaymentMethodForm, CategoryForm, VideoPostForm, CommentForm
+from .models import Transaction, PaymentMethod, Category, VideoPost, Comment
 from datetime import datetime, timedelta
 
 import json
+import logging
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -15,6 +16,10 @@ from .serializers import SensorDataSerializer
 from .forms import DateForm
 from .models import SensorData
 from django.http import JsonResponse
+
+
+logger = logging.getLogger(__name__)
+
 
 @login_required
 def index(request):
@@ -259,3 +264,122 @@ def get_sensor_data(request):
         })
     
     return Response({'error': 'Invalid date'}, status=400)
+
+
+
+@login_required
+def video_varolant(request):
+    form_error = {}  # エラー変数の初期化
+
+    try:
+        # POSTリクエスト処理
+        if request.method == 'POST':
+            # JSONデータを解析
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                return JsonResponse({'success': False, 'error': 'リクエストデータ形式が不正です。'})
+
+            # 新規投稿処理
+            if 'date' in data:
+                form = VideoPostForm(data)
+                if form.is_valid():
+                    post = form.save(commit=False)
+                    post.user = request.user
+                    post.save()
+                    return JsonResponse({'success': True})
+                else:
+                    # フォームエラーを辞書形式で取得
+                    form_error = form.errors.get_json_data()
+                    return JsonResponse({'success': False, 'error': form_error})
+
+            # コメント追加処理
+            elif 'comment_content' in data:
+                post_id = data.get('post_id')
+                comment_content = data.get('comment_content', '').strip()
+                if post_id and comment_content:
+                    post = get_object_or_404(VideoPost, id=post_id)
+                    Comment.objects.create(
+                        post=post,
+                        user=request.user,
+                        content=comment_content
+                    )
+                    return JsonResponse({'success': True})
+                else:
+                    return JsonResponse({'success': False, 'error': 'コメント内容が必要です。'})
+
+        # GETリクエスト処理
+        posts = VideoPost.objects.prefetch_related('comments').order_by('-date')
+        comment_form = CommentForm()
+
+        # データレンダリング
+        return render(request, 'app/video_varolant.html', {
+            'form': VideoPostForm(),
+            'posts': posts,
+            'comment_form': comment_form,
+            'form_error': form_error,
+        })
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+def update_video(request, post_id):
+    """投稿の編集処理 (JSON対応)"""
+    if request.method == 'POST':
+        try:
+            # JSON形式でデータ受け取り
+            data = json.loads(request.body)
+
+            # データ取得
+            post = get_object_or_404(VideoPost, id=post_id, user=request.user)
+
+            # 日付形式変換
+            try:
+                date = datetime.strptime(data.get('date'), '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({'success': False, 'error': json.dumps({'date': [{'message': '日付はYYYY-MM-DD形式で指定してください。'}]})})
+
+            # フィールド更新
+            post.date = date
+            logger.debug(post.date.strftime('%Y-%m-%d'))  # 出力確認
+
+            result = data.get('result')
+            if result not in ['win', 'loss', 'draw']:
+                return JsonResponse({'success': False, 'error': json.dumps({'result': [{'message': '勝敗は正しい値を指定してください。'}]})})
+
+            post.video_url = data.get('video_url')
+            post.notes = data.get('notes')
+
+            # バリデーションと保存
+            post.full_clean()
+            post.save()
+            return JsonResponse({'success': True})
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': json.dumps({'error': [{'message': str(e)}]})})
+    return JsonResponse({'success': False, 'error': json.dumps({'error': [{'message': '無効なリクエストです。'}]})})
+
+@login_required
+def delete_video(request, post_id):
+    """投稿の削除処理"""
+    post = get_object_or_404(VideoPost, id=post_id, user=request.user)
+    post.delete()
+    return JsonResponse({'success': True})
+
+@login_required
+def update_video_comment(request, comment_id):
+    """コメントの編集処理 (Ajax用)"""
+    if request.method == 'POST':
+        comment = get_object_or_404(Comment, id=comment_id, user=request.user)
+        comment.content = request.POST.get('content')
+        comment.save()
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False})
+
+@login_required
+def delete_video_comment(request, comment_id):
+    """コメントの削除処理"""
+    comment = get_object_or_404(Comment, id=comment_id, user=request.user)
+    comment.delete()
+    return JsonResponse({'success': True})

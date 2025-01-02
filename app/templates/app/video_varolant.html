@@ -1,0 +1,197 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <h1>動画投稿一覧</h1>
+
+        <!-- エラーメッセージの表示 -->
+        {% if form_error %}
+        <div class="alert alert-danger">
+            <ul>
+                {% for field, errors in form_error.items %}
+                    {% for error in errors %}
+                        <li>{{ field }}: {{ error.message }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <!-- 新規投稿ボタン -->
+    <button onclick="openModal()" class="btn btn-primary">新規投稿</button>
+
+    <!-- モーダル -->
+    <div id="modalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <span id="closeModal" class="modal-close">&times;</span>
+            <h2 id="modalTitle">新規投稿</h2>
+    
+            <!-- エラーメッセージの表示 -->
+            <div id="modalError" class="error-message" style="color: red; display: none;"></div>
+    
+            <form id="modalForm" class="modal-form">
+                {% csrf_token %}
+                <label for="modalDate">日付:</label>
+                <input type="date" id="modalDate" name="date" required>
+    
+                <label for="modalResult">勝敗:</label>
+                <select id="modalResult" name="result" required>
+                    <option value="win">勝ち</option>
+                    <option value="loss">負け</option>
+                    <option value="draw">引き分け</option>
+                </select>
+    
+                <label for="modalURL">URL:</label>
+                <input type="url" id="modalURL" name="video_url" placeholder="動画URL" required>
+    
+                <label for="modalNotes">補足:</label>
+                <textarea id="modalNotes" name="notes" placeholder="補足"></textarea>
+    
+                <button type="button" onclick="saveModal()">保存</button>
+                <button type="button" id="deleteBtn" onclick="deleteModal()" style="display: none;">削除</button>
+                <button type="button" onclick="closeModal()">キャンセル</button>
+            </form>
+        </div>
+    </div>    
+
+    <!-- 投稿一覧 -->
+    <div style="overflow-x: auto; margin-top: 20px;">
+        <table class="table table-striped" style="width: 100%; font-size: 14px;">
+            <thead>
+                <tr>
+                    <th>日付</th>
+                    <th>勝敗</th>
+                    <th>動画URL</th>
+                    <th>補足</th>
+                    <th>コメント数</th>
+                    <th>アクション</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in posts %}
+                <tr id="post-{{ post.id }}">
+                    <td>{{ post.date }}</td>
+                    <td>{{ post.get_result_display }}</td>
+                    <td><a href="{{ post.video_url }}" target="_blank">{{ post.video_url }}</a></td>
+                    <td>{{ post.notes }}</td>
+                    <td>{{ post.comments.count }}</td>
+                    <td>
+                        {% if post.user == request.user %}
+                            <button onclick="openModal({{ post.id }}, '{{ post.date }}', '{{ post.result }}', '{{ post.video_url }}', '{{ post.notes }}')" class="btn btn-warning btn-sm">編集</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+    let currentPostId = null;
+    let isNewPost = true;
+    
+    // モーダルを開く関数
+    function openModal(postId = null, date = '', result = 'win', url = '', notes = '') {
+        isNewPost = postId === null; // 新規投稿かどうか判定
+        currentPostId = postId;
+
+        // 日付形式そのまま代入 (既に YYYY-MM-DD 形式なので変換不要)
+        const formattedDate = date || '';  // 空の場合は空文字を設定
+
+        // タイトルと削除ボタンの切り替え
+        document.getElementById('modalTitle').innerText = isNewPost ? '新規投稿' : '編集';
+        document.getElementById('deleteBtn').style.display = isNewPost ? 'none' : 'inline-block';
+
+        // フォームにデータ設定
+        document.getElementById('modalDate').value = formattedDate;  // 直接セット
+        document.getElementById('modalResult').value = result;
+        document.getElementById('modalURL').value = url;
+        document.getElementById('modalNotes').value = notes;
+
+        // モーダル表示
+        document.getElementById('modalOverlay').style.display = 'block';
+    }
+
+    
+    // モーダルを閉じる関数
+    function closeModal() {
+        document.getElementById('modalOverlay').style.display = 'none';
+        currentPostId = null;
+    }
+    
+    // 保存処理
+    async function saveModal() {
+        const payload = {
+            date: document.getElementById('modalDate').value,
+            result: document.getElementById('modalResult').value,
+            video_url: document.getElementById('modalURL').value,
+            notes: document.getElementById('modalNotes').value,
+        };
+    
+        const url = isNewPost
+            ? '/carbohydratepro/video/varolant/'  // 新規投稿用API
+            : `/carbohydratepro/video/update/${currentPostId}/`;  // 更新用API
+    
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify(payload)  // JSON形式で送信
+            });
+    
+            const data = await response.json();  // JSONパース
+            if (data.success) {
+                alert(isNewPost ? '投稿されました。' : '更新されました。');
+                location.reload();
+            } else {
+                let errorMessage = 'エラーが発生しました。';
+                if (data.error) {
+                    const errorObj = typeof data.error === 'string' ? JSON.parse(data.error) : data.error;
+                    for (const [field, messages] of Object.entries(errorObj)) {
+                        messages.forEach(err => {
+                            errorMessage += `${field}: ${err.message}<br>`;
+                        });
+                    }
+                }
+                document.getElementById('modalError').innerHTML = errorMessage;
+                document.getElementById('modalError').style.display = 'block';
+            }
+        } catch (e) {
+            document.getElementById('modalError').innerHTML = 'サーバーエラーが発生しました。';
+            document.getElementById('modalError').style.display = 'block';
+        }
+    }    
+
+    // 削除処理
+    async function deleteModal() {
+        if (confirm('削除しますか？')) {
+            const response = await fetch(`/carbohydratepro/video/delete/${currentPostId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('削除されました。');
+                location.reload();
+            } else {
+                alert('削除に失敗しました。');
+            }
+        }
+    }
+    
+    // モーダルを閉じるボタン
+    document.getElementById('closeModal').onclick = closeModal;
+    
+</script>
+
+
+{% endblock %}
+

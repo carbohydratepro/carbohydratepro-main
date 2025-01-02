@@ -1,5 +1,5 @@
 from django import forms
-from .models import Transaction, PaymentMethod, Category
+from .models import Transaction, PaymentMethod, Category, VideoPost, Comment
 
 class TransactionForm(forms.ModelForm):
     class Meta:
@@ -59,7 +59,19 @@ class DateForm(forms.Form):
         'class': 'form-control'
     }))
 
+class VideoPostForm(forms.ModelForm):
+    class Meta:
+        model = VideoPost
+        fields = ['date', 'result', 'video_url', 'notes']
 
+
+class CommentForm(forms.ModelForm):
+    class Meta:
+        model = Comment
+        fields = ['content']
+        widgets = {
+            'content': forms.Textarea(attrs={'placeholder': 'コメントを入力してください...', 'rows': 2})
+        }
 # user：取引を行ったユーザー
 # amount：金額
 # date：取引日

@@ -49,3 +49,29 @@ class SensorData(models.Model):
 
     def __str__(self):
         return f"{self.timestamp} - Temp: {self.temperature}°C, Humidity: {self.humidity}%, Illuminance: {self.illuminance} lx"
+    
+class VideoPost(models.Model):
+    WIN_LOSS_CHOICES = [
+        ('win', '勝ち'),
+        ('loss', '負け'),
+        ('draw', '引き分け'),
+    ]
+
+    date = models.DateField(verbose_name="年月日")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="video_posts")
+    result = models.CharField(max_length=10, choices=WIN_LOSS_CHOICES, verbose_name="勝敗")
+    video_url = models.URLField(verbose_name="動画URL")
+    notes = models.TextField(blank=True, verbose_name="補足")
+
+    def __str__(self):
+        return f"{self.date} - {self.user.username} - {self.result}"
+    
+    
+class Comment(models.Model):
+    post = models.ForeignKey(VideoPost, related_name="comments", on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    content = models.TextField(verbose_name="コメント内容")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"コメント by {self.user.username} on {self.created_at}"

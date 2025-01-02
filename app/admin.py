@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import SensorData
+from .models import VideoPost
 
 @admin.register(SensorData)
 class SensorDataAdmin(admin.ModelAdmin):
@@ -17,3 +18,10 @@ class SensorDataAdmin(admin.ModelAdmin):
         if db_field.name == 'timestamp':
             kwargs['widget'] = admin.widgets.AdminSplitDateTime()
         return super().formfield_for_dbfield(db_field, **kwargs)
+    
+    
+@admin.register(VideoPost)
+class VideoPostAdmin(admin.ModelAdmin):
+    list_display = ('date', 'user', 'result', 'video_url')
+    search_fields = ('user__username', 'result', 'notes')
+    list_filter = ('result', 'date')

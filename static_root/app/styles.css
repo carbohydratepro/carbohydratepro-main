@@ -1,0 +1,211 @@
+.m-5 {
+    margin: 5%;
+}
+
+html, body {
+    height: 100%;
+    background-color: #f8f9fa; /* 明るい背景色 */
+    color: #333333; /* 明るい背景に映える文字色 */
+}
+
+/* グラフエリア */
+.chart-canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 300px;  /* グラフの最大高さを指定 */
+}
+
+@media (max-width: 768px) {
+    .chart-canvas {
+        max-height: 200px;  /* モバイルサイズでの高さを調整 */
+    }
+}
+
+/* コンテナ */
+.container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #ffffff; /* 白背景 */
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 見出し */
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333333; /* 明るめの文字色 */
+}
+
+/* 投稿フォーム */
+.post-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #f9f9f9; /* フォーム背景を明るく */
+}
+
+.post-form label {
+    font-weight: bold;
+}
+
+/* 入力フォームとボタン */
+.post-form input,
+.post-form select,
+.post-form textarea,
+.post-form button {
+    padding: 10px;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    background-color: #ffffff; /* 入力欄を白に */
+    color: #333333;
+}
+
+/* ボタンデザイン */
+.post-form button {
+    cursor: pointer;
+    background-color: #007bff; /* 明るい青 */
+    border: none;
+    transition: background-color 0.3s;
+    color: white; /* テキストは白に */
+}
+
+.post-form button:hover {
+    background-color: #0056b3; /* ホバー時に少し暗く */
+}
+
+/* 投稿一覧 */
+.post-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 20px;
+}
+
+/* 投稿の各アイテム */
+.post-list li {
+    padding: 10px;
+    border-bottom: 1px solid #e0e0e0; /* 境界線を薄く */
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    word-break: break-all;
+}
+
+/* リンクデザイン */
+.post-list li a {
+    color: #007bff; /* 青系リンク */
+    text-decoration: none;
+}
+
+.post-list li a:hover {
+    text-decoration: underline;
+}
+
+/* クリック可能な行 */
+.clickable-row {
+    cursor: pointer;
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0; /* 境界線を追加 */
+    transition: background-color 0.3s;
+}
+
+.clickable-row:hover {
+    background-color: #f1f1f1;
+}
+
+/* コメント表示行 */
+.comment-row {
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+}
+
+/* コメントフォーム */
+.comment-form {
+    padding: 10px;
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+/* コメントボタン */
+.comment-form button {
+    background-color: #28a745; /* 緑色ボタン */
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.comment-form button:hover {
+    background-color: #218838;
+}
+
+/* モーダル背景 (画面全体を覆う) */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* 半透明の背景 */
+    z-index: 1000; /* 他要素よりも前面に配置 */
+    display: none; /* 初期状態は非表示 */
+}
+
+/* モーダルウィンドウ */
+.modal-content {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%; /* 画面幅の90% */
+    max-width: 600px; /* 最大幅600px */
+    padding: 20px;
+    background-color: #ffffff; /* モーダルの背景色 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    z-index: 1001; /* 背景よりも前面に配置 */
+}
+
+/* 閉じるボタン */
+.modal-close {
+    float: right;
+    font-size: 1.5em;
+    cursor: pointer;
+}
+
+/* モーダルのフォーム */
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.modal-form label {
+    font-weight: bold;
+}
+
+.modal-form input,
+.modal-form select,
+.modal-form textarea,
+.modal-form button {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* ボタン */
+.modal-form button {
+    cursor: pointer;
+}
+
+.modal-form button:hover {
+    background-color: #f1f1f1;
+}

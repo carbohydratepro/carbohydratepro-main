@@ -331,9 +331,11 @@ def video_varolant(request):
         # Paginatorを使用（1ページあたり100個表示）
         paginator = Paginator(posts, 100)
 
-        # --- 検索フィルタリング (投稿のnotes, 投稿ユーザ名, コメント内容) ---
+        # --- 検索フィルタリング (投稿のタイトル, 使用キャラ, 詳細, 投稿ユーザ名, コメント内容) ---
         if search_word:
             posts = posts.filter(
+                Q(title__icontains=search_word) |
+                Q(character__icontains=search_word) |
                 Q(notes__icontains=search_word) |
                 Q(user__username__icontains=search_word) |
                 Q(comments__content__icontains=search_word)
@@ -393,9 +395,11 @@ def update_video(request, post_id):
             post.date = date
 
             result = data.get('result')
-            if result not in ['win', 'loss', 'draw']:
+            if result not in ['win', 'loss', 'draw', 'unknown']:
                 return JsonResponse({'success': False, 'error': json.dumps({'result': [{'message': '勝敗の値が不正です。'}]})})
 
+            post.title = data.get('title')
+            post.character = data.get('character')
             post.video_url = data.get('video_url')
             post.notes = data.get('notes')
 

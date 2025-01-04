@@ -53,6 +53,17 @@ class CategoryForm(forms.ModelForm):
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'  
 
+# user：取引を行ったユーザー
+# amount：金額
+# date：取引日
+# transaction_type：支出、収入、変動なし
+# paymentmethod：支払方法（デフォルトは現金のみ、他はユーザーが登録できて選択式）
+# purpose：用途、例（ステーキ）
+# major_category：用途の大項目、例（固定費）（固定費、変動費、特別費）
+# category：用途の項目、例（食費）（食費、娯楽、病院など、ユーザーが登録できて選択式）
+# purpose_description：用途の詳細、例（○○で買った）
+
+
 class DateForm(forms.Form):
     date = forms.DateField(widget=forms.TextInput(attrs={
         'type': 'date',
@@ -62,13 +73,19 @@ class DateForm(forms.Form):
 class VideoPostForm(forms.ModelForm):
     class Meta:
         model = VideoPost
-        fields = ['date', 'result', 'video_url', 'notes']
+        fields = ['date', 'title', 'character', 'result', 'video_url', 'notes']
         error_messages = {
             'date': {
-                'required': '日付を入力してください。',      # 好きな文章に変更
+                'required': '日付を入力してください。',
+            },
+            'title': {
+                'required': 'タイトルを入力してください。',
+            },
+            'character': {
+                'required': '使用キャラを入力してください。',
             },
             'video_url': {
-                'required': '動画URLを入力してください。',  # 好きな文章に変更
+                'required': '動画URLを入力してください。',
             },
         }
 
@@ -80,12 +97,3 @@ class CommentForm(forms.ModelForm):
         widgets = {
             'content': forms.Textarea(attrs={'placeholder': 'コメントを入力してください...', 'rows': 2})
         }
-# user：取引を行ったユーザー
-# amount：金額
-# date：取引日
-# transaction_type：支出、収入、変動なし
-# paymentmethod：支払方法（デフォルトは現金のみ、他はユーザーが登録できて選択式）
-# purpose：用途、例（ステーキ）
-# major_category：用途の大項目、例（固定費）（固定費、変動費、特別費）
-# category：用途の項目、例（食費）（食費、娯楽、病院など、ユーザーが登録できて選択式）
-# purpose_description：用途の詳細、例（○○で買った）

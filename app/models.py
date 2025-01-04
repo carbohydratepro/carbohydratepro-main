@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from datetime import datetime
 
 class PaymentMethod(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payment_methods')
@@ -55,16 +56,20 @@ class VideoPost(models.Model):
         ('win', '勝ち'),
         ('loss', '負け'),
         ('draw', '引き分け'),
+        ('unknown', '不明'),
     ]
 
     date = models.DateField(verbose_name="年月日")
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="video_posts")
+    title = models.CharField(max_length=200, default="新しい動画", verbose_name="タイトル")
+    character = models.CharField(max_length=30, default="不明", verbose_name="使用キャラ")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="ユーザー")
     result = models.CharField(max_length=10, choices=WIN_LOSS_CHOICES, verbose_name="勝敗")
     video_url = models.URLField(verbose_name="動画URL")
-    notes = models.TextField(blank=True, verbose_name="補足")
+    notes = models.TextField(blank=True, verbose_name="詳細")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.date} - {self.user.username} - {self.result}"
+        return f"{self.date} - {self.user.username} - {self.title} - {self.character} - {self.result} - {self.video_url} - {self.notes} - {self.created_at}"
     
     
 class Comment(models.Model):

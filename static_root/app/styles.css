@@ -105,48 +105,6 @@ h1 {
     text-decoration: underline;
 }
 
-/* クリック可能な行 */
-.clickable-row {
-    cursor: pointer;
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0; /* 境界線を追加 */
-    transition: background-color 0.3s;
-}
-
-.clickable-row:hover {
-    background-color: #f1f1f1;
-}
-
-/* コメント表示行 */
-.comment-row {
-    background-color: #f9f9f9;
-    border: 1px solid #e0e0e0;
-}
-
-/* コメントフォーム */
-.comment-form {
-    padding: 10px;
-    background-color: #ffffff;
-    border: 1px solid #cccccc;
-    border-radius: 4px;
-    margin-top: 10px;
-}
-
-/* コメントボタン */
-.comment-form button {
-    background-color: #28a745; /* 緑色ボタン */
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.comment-form button:hover {
-    background-color: #218838;
-}
-
 /* モーダル背景 (画面全体を覆う) */
 .modal-overlay {
     position: fixed;
@@ -204,8 +162,4 @@ h1 {
 /* ボタン */
 .modal-form button {
     cursor: pointer;
-}
-
-.modal-form button:hover {
-    background-color: #f1f1f1;
 }

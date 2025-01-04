@@ -310,6 +310,11 @@ def video_varolant(request):
 
         # GETリクエスト処理
         posts = VideoPost.objects.prefetch_related('comments').order_by('-date')
+        for post in posts:
+            if isinstance(post.date, str):  # 日付が文字列の場合
+                post.date = datetime.strptime(post.date, '%Y-%m-%d')  # datetimeに変換
+
+
         comment_form = CommentForm()
 
         # データレンダリング
@@ -342,7 +347,6 @@ def update_video(request, post_id):
 
             # フィールド更新
             post.date = date
-            logger.debug(post.date.strftime('%Y-%m-%d'))  # 出力確認
 
             result = data.get('result')
             if result not in ['win', 'loss', 'draw']:

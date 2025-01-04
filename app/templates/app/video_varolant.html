@@ -70,16 +70,95 @@
             </thead>
             <tbody>
                 {% for post in posts %}
+                <!-- 投稿のメイン行 -->
                 <tr id="post-{{ post.id }}">
-                    <td>{{ post.date }}</td>
+                    <td>{{ post.date|date:"Y年m月d日" }}</td>
                     <td>{{ post.get_result_display }}</td>
-                    <td><a href="{{ post.video_url }}" target="_blank">{{ post.video_url }}</a></td>
+                    <td>
+                        <a href="{{ post.video_url }}" target="_blank">
+                            {{ post.video_url }}
+                        </a>
+                    </td>
                     <td>{{ post.notes }}</td>
                     <td>{{ post.comments.count }}</td>
                     <td>
+                        <!-- 投稿の編集ボタンは既存のものを使う -->
                         {% if post.user == request.user %}
-                            <button onclick="openModal({{ post.id }}, '{{ post.date }}', '{{ post.result }}', '{{ post.video_url }}', '{{ post.notes }}')" class="btn btn-warning btn-sm">編集</button>
+                            <button 
+                                onclick="openModal({{ post.id }}, '{{ post.date|date:'Y-m-d' }}', '{{ post.result }}', '{{ post.video_url }}', '{{ post.notes|escapejs }}')" 
+                                class="btn btn-warning btn-sm"
+                            >
+                                編集
+                            </button>
                         {% endif %}
+                        <!-- コメント欄表示ボタン -->
+                        <button 
+                            class="btn btn-info btn-sm" 
+                            onclick="toggleComments({{ post.id }})"
+                        >
+                            コメントを見る
+                        </button>
+                    </td>
+                </tr>
+
+                <!-- コメント一覧 ＋ コメント投稿フォーム表示用の行 -->
+                <tr id="comments-row-{{ post.id }}" style="display: none;">
+                    <!-- colspan はテーブルの列数に合わせる -->
+                    <td colspan="6" style="background-color: #f9f9f9;">
+                        <div class="comment-section" style="padding: 10px;">
+                            <!-- コメント一覧 (見やすくするためカード風にする例) -->
+                            <div>
+                                <!-- 1コメントずつ表示 -->
+                                {% for comment in post.comments.all %}
+                                <div class="card mb-2">
+                                    <div class="card-body" style="padding: 10px;">
+                                        <!-- コメント投稿者と投稿日時 -->
+                                        <div style="font-size: 0.9em; color: #888;">
+                                            {{ comment.user }} 
+                                            - {{ comment.created_at|date:"Y-m-d H:i" }}
+                                        </div>
+                                        <div>
+                                            {{ comment.content }}
+                                        </div>
+                                        <!-- 自分のコメントなら編集/削除ボタン -->
+                                        {% if comment.user == request.user %}
+                                            <div class="mt-2">
+                                                <button 
+                                                    onclick="editComment({{ comment.id }}, '{{ comment.content|escapejs }}')" 
+                                                    class="btn btn-sm btn-info"
+                                                >
+                                                    編集
+                                                </button>
+                                                <button 
+                                                    onclick="deleteComment({{ comment.id }})" 
+                                                    class="btn btn-sm btn-danger"
+                                                >
+                                                    削除
+                                                </button>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <!-- コメント投稿フォーム -->
+                            <div class="input-group mt-3">
+                                <textarea 
+                                    id="newComment-{{ post.id }}" 
+                                    rows="2"
+                                    class="form-control"
+                                    placeholder="コメントを入力..."
+                                ></textarea>
+                                <div class="input-group-append">
+                                    <button 
+                                        onclick="submitComment({{ post.id }})" 
+                                        class="btn btn-primary"
+                                    >
+                                        投稿
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -100,6 +179,7 @@
 
         // 日付形式そのまま代入 (既に YYYY-MM-DD 形式なので変換不要)
         const formattedDate = date || '';  // 空の場合は空文字を設定
+        console.log(date)
 
         // タイトルと削除ボタンの切り替え
         document.getElementById('modalTitle').innerText = isNewPost ? '新規投稿' : '編集';
@@ -186,9 +266,136 @@
             }
         }
     }
-    
+
     // モーダルを閉じるボタン
     document.getElementById('closeModal').onclick = closeModal;
+
+    // ==============================
+    // ここから下は「コメント機能」用
+    // ==============================
+
+    /**
+     * コメント欄をトグル表示
+     */
+    let currentlyOpenPostId = null;
+
+     function toggleComments(postId) {
+        // 今開いているコメント欄があったら閉じる
+        if (currentlyOpenPostId && currentlyOpenPostId !== postId) {
+            const prevRow = document.getElementById(`comments-row-${currentlyOpenPostId}`);
+            if (prevRow) {
+                prevRow.style.display = 'none';
+            }
+        }
+        // クリックされた投稿の行を取得
+        const row = document.getElementById(`comments-row-${postId}`);
+        if (!row) return;
+
+        // 表示/非表示を切り替え
+        if (row.style.display === 'none') {
+            row.style.display = '';
+            currentlyOpenPostId = postId;
+        } else {
+            row.style.display = 'none';
+            currentlyOpenPostId = null;
+        }
+    }
+
+    /**
+     * コメント投稿
+     */
+     function submitComment(postId) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const content = document.getElementById(`newComment-${postId}`).value.trim();
+        if (!content) {
+            alert("コメント内容を入力してください。");
+            return;
+        }
+
+        // コメント投稿URL => /video/varolant/ で受け取る (video_varolantビュー)
+        fetch('/carbohydratepro/video/varolant/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                post_id: postId,
+                comment_content: content
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+
+    /**
+     * コメント編集
+     */
+    function editComment(commentId, oldContent) {
+        const newContent = prompt("コメントを編集してください", oldContent);
+        if (newContent !== null) {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const formData = new FormData();
+            formData.append('content', newContent);
+
+            // コメント編集URL => /video/comment/update/<comment_id>/
+            fetch(`/carbohydratepro/video/comment/update/${commentId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert("コメントの編集に失敗しました。");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+    }
+
+    /**
+     * コメント削除
+     */
+    function deleteComment(commentId) {
+        if (!confirm("コメントを削除してよろしいですか？")) return;
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        // コメント削除URL => /video/comment/delete/<comment_id>/
+        fetch(`/carbohydratepro/video/comment/delete/${commentId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert("コメントの削除に失敗しました。");
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
     
 </script>
 

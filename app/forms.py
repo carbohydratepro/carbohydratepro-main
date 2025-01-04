@@ -63,6 +63,14 @@ class VideoPostForm(forms.ModelForm):
     class Meta:
         model = VideoPost
         fields = ['date', 'result', 'video_url', 'notes']
+        error_messages = {
+            'date': {
+                'required': '日付を入力してください。',      # 好きな文章に変更
+            },
+            'video_url': {
+                'required': '動画URLを入力してください。',  # 好きな文章に変更
+            },
+        }
 
 
 class CommentForm(forms.ModelForm):

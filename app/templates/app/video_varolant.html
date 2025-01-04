@@ -9,9 +9,9 @@
         {% if form_error %}
         <div class="alert alert-danger">
             <ul>
-                {% for field, errors in form_error.items %}
+                {% for errors in form_error.items %}
                     {% for error in errors %}
-                        <li>{{ field }}: {{ error.message }}</li>
+                        <li>{{ error.message }}</li>
                     {% endfor %}
                 {% endfor %}
             </ul>
@@ -334,7 +334,7 @@
                     const errorObj = typeof data.error === 'string' ? JSON.parse(data.error) : data.error;
                     for (const [field, messages] of Object.entries(errorObj)) {
                         messages.forEach(err => {
-                            errorMessage += `${field}: ${err.message}<br>`;
+                            errorMessage += `${err.message}<br>`;
                         });
                     }
                 }

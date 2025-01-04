@@ -299,14 +299,26 @@ def video_varolant(request):
                 comment_content = data.get('comment_content', '').strip()
                 if post_id and comment_content:
                     post = get_object_or_404(VideoPost, id=post_id)
-                    Comment.objects.create(
+                    comment = Comment.objects.create(
                         post=post,
                         user=request.user,
                         content=comment_content
                     )
-                    return JsonResponse({'success': True})
+                    return JsonResponse({
+                        'success': True,
+                        'comment': {
+                            'id': comment.id,
+                            'content': comment.content,
+                            'user': comment.user.username,
+                            # created_at を文字列化
+                            'created_at': comment.created_at.strftime('%Y-%m-%d %H:%M'),
+                            # ログインユーザと同じなら編集/削除を許可 (can_edit=true/false)
+                            'can_edit': (comment.user_id == request.user.id),
+                        }
+                    })
                 else:
                     return JsonResponse({'success': False, 'error': 'コメント内容が必要です。'})
+
 
         # GETリクエスト処理
         posts = VideoPost.objects.prefetch_related('comments').order_by('-date')

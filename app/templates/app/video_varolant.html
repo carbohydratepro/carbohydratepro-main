@@ -19,7 +19,7 @@
     {% endif %}
 
     <!-- 新規投稿ボタン -->
-    <button onclick="openModal()" class="btn btn-primary">新規投稿</button>
+    <button onclick="openModal()" class="btn btn-info">新規投稿</button>
 
     <!-- モーダル -->
     <div id="modalOverlay" class="modal-overlay">
@@ -48,9 +48,8 @@
                 <label for="modalNotes">補足:</label>
                 <textarea id="modalNotes" name="notes" placeholder="補足"></textarea>
     
-                <button type="button" onclick="saveModal()">保存</button>
-                <button type="button" id="deleteBtn" onclick="deleteModal()" style="display: none;">削除</button>
-                <button type="button" onclick="closeModal()">キャンセル</button>
+                <button type="button" class="btn btn-info" onclick="saveModal()">保存</button>
+                <button type="button" class="btn btn-danger" onclick="closeModal()">キャンセル</button>
             </form>
         </div>
     </div>    
@@ -61,11 +60,12 @@
             <thead>
                 <tr>
                     <th>日付</th>
+                    <th>投稿者</th>
                     <th>勝敗</th>
                     <th>動画URL</th>
-                    <th>補足</th>
                     <th>コメント数</th>
-                    <th>アクション</th>
+                    <th></th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -73,16 +73,24 @@
                 <!-- 投稿のメイン行 -->
                 <tr id="post-{{ post.id }}">
                     <td>{{ post.date|date:"Y年m月d日" }}</td>
+                    <td>{{ post.user.username }}</td>
                     <td>{{ post.get_result_display }}</td>
                     <td>
                         <a href="{{ post.video_url }}" target="_blank">
                             {{ post.video_url }}
                         </a>
                     </td>
-                    <td>{{ post.notes }}</td>
                     <td>{{ post.comments.count }}</td>
                     <td>
-                        <!-- 投稿の編集ボタンは既存のものを使う -->
+                        <!-- コメント欄表示ボタン -->
+                        <button 
+                            class="btn btn-info btn-sm" 
+                            onclick="toggleComments({{ post.id }})"
+                        >
+                            コメント
+                        </button>
+                    </td>
+                    <td>
                         {% if post.user == request.user %}
                             <button 
                                 onclick="openModal({{ post.id }}, '{{ post.date|date:'Y-m-d' }}', '{{ post.result }}', '{{ post.video_url }}', '{{ post.notes|escapejs }}')" 
@@ -90,14 +98,8 @@
                             >
                                 編集
                             </button>
+                            <button onclick="confirmDeletePost({{ post.id }})" class="btn btn-danger btn-sm">削除</button>
                         {% endif %}
-                        <!-- コメント欄表示ボタン -->
-                        <button 
-                            class="btn btn-info btn-sm" 
-                            onclick="toggleComments({{ post.id }})"
-                        >
-                            コメントを見る
-                        </button>
                     </td>
                 </tr>
 
@@ -114,7 +116,7 @@
                                     <div class="card-body" style="padding: 10px;">
                                         <!-- コメント投稿者と投稿日時 -->
                                         <div style="font-size: 0.9em; color: #888;">
-                                            {{ comment.user }} 
+                                            {{ comment.user.username }} 
                                             - {{ comment.created_at|date:"Y-m-d H:i" }}
                                         </div>
                                         <div>
@@ -125,7 +127,7 @@
                                             <div class="mt-2">
                                                 <button 
                                                     onclick="editComment({{ comment.id }}, '{{ comment.content|escapejs }}')" 
-                                                    class="btn btn-sm btn-info"
+                                                    class="btn btn-sm btn-warning"
                                                 >
                                                     編集
                                                 </button>
@@ -152,7 +154,7 @@
                                 <div class="input-group-append">
                                     <button 
                                         onclick="submitComment({{ post.id }})" 
-                                        class="btn btn-primary"
+                                        class="btn btn-info"
                                     >
                                         投稿
                                     </button>

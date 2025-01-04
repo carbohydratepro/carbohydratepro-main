@@ -70,6 +70,23 @@ sudo systemctl status docker
 
 ### 999. コマンド
 
+スワップ領域を確認するコマンド
+```text
+free -h
+```
+
+スワップ領域を追加するコマンド
+```text
+sudo fallocate -l 1G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+```
+
+スワップ領域設定を再起動後も適用するコマンド
+```text
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
 
 ### 1000. デプロイ
 

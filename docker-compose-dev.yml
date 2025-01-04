@@ -13,6 +13,7 @@ services:
       - POSTGRES_PASSWORD=mypassword
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=30"]  # メモリ設定の追加
 
   gunicorn:
     build: .

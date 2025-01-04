@@ -43,7 +43,7 @@ class Transaction(models.Model):
 
 
 class SensorData(models.Model):
-    timestamp = models.DateTimeField()  
+    timestamp = models.DateTimeField(auto_now_add=True)  # データ保存時に自動的にタイムスタンプを設定
     temperature = models.FloatField()
     humidity = models.FloatField()
     illuminance = models.FloatField(default=None)  # 照度の追加

@@ -88,6 +88,11 @@ sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
+dockerのログを確認する方法
+```text
+docker-compose -f docker-compose-dev.yml logs db
+```
+
 ### 1000. デプロイ
 
 ```

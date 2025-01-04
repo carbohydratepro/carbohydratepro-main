@@ -271,6 +271,9 @@ def get_sensor_data(request):
 def video_varolant(request):
     form_error = {}  # エラー変数の初期化
 
+    # --- 検索キーワード取得 ---
+    search_word = request.GET.get('q', '')
+
     try:
         # POSTリクエスト処理
         if request.method == 'POST':
@@ -322,6 +325,15 @@ def video_varolant(request):
 
         # GETリクエスト処理
         posts = VideoPost.objects.prefetch_related('comments').order_by('-date')
+        
+        # --- 検索フィルタリング (投稿のnotes, 投稿ユーザ名, コメント内容) ---
+        if search_word:
+            posts = posts.filter(
+                Q(notes__icontains=search_word) |
+                Q(user__username__icontains=search_word) |
+                Q(comments__content__icontains=search_word)
+            ).distinct()  # 同じ投稿が重複しないように
+
         for post in posts:
             if isinstance(post.date, str):  # 日付が文字列の場合
                 post.date = datetime.strptime(post.date, '%Y-%m-%d')  # datetimeに変換
@@ -335,6 +347,7 @@ def video_varolant(request):
             'posts': posts,
             'comment_form': comment_form,
             'form_error': form_error,
+            'search_word': search_word,  # テンプレートに渡しておく(検索フォームの初期値など)
         })
 
     except Exception as e:

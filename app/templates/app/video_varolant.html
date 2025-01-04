@@ -18,8 +18,32 @@
         </div>
     {% endif %}
 
-    <!-- 新規投稿ボタン -->
-    <button onclick="openModal()" class="btn btn-info">新規投稿</button>
+    <div class="d-flex justify-content-between mb-2">
+        <!-- 新規投稿ボタン -->
+        <button onclick="openModal()" class="btn btn-info mt-4 mb-4">新規投稿</button>
+
+        <!-- 検索フォーム -->
+        <form method="GET" action="">
+            <div class="form-inline mt-4" style="margin-bottom: 15px;">
+                <input 
+                    type="text" 
+                    name="q" 
+                    class="form-control" 
+                    placeholder="キーワード検索 (ユーザー, 補足, コメント)"
+                    value="{{ search_word|default_if_none:'' }}"
+                    style="margin-right: 8px;"
+                >
+                <button type="submit" class="btn btn-primary">検索</button>
+                {% if search_word %}
+                    <!-- クリア用: /carbohydratepro/video/varolant/ に戻るなど -->
+                    <a href="{% url 'video_varolant' %}" class="btn btn-outline-secondary ml-2">
+                        クリア
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
 
     <!-- モーダル -->
     <div id="modalOverlay" class="modal-overlay">

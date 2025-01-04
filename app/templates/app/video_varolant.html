@@ -97,11 +97,11 @@
                 <!-- 投稿のメイン行 -->
                 <tr id="post-{{ post.id }}">
                     <td>{{ post.date|date:"Y年m月d日" }}</td>
-                    <td>{{ post.user.username }}</td>
+                    <td>{{ post.user.username|truncatechars:15 }}</td>
                     <td>{{ post.get_result_display }}</td>
                     <td>
                         <a href="{{ post.video_url }}" target="_blank">
-                            {{ post.video_url }}
+                            {{ post.video_url|truncatechars:30 }}
                         </a>
                     </td>
                     <td>{{ post.comments.count }}</td>
@@ -218,6 +218,52 @@
                 {% endfor %}
             </tbody>
         </table>
+
+        <!-- ページネーションナビゲーション -->
+        <div class="d-flex justify-content-center mt-3">
+            <nav aria-label="Page navigation">
+                <ul class="pagination">
+                    <!-- 前へボタン -->
+                    {% if posts.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ posts.previous_page_number }}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">&laquo;</span>
+                        </li>
+                    {% endif %}
+
+                    <!-- ページ番号 -->
+                    {% for i in posts.paginator.page_range %}
+                        {% if i == posts.number %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ i }}</span>
+                            </li>
+                        {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    <!-- 次へボタン -->
+                    {% if posts.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ posts.next_page_number }}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">&raquo;</span>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
     </div>
 </div>
 

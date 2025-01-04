@@ -16,6 +16,7 @@ from .serializers import SensorDataSerializer
 from .forms import DateForm
 from .models import SensorData
 from django.http import JsonResponse
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
 logger = logging.getLogger(__name__)
@@ -325,7 +326,11 @@ def video_varolant(request):
 
         # GETリクエスト処理
         posts = VideoPost.objects.prefetch_related('comments').order_by('-date')
-        
+
+
+        # Paginatorを使用（1ページあたり100個表示）
+        paginator = Paginator(posts, 100)
+
         # --- 検索フィルタリング (投稿のnotes, 投稿ユーザ名, コメント内容) ---
         if search_word:
             posts = posts.filter(
@@ -339,12 +344,26 @@ def video_varolant(request):
                 post.date = datetime.strptime(post.date, '%Y-%m-%d')  # datetimeに変換
 
 
+        # Paginatorを使用（1ページあたり100個表示）
+        paginator = Paginator(posts, 100)
+
+        # 現在のページ番号をGETパラメータ "?page=数字" から取得 (無ければ1ページ目)
+        page = request.GET.get('page', 1)
+        try:
+            posts_page = paginator.page(page)
+        except PageNotAnInteger:
+            # page が整数でない場合は1ページ目を表示
+            posts_page = paginator.page(1)
+        except EmptyPage:
+            # 有効範囲外のページ番号の場合は最終ページを表示
+            posts_page = paginator.page(paginator.num_pages)
+
         comment_form = CommentForm()
 
         # データレンダリング
         return render(request, 'app/video_varolant.html', {
             'form': VideoPostForm(),
-            'posts': posts,
+            'posts': posts_page,
             'comment_form': comment_form,
             'form_error': form_error,
             'search_word': search_word,  # テンプレートに渡しておく(検索フォームの初期値など)

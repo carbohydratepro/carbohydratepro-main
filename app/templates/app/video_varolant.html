@@ -82,7 +82,6 @@
                     </td>
                     <td>{{ post.comments.count }}</td>
                     <td>
-                        <!-- コメント欄表示ボタン -->
                         <button 
                             class="btn btn-info btn-sm" 
                             onclick="toggleComments({{ post.id }})"
@@ -98,67 +97,97 @@
                             >
                                 編集
                             </button>
-                            <button onclick="confirmDeletePost({{ post.id }})" class="btn btn-danger btn-sm">削除</button>
+                            <button onclick="confirmDeletePost({{ post.id }})" class="btn btn-danger btn-sm">
+                                削除
+                            </button>
                         {% endif %}
                     </td>
                 </tr>
 
-                <!-- コメント一覧 ＋ コメント投稿フォーム表示用の行 -->
+                <!-- コメント表示行 -->
                 <tr id="comments-row-{{ post.id }}" style="display: none;">
-                    <!-- colspan はテーブルの列数に合わせる -->
-                    <td colspan="6" style="background-color: #f9f9f9;">
-                        <div class="comment-section" style="padding: 10px;">
-                            <!-- コメント一覧 (見やすくするためカード風にする例) -->
-                            <div>
-                                <!-- 1コメントずつ表示 -->
-                                {% for comment in post.comments.all %}
-                                <div class="card mb-2">
-                                    <div class="card-body" style="padding: 10px;">
-                                        <!-- コメント投稿者と投稿日時 -->
-                                        <div style="font-size: 0.9em; color: #888;">
-                                            {{ comment.user.username }} 
-                                            - {{ comment.created_at|date:"Y-m-d H:i" }}
+                    <!-- 6 or 7 columns; adjust as needed -->
+                    <td colspan="7" style="background-color: #f9f9f9; padding: 10px;">
+                        <!-- 上部に post.notes を表示 -->
+                        {% if post.notes %}
+                        <div class="alert alert-secondary">
+                            <strong>補足：</strong> {{ post.notes }}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- コメント一覧 -->
+                        <div id="comment-list-{{ post.id }}">
+                            {% for comment in post.comments.all %}
+                            <div class="card mb-2" id="comment-card-{{ comment.id }}">
+                                <div class="card-body">
+                                    <!-- 編集フォーム（非表示） -->
+                                    <div id="comment-edit-form-{{ comment.id }}" style="display: none; margin-bottom: 10px;">
+                                        <textarea
+                                            id="comment-edit-text-{{ comment.id }}"
+                                            class="form-control"
+                                            rows="2"
+                                        >{{ comment.content }}</textarea>
+                                        <div class="mt-2">
+                                            <button
+                                                class="btn btn-sm btn-primary"
+                                                onclick="saveCommentEdit({{ comment.id }})"
+                                            >
+                                                保存
+                                            </button>
+                                            <button
+                                                class="btn btn-sm btn-secondary"
+                                                onclick="cancelCommentEdit({{ comment.id }}, '{{ comment.content|escapejs }}')"
+                                            >
+                                                キャンセル
+                                            </button>
                                         </div>
-                                        <div>
+                                    </div>
+
+                                    <!-- 表示部 -->
+                                    <div id="comment-display-{{ comment.id }}">
+                                        <div style="font-size: 0.9em; color: #666; margin-bottom: 4px;">
+                                            {{ comment.user.username }} - {{ comment.created_at|date:"Y-m-d H:i" }}
+                                        </div>
+                                        <div style="margin-bottom: 5px;">
                                             {{ comment.content }}
                                         </div>
-                                        <!-- 自分のコメントなら編集/削除ボタン -->
                                         {% if comment.user == request.user %}
-                                            <div class="mt-2">
-                                                <button 
-                                                    onclick="editComment({{ comment.id }}, '{{ comment.content|escapejs }}')" 
-                                                    class="btn btn-sm btn-warning"
-                                                >
-                                                    編集
-                                                </button>
-                                                <button 
-                                                    onclick="deleteComment({{ comment.id }})" 
-                                                    class="btn btn-sm btn-danger"
-                                                >
-                                                    削除
-                                                </button>
-                                            </div>
+                                        <div>
+                                            <button
+                                                class="btn btn-sm btn-warning"
+                                                onclick="showCommentEditForm({{ comment.id }})"
+                                            >
+                                                編集
+                                            </button>
+                                            <button
+                                                class="btn btn-sm btn-danger"
+                                                onclick="deleteComment({{ comment.id }})"
+                                            >
+                                                削除
+                                            </button>
+                                        </div>
                                         {% endif %}
                                     </div>
                                 </div>
-                                {% endfor %}
                             </div>
-                            <!-- コメント投稿フォーム -->
-                            <div class="input-group mt-3">
-                                <textarea 
-                                    id="newComment-{{ post.id }}" 
-                                    rows="2"
-                                    class="form-control"
-                                    placeholder="コメントを入力..."
-                                ></textarea>
-                                <div class="input-group-append">
-                                    <button 
-                                        onclick="submitComment({{ post.id }})" 
-                                        class="btn btn-info"
-                                    >
-                                        投稿
-                                    </button>
-                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- コメント投稿フォーム -->
+                        <div class="input-group mt-3">
+                            <textarea
+                                id="newComment-{{ post.id }}"
+                                rows="2"
+                                class="form-control"
+                                placeholder="コメントを入力..."
+                            ></textarea>
+                            <div class="input-group-append">
+                                <button 
+                                    onclick="submitComment({{ post.id }})" 
+                                    class="btn btn-info"
+                                >
+                                    投稿
+                                </button>
                             </div>
                         </div>
                     </td>
@@ -279,21 +308,25 @@
     /**
      * コメント欄をトグル表示
      */
+    // ==================================================
+    // コメント欄を「同時に一つのみ」開けるための変数
+    // ==================================================
     let currentlyOpenPostId = null;
 
-     function toggleComments(postId) {
-        // 今開いているコメント欄があったら閉じる
+    function toggleComments(postId) {
+        // もし既に別の投稿を開いていたら閉じる
         if (currentlyOpenPostId && currentlyOpenPostId !== postId) {
             const prevRow = document.getElementById(`comments-row-${currentlyOpenPostId}`);
             if (prevRow) {
                 prevRow.style.display = 'none';
             }
         }
-        // クリックされた投稿の行を取得
+
+        // 今クリックした投稿のコメント行
         const row = document.getElementById(`comments-row-${postId}`);
         if (!row) return;
 
-        // 表示/非表示を切り替え
+        // 表示切り替え
         if (row.style.display === 'none') {
             row.style.display = '';
             currentlyOpenPostId = postId;
@@ -303,18 +336,17 @@
         }
     }
 
-    /**
-     * コメント投稿
-     */
-     function submitComment(postId) {
+    // ==================================================
+    // コメント投稿: サーバーから comment を受け取り addCommentToDOM() へ
+    // ==================================================
+    function submitComment(postId) {
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
         const content = document.getElementById(`newComment-${postId}`).value.trim();
         if (!content) {
-            alert("コメント内容を入力してください。");
+            alert("コメントを入力してください。");
             return;
         }
 
-        // コメント投稿URL => /video/varolant/ で受け取る (video_varolantビュー)
         fetch('/carbohydratepro/video/varolant/', {
             method: 'POST',
             headers: {
@@ -329,9 +361,15 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                location.reload();
+                // data.comment があるはず
+                if (!data.comment) {
+                    console.error('No comment object returned from server.');
+                    return;
+                }
+                addCommentToDOM(postId, data.comment);
+                document.getElementById(`newComment-${postId}`).value = '';
             } else {
-                alert(data.error);
+                alert(data.error || 'コメント投稿に失敗しました。');
             }
         })
         .catch(error => {
@@ -339,47 +377,147 @@
         });
     }
 
-    /**
-     * コメント編集
-     */
-    function editComment(commentId, oldContent) {
-        const newContent = prompt("コメントを編集してください", oldContent);
-        if (newContent !== null) {
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-            const formData = new FormData();
-            formData.append('content', newContent);
+    // ==================================================
+    // 新しいコメントをDOMに追加する
+    // ==================================================
+    function addCommentToDOM(postId, commentData) {
+        // comment-list-{{ post.id }} にカードを追加
+        const list = document.getElementById(`comment-list-${postId}`);
+        if (!list) return;
 
-            // コメント編集URL => /video/comment/update/<comment_id>/
-            fetch(`/carbohydratepro/video/comment/update/${commentId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken
-                },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert("コメントの編集に失敗しました。");
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+        // 新規カード要素
+        const card = document.createElement('div');
+        card.className = 'card mb-2';
+        card.id = `comment-card-${commentData.id}`;
+
+        const body = document.createElement('div');
+        body.className = 'card-body';
+
+        // 編集フォーム（非表示）
+        const editForm = document.createElement('div');
+        editForm.id = `comment-edit-form-${commentData.id}`;
+        editForm.style.display = 'none';
+        editForm.style.marginBottom = '10px';
+        editForm.innerHTML = `
+            <textarea id="comment-edit-text-${commentData.id}" class="form-control" rows="2">${commentData.content}</textarea>
+            <div class="mt-2">
+                <button class="btn btn-sm btn-primary" onclick="saveCommentEdit(${commentData.id})">保存</button>
+                <button class="btn btn-sm btn-secondary" onclick="cancelCommentEdit(${commentData.id}, '${commentData.content.replace(/'/g,"\\'")}')">キャンセル</button>
+            </div>
+        `;
+
+        // 表示領域
+        const displayDiv = document.createElement('div');
+        displayDiv.id = `comment-display-${commentData.id}`;
+
+        // 上部（投稿者/日時）
+        const metaDiv = document.createElement('div');
+        metaDiv.style.fontSize = '0.9em';
+        metaDiv.style.color = '#666';
+        metaDiv.style.marginBottom = '4px';
+        metaDiv.innerText = `${commentData.user} - ${commentData.created_at}`;
+
+        // 本文
+        const contentDiv = document.createElement('div');
+        contentDiv.style.marginBottom = '5px';
+        contentDiv.innerText = commentData.content;
+
+        // ボタン表示
+        const btnDiv = document.createElement('div');
+        if (commentData.can_edit) {
+            btnDiv.innerHTML = `
+                <button class="btn btn-sm btn-warning" onclick="showCommentEditForm(${commentData.id})">編集</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteComment(${commentData.id})">削除</button>
+            `;
         }
+
+        // displayDiv へ追加
+        displayDiv.appendChild(metaDiv);
+        displayDiv.appendChild(contentDiv);
+        displayDiv.appendChild(btnDiv);
+
+        // card-body にeditFormとdisplayDivを追加
+        body.appendChild(editForm);
+        body.appendChild(displayDiv);
+
+        card.appendChild(body);
+        list.appendChild(card);
     }
 
-    /**
-     * コメント削除
-     */
+    // ==================================================
+    // インライン編集 (show/hide, save, cancel)
+    // ==================================================
+    function showCommentEditForm(commentId) {
+        const displayArea = document.getElementById(`comment-display-${commentId}`);
+        const editArea = document.getElementById(`comment-edit-form-${commentId}`);
+        if (!displayArea || !editArea) return;
+
+        displayArea.style.display = 'none';
+        editArea.style.display = 'block';
+    }
+
+    function cancelCommentEdit(commentId, originalContent) {
+        const displayArea = document.getElementById(`comment-display-${commentId}`);
+        const editArea = document.getElementById(`comment-edit-form-${commentId}`);
+        const editText = document.getElementById(`comment-edit-text-${commentId}`);
+        if (!displayArea || !editArea || !editText) return;
+
+        editText.value = originalContent; // 元に戻す
+        editArea.style.display = 'none';
+        displayArea.style.display = 'block';
+    }
+
+    function saveCommentEdit(commentId) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const editText = document.getElementById(`comment-edit-text-${commentId}`);
+        if (!editText) return;
+
+        const newContent = editText.value.trim();
+        if (!newContent) {
+            alert('コメントを入力してください。');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('content', newContent);
+
+        fetch(`/carbohydratepro/video/comment/update/${commentId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 表示更新
+                const displayArea = document.getElementById(`comment-display-${commentId}`);
+                const editArea = document.getElementById(`comment-edit-form-${commentId}`);
+                if (displayArea && editArea) {
+                    const contentDiv = displayArea.querySelector('div[style*="margin-bottom: 5px"]');
+                    if (contentDiv) {
+                        contentDiv.innerText = newContent;
+                    }
+                    editArea.style.display = 'none';
+                    displayArea.style.display = 'block';
+                }
+            } else {
+                alert("コメントの編集に失敗しました。");
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+
+    // ==================================================
+    // コメント削除
+    // ==================================================
     function deleteComment(commentId) {
         if (!confirm("コメントを削除してよろしいですか？")) return;
 
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
-        // コメント削除URL => /video/comment/delete/<comment_id>/
         fetch(`/carbohydratepro/video/comment/delete/${commentId}/`, {
             method: 'POST',
             headers: {
@@ -389,7 +527,11 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                location.reload();
+                // DOMから削除
+                const card = document.getElementById(`comment-card-${commentId}`);
+                if (card) {
+                    card.remove();
+                }
             } else {
                 alert("コメントの削除に失敗しました。");
             }
@@ -398,9 +540,31 @@
             console.error('Error:', error);
         });
     }
-    
+
+    // ==================================================
+    // 投稿削除 (既存例)
+    // ==================================================
+    function confirmDeletePost(postId) {
+        if (!confirm("投稿を削除してよろしいですか？")) return;
+
+        fetch(`/carbohydratepro/video/delete/${postId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert("投稿を削除しました。");
+                location.reload();
+            } else {
+                alert("投稿の削除に失敗しました。");
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+        });
+    }
 </script>
-
-
 {% endblock %}
-

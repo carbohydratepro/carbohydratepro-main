@@ -355,14 +355,14 @@ def update_video(request, post_id):
             try:
                 date = datetime.strptime(data.get('date'), '%Y-%m-%d').date()
             except ValueError:
-                return JsonResponse({'success': False, 'error': json.dumps({'date': [{'message': '日付はYYYY-MM-DD形式で指定してください。'}]})})
+                return JsonResponse({'success': False, 'error': json.dumps({'date': [{'message': '日付が不正です。'}]})})
 
             # フィールド更新
             post.date = date
 
             result = data.get('result')
             if result not in ['win', 'loss', 'draw']:
-                return JsonResponse({'success': False, 'error': json.dumps({'result': [{'message': '勝敗は正しい値を指定してください。'}]})})
+                return JsonResponse({'success': False, 'error': json.dumps({'result': [{'message': '勝敗の値が不正です。'}]})})
 
             post.video_url = data.get('video_url')
             post.notes = data.get('notes')

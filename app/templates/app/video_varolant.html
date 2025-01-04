@@ -131,42 +131,41 @@
                                             <button
                                                 class="btn btn-sm btn-primary"
                                                 onclick="saveCommentEdit({{ comment.id }})"
-                                            >
-                                                保存
-                                            </button>
+                                            >保存</button>
                                             <button
                                                 class="btn btn-sm btn-secondary"
                                                 onclick="cancelCommentEdit({{ comment.id }}, '{{ comment.content|escapejs }}')"
-                                            >
-                                                キャンセル
-                                            </button>
+                                            >キャンセル</button>
                                         </div>
                                     </div>
-
-                                    <!-- 表示部 -->
+                            
+                                    <!-- 表示領域 -->
                                     <div id="comment-display-{{ comment.id }}">
-                                        <div style="font-size: 0.9em; color: #666; margin-bottom: 4px;">
-                                            {{ comment.user.username }} - {{ comment.created_at|date:"Y-m-d H:i" }}
+                                        <!-- ここを 横並び(左右) に配置 -->
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <!-- 左側: ユーザー名 + 投稿日時 -->
+                                            <div style="font-size: 0.9em; color: #666;">
+                                                {{ comment.user.username }} - {{ comment.created_at|date:"Y-m-d H:i" }}
+                                            </div>
+                                            <!-- 右側: 編集/削除ボタン -->
+                                            {% if comment.user == request.user %}
+                                            <div>
+                                                <button
+                                                    class="btn btn-sm btn-warning"
+                                                    onclick="showCommentEditForm({{ comment.id }})"
+                                                >編集</button>
+                                                <button
+                                                    class="btn btn-sm btn-danger"
+                                                    onclick="deleteComment({{ comment.id }})"
+                                                >削除</button>
+                                            </div>
+                                            {% endif %}
                                         </div>
+                            
+                                        <!-- コメント本文 -->
                                         <div style="margin-bottom: 5px;">
                                             {{ comment.content }}
                                         </div>
-                                        {% if comment.user == request.user %}
-                                        <div>
-                                            <button
-                                                class="btn btn-sm btn-warning"
-                                                onclick="showCommentEditForm({{ comment.id }})"
-                                            >
-                                                編集
-                                            </button>
-                                            <button
-                                                class="btn btn-sm btn-danger"
-                                                onclick="deleteComment({{ comment.id }})"
-                                            >
-                                                削除
-                                            </button>
-                                        </div>
-                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -260,7 +259,7 @@
                 alert(isNewPost ? '投稿されました。' : '更新されました。');
                 location.reload();
             } else {
-                let errorMessage = 'エラーが発生しました。';
+                let errorMessage = '';
                 if (data.error) {
                     const errorObj = typeof data.error === 'string' ? JSON.parse(data.error) : data.error;
                     for (const [field, messages] of Object.entries(errorObj)) {

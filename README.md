@@ -94,7 +94,14 @@ docker-compose -f docker-compose-dev.yml logs db
 ```
 
 ### 1000. デプロイ
-
+問題：新規投稿などが反映されず、キャッシュを削除することで解決する
+原因：Amazon LightsailのCDN設定により、HTMLファイルがキャッシュされていた。
+解決：
+   1.コンソール > サービス一覧 > CloudFront > ドメインに紐づくディストリビューションを選択
+   2. 以下作業を実行
+      “Behaviors” → Default TTL や Min TTL を 0 にセット
+      “Cache Policy” → “Managed-CachingDisabled” などに変更
+      必要に応じて Invalidation を実行
 ```
 
 ### 使用技術

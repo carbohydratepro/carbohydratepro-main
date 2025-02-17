@@ -4,7 +4,7 @@
 
 html, body {
     height: 100%;
-    background-color: #f8f9fa; /* 明るい背景色 */
+    background-color: #ffffff; /* 明るい背景色 */
     color: #333333; /* 明るい背景に映える文字色 */
 }
 
@@ -163,3 +163,67 @@ h1 {
 .modal-form button {
     cursor: pointer;
 }
+
+
+.comment-section {
+    /* 左右に分割する親要素 */
+    display: flex;           /* flexレイアウト */
+    gap: 20px;               /* カラム間のスペース */
+}
+
+  /* 左カラム */
+.left-column {
+    flex: 0 0 400px;         /* 幅400px固定。必要に応じて変更してください */
+}
+  
+/* 右カラム：上下2要素(コメント一覧 + 投稿フォーム) を縦に配置 */
+.right-column {
+    flex: 1;                     /* 残りを全て使う */
+    display: flex;
+    flex-direction: column;      /* 上下に並べる */
+    /* overflow: visible; (省略時は visible) */
+}
+
+/* コメント一覧 */
+.comment-list {
+    flex: 1;                     /* 縦方向に余った領域をすべて使う */
+    overflow-y: auto;            /* 縦スクロール可 */
+    border: 1px solid #ddd;
+    padding: 10px;
+}
+
+/* コメント投稿フォーム（下固定） */
+.comment-form {
+    position: sticky;
+    bottom: 0;                   /* 下端に固定 */
+    background: #f9f9f9;         /* 背景色 (スクロール時に下の要素が透けないように) */
+    padding: 10px;
+}
+
+/* 動画エリアの共通スタイル */
+.video-container {
+  display: flex;
+  justify-content: center; /* 左右中央揃え */
+  align-items: center;     /* 上下中央揃え（高さ指定時） */
+  width: 560px;
+  padding-bottom: 16px;
+}
+
+.video-container iframe,
+.video-error {
+  width: 560px;
+  height: 315px; /* 固定高さを維持 */
+  border-radius: 8px;
+  background-color: black;
+}
+
+/* エラーメッセージ用 */
+.video-error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+}
+

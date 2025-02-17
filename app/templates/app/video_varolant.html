@@ -1,7 +1,9 @@
 {% extends "app/base.html" %}
 {% load static %}
+{% load video_filters %}
 
 {% block content %}
+
 <div class="container">
     <h1>動画投稿一覧</h1>
 
@@ -148,92 +150,121 @@
                 </tr>
 
                 <!-- コメント表示行 -->
+                <!-- コメント表示行 -->
                 <tr id="comments-row-{{ post.id }}" style="display: none;">
                     <!-- 6 or 7 columns; adjust as needed -->
                     <td colspan="7" style="background-color: #f9f9f9; padding: 10px;">
-                        <!-- 上部に post.notes を表示 -->
+                    
+                    <div class="comment-section" style="display: flex; gap: 20px;">
+                        <!-- ======= 左カラム ======= -->
+                        <div class="left-column" style="flex: 0 0 400px;"> 
+                        <!-- 動画表示 -->
+                        {% with video_id=post.video_url|get_youtube_id %}
+                            <div class="video-container">
+                            {% if video_id %}
+                            <iframe 
+                                src="https://www.youtube.com/embed/{{ video_id }}"
+                                frameborder="0" 
+                                allowfullscreen>
+                            </iframe>
+                            {% else %}
+                            <div class="video-error">
+                                <p>再生できません。URLが正しいか確認してください。</p>
+                            </div>
+                            {% endif %}
+                            </div>
+                        {% endwith %}
+                        
+                        <!-- 詳細（notes）表示 -->
                         {% if post.notes %}
-                        <div class="alert alert-secondary">
+                            <div class="alert alert-secondary" style="margin-top: 10px;">
                             <strong>詳細：</strong> {{ post.notes }}
-                        </div>
+                            </div>
                         {% endif %}
                         
+
+                        </div>
+                
+                        <!-- ======= 右カラム ======= -->
+                        <div class="right-column" style="flex: 1; max-height: 400px; overflow-y: auto;">
                         <!-- コメント一覧 -->
                         <div id="comment-list-{{ post.id }}">
                             {% for comment in post.comments.all %}
                             <div class="card mb-2" id="comment-card-{{ comment.id }}">
                                 <div class="card-body">
-                                    <!-- 編集フォーム（非表示） -->
-                                    <div id="comment-edit-form-{{ comment.id }}" style="display: none; margin-bottom: 10px;">
-                                        <textarea
-                                            id="comment-edit-text-{{ comment.id }}"
-                                            class="form-control"
-                                            rows="2"
-                                        >{{ comment.content }}</textarea>
-                                        <div class="mt-2">
-                                            <button
-                                                class="btn btn-sm btn-primary"
-                                                onclick="saveCommentEdit({{ comment.id }})"
-                                            >保存</button>
-                                            <button
-                                                class="btn btn-sm btn-secondary"
-                                                onclick="cancelCommentEdit({{ comment.id }}, '{{ comment.content|escapejs }}')"
-                                            >キャンセル</button>
-                                        </div>
+                                <!-- 編集フォーム（非表示） -->
+                                <div id="comment-edit-form-{{ comment.id }}" style="display: none; margin-bottom: 10px;">
+                                    <textarea
+                                    id="comment-edit-text-{{ comment.id }}"
+                                    class="form-control"
+                                    rows="2"
+                                    >{{ comment.content }}</textarea>
+                                    <div class="mt-2">
+                                    <button
+                                        class="btn btn-sm btn-primary"
+                                        onclick="saveCommentEdit({{ comment.id }})"
+                                    >保存</button>
+                                    <button
+                                        class="btn btn-sm btn-secondary"
+                                        onclick="cancelCommentEdit({{ comment.id }}, '{{ comment.content|escapejs }}')"
+                                    >キャンセル</button>
                                     </div>
-                            
-                                    <!-- 表示領域 -->
-                                    <div id="comment-display-{{ comment.id }}">
-                                        <!-- ここを 横並び(左右) に配置 -->
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <!-- 左側: ユーザー名 + 投稿日時 -->
-                                            <div style="font-size: 0.9em; color: #666;">
-                                                {{ comment.user.username }} - {{ comment.created_at|date:"Y-m-d H:i" }}
-                                            </div>
-                                            <!-- 右側: 編集/削除ボタン -->
-                                            {% if comment.user == request.user %}
-                                            <div>
-                                                <button
-                                                    class="btn btn-sm btn-warning"
-                                                    onclick="showCommentEditForm({{ comment.id }})"
-                                                >編集</button>
-                                                <button
-                                                    class="btn btn-sm btn-danger"
-                                                    onclick="deleteComment({{ comment.id }})"
-                                                >削除</button>
-                                            </div>
-                                            {% endif %}
-                                        </div>
-                            
-                                        <!-- コメント本文 -->
-                                        <div style="margin-bottom: 5px;">
-                                            {{ comment.content }}
-                                        </div>
+                                </div>
+                                
+                                <!-- 表示領域 -->
+                                <div id="comment-display-{{ comment.id }}">
+                                    <!-- 横並びにする（ユーザー名/日付と操作ボタン） -->
+                                    <div class="d-flex justify-content-between mb-2">
+                                    <!-- 左側: ユーザー名 + 投稿日時 -->
+                                    <div style="font-size: 0.9em; color: #666;">
+                                        {{ comment.user.username }} - {{ comment.created_at|date:"Y-m-d H:i" }}
                                     </div>
+                                    <!-- 右側: 編集/削除ボタン -->
+                                    {% if comment.user == request.user %}
+                                    <div>
+                                        <button
+                                        class="btn btn-sm btn-warning"
+                                        onclick="showCommentEditForm({{ comment.id }})"
+                                        >編集</button>
+                                        <button
+                                        class="btn btn-sm btn-danger"
+                                        onclick="deleteComment({{ comment.id }})"
+                                        >削除</button>
+                                    </div>
+                                    {% endif %}
+                                    </div>
+                                    <!-- コメント本文 -->
+                                    <div style="margin-bottom: 5px;">
+                                    {{ comment.content }}
+                                    </div>
+                                </div>
                                 </div>
                             </div>
                             {% endfor %}
                         </div>
-
                         <!-- コメント投稿フォーム -->
-                        <div class="input-group mt-3">
-                            <textarea
+                        <div class="comment-form" style="position: sticky; bottom: 0; background: #f9f9f9; padding: 10px;">
+                            <div class="input-group">
+                              <textarea
                                 id="newComment-{{ post.id }}"
                                 rows="2"
                                 class="form-control"
                                 placeholder="コメントを入力..."
-                            ></textarea>
-                            <div class="input-group-append">
+                              ></textarea>
+                              <div class="input-group-append">
                                 <button 
-                                    onclick="submitComment({{ post.id }})" 
-                                    class="btn btn-info"
+                                  onclick="submitComment({{ post.id }})" 
+                                  class="btn btn-info"
                                 >
-                                    投稿
+                                  投稿
                                 </button>
+                              </div>
                             </div>
                         </div>
+                    </div> <!-- /comment-section -->
+                    
                     </td>
-                </tr>
+                </tr>  
                 {% endfor %}
             </tbody>
         </table>

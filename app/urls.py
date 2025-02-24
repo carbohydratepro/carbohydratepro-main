@@ -17,4 +17,5 @@ urlpatterns = [
     path('video/delete/<int:post_id>/', views.delete_video, name='delete_video'),
     path('video/comment/update/<int:comment_id>/', views.update_video_comment, name='update_video_comment'),
     path('video/comment/delete/<int:comment_id>/', views.delete_video_comment, name='delete_video_comment'),
+    path('reorder/', views.ReorderView.as_view(), name='reorder'),
 ]

@@ -17,6 +17,7 @@ from .forms import DateForm
 from .models import SensorData
 from django.http import JsonResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.views import View
 
 
 logger = logging.getLogger(__name__)
@@ -435,3 +436,26 @@ def delete_video_comment(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id, user=request.user)
     comment.delete()
     return JsonResponse({'success': True})
+
+
+
+class ReorderView(View):
+    def get(self, request):
+        # 通常はデータベースからアイテムを取得するなどしてcontextに渡す
+        # ここでは簡易にテンプレートだけ返す例
+        return render(request, 'app/reorder.html')
+
+    def post(self, request):
+        order_str = request.POST.get('order', '')
+        # "1,2,3,4" のような文字列になっているのでsplit
+        new_order_ids = order_str.split(',')
+
+        # ここで new_order_ids を使ってDBの並び順を更新したりする
+        # 例:
+        # for i, item_id in enumerate(new_order_ids):
+        #     item = Item.objects.get(pk=item_id)
+        #     item.sort_order = i
+        #     item.save()
+
+        # 更新後に同じページにリダイレクト
+        return redirect('reorder')  # url nameを'reorder'等で設定しておく

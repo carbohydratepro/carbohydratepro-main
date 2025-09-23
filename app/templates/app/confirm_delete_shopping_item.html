@@ -1,0 +1,64 @@
+{% extends "app/base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">商品削除確認</h2>
+
+    <div class="alert alert-warning">
+        <h5>以下の商品を削除しますか？</h5>
+        <p>この操作は取り消すことができません。</p>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+                <h5 class="card-title mb-0">{{ shopping_item.title }}</h5>
+                <span class="badge badge-primary ml-2">{{ shopping_item.get_frequency_display }}</span>
+                <span class="badge {% if shopping_item.status == 'insufficient' %}badge-danger{% else %}badge-success{% endif %} ml-2">
+                    {{ shopping_item.get_status_display }}
+                </span>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="shopping-item-info">
+                        <p><strong>頻度:</strong> {{ shopping_item.get_frequency_display }}</p>
+                        {% if shopping_item.price %}
+                        <p><strong>金額:</strong> {{ shopping_item.price|floatformat:0 }}円</p>
+                        {% endif %}
+                        <p><strong>残数:</strong> {{ shopping_item.remaining_count }}</p>
+                        <p><strong>ステータス:</strong> 
+                            <span class="badge {% if shopping_item.status == 'insufficient' %}badge-danger{% else %}badge-success{% endif %}">
+                                {{ shopping_item.get_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="shopping-item-dates">
+                        <p><strong>登録日:</strong> {{ shopping_item.created_date|date:"Y年m月d日 H:i" }}</p>
+                        <p><strong>更新日:</strong> {{ shopping_item.updated_date|date:"Y年m月d日 H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            {% if shopping_item.memo %}
+            <div class="mt-3">
+                <h6>メモ:</h6>
+                <div class="p-3 bg-light rounded">
+                    {{ shopping_item.memo|linebreaks }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <form method="post" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">削除する</button>
+        </form>
+        <a href="{% url 'shopping_list' %}" class="btn btn-secondary">キャンセル</a>
+    </div>
+</div>
+{% endblock %}

@@ -80,3 +80,105 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"コメント by {self.user.username} on {self.created_at}"
+
+
+class Task(models.Model):
+    TASK_TYPE_CHOICES = [
+        ('one_time', '一時'),
+        ('recurring', '定期'),
+    ]
+    
+    FREQUENCY_CHOICES = [
+        ('daily', '毎日'),
+        ('weekly', '毎週'),
+        ('monthly', '毎月'),
+    ]
+    
+    PRIORITY_CHOICES = [
+        ('high', '高'),
+        ('medium', '中'),
+        ('low', '低'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('not_started', '未着手'),
+        ('in_progress', '実施中'),
+        ('completed', '終了済み'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tasks')
+    title = models.CharField(max_length=200, verbose_name="タイトル")
+    task_type = models.CharField(max_length=10, choices=TASK_TYPE_CHOICES, verbose_name="タスクタイプ")
+    frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, blank=True, null=True, verbose_name="頻度")
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, verbose_name="優先度")
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='not_started', verbose_name="ステータス")
+    created_date = models.DateTimeField(auto_now_add=True, verbose_name="登録日")
+    due_date = models.DateTimeField(blank=True, null=True, verbose_name="期限")
+    description = models.TextField(blank=True, verbose_name="詳細")
+
+    def __str__(self):
+        return f"{self.title} - {self.get_status_display()}"
+
+    class Meta:
+        ordering = ['-created_date']
+
+
+class Memo(models.Model):
+    MEMO_TYPE_CHOICES = [
+        ('note', 'ノート'),
+        ('idea', 'アイデア'),
+        ('todo', 'TODO'),
+        ('reference', '参考資料'),
+        ('reminder', 'リマインダー'),
+        ('other', 'その他'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='memos')
+    title = models.CharField(max_length=200, verbose_name="タイトル")
+    memo_type = models.CharField(max_length=20, choices=MEMO_TYPE_CHOICES, verbose_name="種別")
+    content = models.TextField(verbose_name="詳細")
+    is_favorite = models.BooleanField(default=False, verbose_name="お気に入り")
+    created_date = models.DateTimeField(auto_now_add=True, verbose_name="登録日")
+    updated_date = models.DateTimeField(auto_now=True, verbose_name="更新日")
+
+    def __str__(self):
+        return f"{self.title} - {self.get_memo_type_display()}"
+
+    class Meta:
+        ordering = ['-is_favorite', '-updated_date']
+
+
+class ShoppingItem(models.Model):
+    FREQUENCY_CHOICES = [
+        ('one_time', '一時'),
+        ('recurring', '定期'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('insufficient', '不足'),
+        ('available', '残あり'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='shopping_items')
+    title = models.CharField(max_length=200, verbose_name="タイトル")
+    frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, verbose_name="頻度")
+    price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name="金額")
+    remaining_count = models.IntegerField(default=0, verbose_name="残数")
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='insufficient', verbose_name="ステータス")
+    memo = models.TextField(blank=True, verbose_name="メモ")
+    created_date = models.DateTimeField(auto_now_add=True, verbose_name="登録日")
+    updated_date = models.DateTimeField(auto_now=True, verbose_name="更新日")
+
+    def __str__(self):
+        return f"{self.title} - {self.get_status_display()}"
+
+    def save(self, *args, **kwargs):
+        # 残数に基づいてステータスを自動更新
+        if self.remaining_count <= 0:
+            self.status = 'insufficient'
+        else:
+            self.status = 'available'
+        super().save(*args, **kwargs)
+
+    class Meta:
+        ordering = ['status', '-updated_date']  # 不足を上位に、その後は更新日順

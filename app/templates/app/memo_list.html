@@ -1,0 +1,248 @@
+{% extends "app/base.html" %}
+{% load static %}
+{% load app_filters %}
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">メモ管理</h2>
+
+    <!-- フィルター用フォーム -->
+    <form id="filterForm" class="mb-4">
+        {% csrf_token %}
+        <div class="row">
+            <div class="col-md-4 mb-2">
+                <label for="search" class="form-label">検索</label>
+                <input type="text" id="search" name="search" class="form-control" 
+                       placeholder="タイトルまたは内容で検索..." value="{{ search_query }}">
+            </div>
+            <div class="col-md-3 mb-2">
+                <label for="memo_type_filter" class="form-label">種別</label>
+                <select id="memo_type_filter" name="memo_type" class="form-control">
+                    <option value="">すべて</option>
+                    {% for type_code, type_name in memo_type_choices %}
+                    <option value="{{ type_code }}" {% if memo_type_filter == type_code %}selected{% endif %}>{{ type_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 mb-2">
+                <label for="favorite_filter" class="form-label">お気に入り</label>
+                <select id="favorite_filter" name="favorite" class="form-control">
+                    <option value="">すべて</option>
+                    <option value="true" {% if favorite_filter == 'true' %}selected{% endif %}>お気に入りのみ</option>
+                </select>
+            </div>
+            <div class="col-md-2 mb-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary mr-2">検索</button>
+                <a href="{% url 'memo_list' %}" class="btn btn-secondary">クリア</a>
+            </div>
+        </div>
+    </form>
+
+    <!-- 検索結果表示 -->
+    {% if search_query or memo_type_filter or favorite_filter %}
+    <div class="alert alert-info">
+        <strong>検索結果:</strong> {{ page_obj.paginator.count }}件のメモが見つかりました
+        {% if search_query %}（検索キーワード: "{{ search_query }}"）{% endif %}
+    </div>
+    {% endif %}
+
+    <!-- メモリスト -->
+    <div class="memo-list">
+        {% for memo in page_obj %}
+        <div class="card mb-3 memo-card" data-memo-id="{{ memo.id }}">
+            <div class="card-header d-flex justify-content-between align-items-center cursor-pointer" 
+                 onclick="toggleMemoExpand({{ memo.id }})">
+                <div class="d-flex align-items-center">
+                    {% if memo.is_favorite %}
+                    <i class="fas fa-star text-warning mr-2" title="お気に入り"></i>
+                    {% endif %}
+                    <h6 class="mb-0">{{ memo.title|highlight:search_query }}</h6>
+                    <span class="badge badge-primary ml-2">{{ memo.get_memo_type_display }}</span>
+                </div>
+                <div class="d-flex align-items-center">
+                    <small class="text-muted mr-3">{{ memo.updated_date|date:"Y-m-d H:i" }}</small>
+                    <i class="fas fa-chevron-down expand-icon" id="icon-{{ memo.id }}"></i>
+                </div>
+            </div>
+            <div class="card-body memo-content" id="content-{{ memo.id }}" style="display: none;">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="memo-text">
+                            {{ memo.content|highlight:search_query|linebreaks }}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="memo-info">
+                            <p><strong>種別:</strong> {{ memo.get_memo_type_display }}</p>
+                            <p><strong>登録日:</strong> {{ memo.created_date|date:"Y年m月d日 H:i" }}</p>
+                            <p><strong>更新日:</strong> {{ memo.updated_date|date:"Y年m月d日 H:i" }}</p>
+                        </div>
+                        <div class="memo-actions mt-3">
+                            <button class="btn btn-sm btn-outline-warning mr-2" 
+                                    onclick="toggleFavorite({{ memo.id }}, this)"
+                                    data-favorite="{{ memo.is_favorite|yesno:'true,false' }}">
+                                <i class="{% if memo.is_favorite %}fas{% else %}far{% endif %} fa-star"></i>
+                                {% if memo.is_favorite %}お気に入り解除{% else %}お気に入り{% endif %}
+                            </button>
+                            <a href="{% url 'edit_memo' memo.id %}" class="btn btn-sm btn-warning mr-2">編集</a>
+                            <a href="{% url 'delete_memo' memo.id %}" class="btn btn-sm btn-danger">削除</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="alert alert-secondary text-center">
+            {% if search_query or memo_type_filter or favorite_filter %}
+                検索条件に一致するメモが見つかりませんでした。
+            {% else %}
+                メモが登録されていません。
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- ページネーション -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="メモページネーション">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}">&laquo; 最初</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}">前へ</a>
+                </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}">次へ</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}">最後 &raquo;</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+
+    <div class="text-center mt-2">
+        <small class="text-muted">
+            {{ page_obj.start_index }} - {{ page_obj.end_index }} / {{ page_obj.paginator.count }}件
+        </small>
+    </div>
+    {% endif %}
+
+    <a href="{% url 'create_memo' %}" class="btn btn-primary mt-3">新規メモ作成</a>
+</div>
+
+<style>
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.memo-card {
+    transition: all 0.3s ease;
+}
+
+.memo-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.expand-icon {
+    transition: transform 0.3s ease;
+}
+
+.expand-icon.expanded {
+    transform: rotate(180deg);
+}
+
+.memo-text {
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+.memo-info p {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+</style>
+
+<script>
+    // メモの展開/折りたたみ
+    function toggleMemoExpand(memoId) {
+        const content = document.getElementById(`content-${memoId}`);
+        const icon = document.getElementById(`icon-${memoId}`);
+        
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            icon.classList.add('expanded');
+        } else {
+            content.style.display = 'none';
+            icon.classList.remove('expanded');
+        }
+    }
+
+    // お気に入りの切り替え
+    function toggleFavorite(memoId, button) {
+        fetch(`/carbohydratepro/memos/toggle-favorite/${memoId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const icon = button.querySelector('i');
+                if (data.is_favorite) {
+                    icon.className = 'fas fa-star';
+                    button.innerHTML = '<i class="fas fa-star"></i> お気に入り解除';
+                    button.setAttribute('data-favorite', 'true');
+                } else {
+                    icon.className = 'far fa-star';
+                    button.innerHTML = '<i class="far fa-star"></i> お気に入り';
+                    button.setAttribute('data-favorite', 'false');
+                }
+                // ページをリロードしてソート順を更新
+                setTimeout(() => location.reload(), 500);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    // フィルター関連のイベント処理
+    document.getElementById('filterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        this.submit();
+    });
+
+    document.getElementById('memo_type_filter').addEventListener('change', function() {
+        document.getElementById('filterForm').submit();
+    });
+    
+    document.getElementById('favorite_filter').addEventListener('change', function() {
+        document.getElementById('filterForm').submit();
+    });
+
+    document.getElementById('search').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('filterForm').submit();
+        }
+    });
+</script>
+{% endblock %}

@@ -1,5 +1,5 @@
 from django import forms
-from .models import Transaction, PaymentMethod, Category, VideoPost, Comment
+from .models import Transaction, PaymentMethod, Category, VideoPost, Comment, Task, Memo, ShoppingItem
 
 class TransactionForm(forms.ModelForm):
     class Meta:
@@ -97,3 +97,85 @@ class CommentForm(forms.ModelForm):
         widgets = {
             'content': forms.Textarea(attrs={'placeholder': 'コメントを入力してください...', 'rows': 2})
         }
+
+
+class TaskForm(forms.ModelForm):
+    class Meta:
+        model = Task
+        fields = ['title', 'task_type', 'frequency', 'priority', 'status', 'due_date', 'description']
+        widgets = {
+            'due_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # すべてのフィールドに 'form-control' クラスを追加
+        for field_name, field in self.fields.items():
+            if 'class' in field.widget.attrs:
+                field.widget.attrs['class'] += ' form-control'
+            else:
+                field.widget.attrs['class'] = 'form-control'
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        task_type = cleaned_data.get('task_type')
+        frequency = cleaned_data.get('frequency')
+        
+        # 定期タスクの場合は頻度が必須
+        if task_type == 'recurring' and not frequency:
+            raise forms.ValidationError('定期タスクの場合、頻度を選択してください。')
+        
+        # 一時タスクの場合は頻度は不要
+        if task_type == 'one_time' and frequency:
+            cleaned_data['frequency'] = None
+            
+        return cleaned_data
+
+
+class MemoForm(forms.ModelForm):
+    class Meta:
+        model = Memo
+        fields = ['title', 'memo_type', 'content', 'is_favorite']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'memo_type': forms.Select(attrs={'class': 'form-control'}),
+            'content': forms.Textarea(attrs={'rows': 8, 'class': 'form-control'}),
+            'is_favorite': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # すべてのフィールドに適切なクラスを設定
+        for field_name, field in self.fields.items():
+            if field_name != 'is_favorite':  # チェックボックスは除外
+                if 'class' in field.widget.attrs:
+                    field.widget.attrs['class'] += ' form-control'
+                else:
+                    field.widget.attrs['class'] = 'form-control'
+
+
+class ShoppingItemForm(forms.ModelForm):
+    class Meta:
+        model = ShoppingItem
+        fields = ['title', 'frequency', 'price', 'remaining_count', 'memo']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'frequency': forms.Select(attrs={'class': 'form-control'}),
+            'price': forms.NumberInput(attrs={'step': '0.01', 'class': 'form-control'}),
+            'remaining_count': forms.NumberInput(attrs={'min': '0', 'class': 'form-control'}),
+            'memo': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # すべてのフィールドに 'form-control' クラスを追加
+        for field_name, field in self.fields.items():
+            if 'class' in field.widget.attrs:
+                field.widget.attrs['class'] += ' form-control'
+            else:
+                field.widget.attrs['class'] = 'form-control'

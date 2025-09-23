@@ -2,8 +2,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, F, Q, Avg
 from django.utils.timezone import make_aware
-from .forms import TransactionForm, PaymentMethodForm, CategoryForm, VideoPostForm, CommentForm
-from .models import Transaction, PaymentMethod, Category, VideoPost, Comment
+from .forms import TransactionForm, PaymentMethodForm, CategoryForm, VideoPostForm, CommentForm, TaskForm, MemoForm, ShoppingItemForm
+from .models import Transaction, PaymentMethod, Category, VideoPost, Comment, Task, Memo, ShoppingItem
 from datetime import datetime, timedelta
 
 import json
@@ -459,3 +459,265 @@ class ReorderView(View):
 
         # 更新後に同じページにリダイレクト
         return redirect('reorder')  # url nameを'reorder'等で設定しておく
+
+
+# タスク管理関連のビュー
+@login_required
+def task_list(request):
+    """タスク一覧表示"""
+    status_filter = request.GET.get('status', '')
+    priority_filter = request.GET.get('priority', '')
+    search_query = request.GET.get('search', '')
+    
+    tasks = Task.objects.filter(user=request.user)
+    
+    if status_filter:
+        tasks = tasks.filter(status=status_filter)
+    if priority_filter:
+        tasks = tasks.filter(priority=priority_filter)
+    if search_query:
+        tasks = tasks.filter(
+            Q(title__icontains=search_query) | 
+            Q(description__icontains=search_query)
+        )
+    
+    return render(request, 'app/task_list.html', {
+        'tasks': tasks,
+        'status_filter': status_filter,
+        'priority_filter': priority_filter,
+        'search_query': search_query,
+        'status_choices': Task.STATUS_CHOICES,
+        'priority_choices': Task.PRIORITY_CHOICES,
+    })
+
+
+@login_required
+def create_task(request):
+    """タスク新規作成"""
+    if request.method == 'POST':
+        form = TaskForm(request.POST)
+        if form.is_valid():
+            task = form.save(commit=False)
+            task.user = request.user
+            task.save()
+            return redirect('task_list')
+    else:
+        form = TaskForm()
+    
+    return render(request, 'app/create_task.html', {'form': form})
+
+
+@login_required
+def edit_task(request, task_id):
+    """タスク編集"""
+    task = get_object_or_404(Task, id=task_id, user=request.user)
+    
+    if request.method == 'POST':
+        form = TaskForm(request.POST, instance=task)
+        if form.is_valid():
+            form.save()
+            return redirect('task_list')
+    else:
+        form = TaskForm(instance=task)
+    
+    return render(request, 'app/edit_task.html', {'form': form, 'task': task})
+
+
+@login_required
+def delete_task(request, task_id):
+    """タスク削除"""
+    task = get_object_or_404(Task, id=task_id, user=request.user)
+    
+    if request.method == 'POST':
+        task.delete()
+        return redirect('task_list')
+    
+    return render(request, 'app/confirm_delete_task.html', {'task': task})
+
+
+# メモ管理関連のビュー
+@login_required
+def memo_list(request):
+    """メモ一覧表示（ページネーション付き）"""
+    memo_type_filter = request.GET.get('memo_type', '')
+    search_query = request.GET.get('search', '')
+    favorite_filter = request.GET.get('favorite', '')
+    
+    memos = Memo.objects.filter(user=request.user)
+    
+    if memo_type_filter:
+        memos = memos.filter(memo_type=memo_type_filter)
+    if search_query:
+        memos = memos.filter(
+            Q(title__icontains=search_query) | 
+            Q(content__icontains=search_query)
+        )
+    if favorite_filter == 'true':
+        memos = memos.filter(is_favorite=True)
+    
+    # ページネーション
+    paginator = Paginator(memos, 100)  # 100件ずつ表示
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'app/memo_list.html', {
+        'page_obj': page_obj,
+        'memo_type_filter': memo_type_filter,
+        'search_query': search_query,
+        'favorite_filter': favorite_filter,
+        'memo_type_choices': Memo.MEMO_TYPE_CHOICES,
+    })
+
+
+@login_required
+def create_memo(request):
+    """メモ新規作成"""
+    if request.method == 'POST':
+        form = MemoForm(request.POST)
+        if form.is_valid():
+            memo = form.save(commit=False)
+            memo.user = request.user
+            memo.save()
+            return redirect('memo_list')
+    else:
+        form = MemoForm()
+    
+    return render(request, 'app/create_memo.html', {'form': form})
+
+
+@login_required
+def edit_memo(request, memo_id):
+    """メモ編集"""
+    memo = get_object_or_404(Memo, id=memo_id, user=request.user)
+    
+    if request.method == 'POST':
+        form = MemoForm(request.POST, instance=memo)
+        if form.is_valid():
+            form.save()
+            return redirect('memo_list')
+    else:
+        form = MemoForm(instance=memo)
+    
+    return render(request, 'app/edit_memo.html', {'form': form, 'memo': memo})
+
+
+@login_required
+def delete_memo(request, memo_id):
+    """メモ削除"""
+    memo = get_object_or_404(Memo, id=memo_id, user=request.user)
+    
+    if request.method == 'POST':
+        memo.delete()
+        return redirect('memo_list')
+    
+    return render(request, 'app/confirm_delete_memo.html', {'memo': memo})
+
+
+@login_required
+def toggle_memo_favorite(request, memo_id):
+    """メモのお気に入り状態を切り替え（Ajax用）"""
+    if request.method == 'POST':
+        memo = get_object_or_404(Memo, id=memo_id, user=request.user)
+        memo.is_favorite = not memo.is_favorite
+        memo.save()
+        return JsonResponse({
+            'success': True, 
+            'is_favorite': memo.is_favorite
+        })
+    return JsonResponse({'success': False})
+
+
+# 買うものリスト関連のビュー
+@login_required
+def shopping_list(request):
+    """買うものリスト一覧表示"""
+    search_query = request.GET.get('search', '')
+    
+    shopping_items = ShoppingItem.objects.filter(user=request.user)
+    
+    if search_query:
+        shopping_items = shopping_items.filter(
+            Q(title__icontains=search_query) | 
+            Q(memo__icontains=search_query)
+        )
+    
+    # 頻度別に分けて取得（不足を上位に表示）
+    one_time_items = shopping_items.filter(frequency='one_time').order_by('status', '-updated_date')
+    recurring_items = shopping_items.filter(frequency='recurring').order_by('status', '-updated_date')
+    
+    return render(request, 'app/shopping_list.html', {
+        'one_time_items': one_time_items,
+        'recurring_items': recurring_items,
+        'search_query': search_query,
+        'total_count': shopping_items.count(),
+    })
+
+
+@login_required
+def create_shopping_item(request):
+    """買うものリスト新規作成"""
+    if request.method == 'POST':
+        form = ShoppingItemForm(request.POST)
+        if form.is_valid():
+            shopping_item = form.save(commit=False)
+            shopping_item.user = request.user
+            shopping_item.save()
+            return redirect('shopping_list')
+    else:
+        form = ShoppingItemForm()
+    
+    return render(request, 'app/create_shopping_item.html', {'form': form})
+
+
+@login_required
+def edit_shopping_item(request, item_id):
+    """買うものリスト編集"""
+    shopping_item = get_object_or_404(ShoppingItem, id=item_id, user=request.user)
+    
+    if request.method == 'POST':
+        form = ShoppingItemForm(request.POST, instance=shopping_item)
+        if form.is_valid():
+            form.save()
+            return redirect('shopping_list')
+    else:
+        form = ShoppingItemForm(instance=shopping_item)
+    
+    return render(request, 'app/edit_shopping_item.html', {'form': form, 'shopping_item': shopping_item})
+
+
+@login_required
+def delete_shopping_item(request, item_id):
+    """買うものリスト削除"""
+    shopping_item = get_object_or_404(ShoppingItem, id=item_id, user=request.user)
+    
+    if request.method == 'POST':
+        shopping_item.delete()
+        return redirect('shopping_list')
+    
+    return render(request, 'app/confirm_delete_shopping_item.html', {'shopping_item': shopping_item})
+
+
+@login_required
+def update_shopping_count(request, item_id):
+    """残数の更新（Ajax用）"""
+    if request.method == 'POST':
+        shopping_item = get_object_or_404(ShoppingItem, id=item_id, user=request.user)
+        action = request.POST.get('action')
+        
+        if action == 'increase':
+            shopping_item.remaining_count += 1
+        elif action == 'decrease' and shopping_item.remaining_count > 0:
+            shopping_item.remaining_count -= 1
+        elif action == 'reset':
+            shopping_item.remaining_count = 0
+        
+        shopping_item.save()  # save()メソッドでステータスも自動更新される
+        
+        return JsonResponse({
+            'success': True,
+            'remaining_count': shopping_item.remaining_count,
+            'status': shopping_item.get_status_display(),
+            'status_code': shopping_item.status
+        })
+    
+    return JsonResponse({'success': False})

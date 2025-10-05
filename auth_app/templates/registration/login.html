@@ -36,6 +36,13 @@
               <input type="hidden" name="next" value="{{ next }}" />
             {% csrf_token %}
           </form>
+          
+          <!-- パスワードリセットリンク -->
+          <div class="text-center mt-3">
+            <a href="{% url 'password_reset' %}" class="text-muted">
+              <i class="fas fa-key"></i> パスワードを忘れた方はこちら
+            </a>
+          </div>
         </div>
       </div>
     </div>

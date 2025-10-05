@@ -35,6 +35,7 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 INSTALLED_APPS = [
     'corsheaders',
+    'auth_app.apps.AuthAppConfig',  # Django管理サイトより前に配置
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -42,7 +43,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'app',
-    'auth_app.apps.AuthAppConfig',
     'rest_framework',
 ]
 
@@ -55,6 +55,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'project.middleware.AdminSecurityMiddleware',  # 管理サイトセキュリティ
 ]
 
 ROOT_URLCONF = 'project.urls'
@@ -62,7 +63,10 @@ ROOT_URLCONF = 'project.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
+        'DIRS': [
+            os.path.join(BASE_DIR, 'templates'),
+            os.path.join(BASE_DIR, 'auth_app', 'templates'),
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -158,14 +162,46 @@ LOGOUT_REDIRECT_URL = '/top/'
 
 AUTH_USER_MODEL = 'auth_app.CustomUser'
 
+# ドメイン設定
+if DEBUG:
+    SITE_DOMAIN = env('SITE_DOMAIN', default='localhost:8000')
+    SITE_PROTOCOL = 'http'
+else:
+    SITE_DOMAIN = env('SITE_DOMAIN', default='carbohydratepro.com')
+    SITE_PROTOCOL = 'https'
+
+SITE_NAME = env('SITE_NAME', default='carbohydratepro')
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
             'filename': 'django_debug.log',
+            'formatter': 'verbose',
+        },
+        'security_file': {
+            'level': 'WARNING',
+            'class': 'logging.FileHandler',
+            'filename': 'security.log',
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
         },
     },
     'loggers': {
@@ -173,6 +209,26 @@ LOGGING = {
             'handlers': ['file'],
             'level': 'DEBUG',
             'propagate': True,
+        },
+        'project.middleware': {
+            'handlers': ['security_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['security_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'security': {
+            'handlers': ['security_file', 'console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.core.mail': {
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',
+            'propagate': False,
         },
     },
 }
@@ -187,3 +243,33 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "https://carbohydratepro.com",
 ]
+
+# メール設定（パスワードリセット用）
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='no-reply@gmail.com')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
+EMAIL_USE_SSL = False # TLSとSSLは併用しない
+DEFAULT_FROM_EMAIL = env('EMAIL_HOST_USER', default='no-reply@gmail.com')
+
+# メール送信の詳細ログを有効化
+LOGGING['loggers']['django.core.mail'] = {
+    'handlers': ['file', 'console'],
+    'level': 'DEBUG',
+    'propagate': False,
+}
+
+# 管理サイトのセキュリティ設定
+# 本番環境では管理サイトを完全に無効化する場合のオプション
+ADMIN_ENABLED = env.bool('ADMIN_ENABLED', default=DEBUG)
+
+# セキュリティヘッダー（本番環境用）
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True

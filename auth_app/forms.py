@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model # ユーザーモデルを取得するため
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm, PasswordChangeForm
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm, PasswordChangeForm, PasswordResetForm, SetPasswordForm
 
 '''ログイン用フォーム'''
 class LoginForm(AuthenticationForm):
@@ -54,3 +54,32 @@ class MyPasswordChangeForm(PasswordChangeForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'
+
+
+'''パスワードリセット申請フォーム'''
+class MyPasswordResetForm(PasswordResetForm):
+    email = forms.EmailField(label="メールアドレス")
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs['class'] = 'form-control'
+            field.widget.attrs['placeholder'] = field.label
+
+
+'''パスワードリセット実行フォーム'''
+class MySetPasswordForm(SetPasswordForm):
+    new_password1 = forms.CharField(
+        label="新しいパスワード",
+        widget=forms.PasswordInput
+    )
+    new_password2 = forms.CharField(
+        label="新しいパスワード（確認用）",
+        widget=forms.PasswordInput
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs['class'] = 'form-control'
+            field.widget.attrs['placeholder'] = field.label

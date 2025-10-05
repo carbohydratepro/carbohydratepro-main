@@ -26,6 +26,13 @@ logger = logging.getLogger(__name__)
 @login_required
 def index(request):
     target_date = request.GET.get('target_date', None)
+    search_query = request.GET.get('search', '')
+    
+    # 絞り込みパラメータ
+    filter_transaction_type = request.GET.get('transaction_type', '')
+    filter_major_category = request.GET.get('major_category', '')
+    filter_category = request.GET.get('category', '')
+    filter_payment_method = request.GET.get('payment_method', '')
 
     if target_date:
         target_date = make_aware(datetime.strptime(target_date, '%Y-%m'))
@@ -37,25 +44,98 @@ def index(request):
     end_date = (start_date + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
     transactions = Transaction.objects.filter(user=request.user, date__range=(start_date, end_date))
+    
+    # 検索機能
+    if search_query:
+        transactions = transactions.filter(
+            Q(purpose__icontains=search_query) |
+            Q(purpose_description__icontains=search_query) |
+            Q(category__name__icontains=search_query) |
+            Q(payment_method__name__icontains=search_query)
+        )
+    
+    # 絞り込み機能
+    if filter_transaction_type:
+        transactions = transactions.filter(transaction_type=filter_transaction_type)
+    if filter_major_category:
+        transactions = transactions.filter(major_category=filter_major_category)
+    if filter_category:
+        transactions = transactions.filter(category__id=filter_category)
+    if filter_payment_method:
+        transactions = transactions.filter(payment_method__id=filter_payment_method)
+    
+    # 絞り込み用のオプション取得
+    user_categories = Category.objects.filter(user=request.user)
+    user_payment_methods = PaymentMethod.objects.filter(user=request.user)
+
+    # 月合計の収入・支出を計算
+    total_income = transactions.filter(transaction_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
+    total_expense = transactions.filter(transaction_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
+    net_balance = float(total_income) - float(total_expense)
 
     # 日付範囲の作成（固定された月初から月末）
     date_range = [(start_date + timedelta(days=i)).strftime('%Y-%m-%d') for i in range((end_date - start_date).days + 1)]
 
-    # グラフ用データの作成
+    # カテゴリグラフ用データの作成（上位5つ + その他）
     category_data = transactions.values('category__name').annotate(total=Sum('amount')).order_by('-total')
     
-    # メインカテゴリを日本語表記で取得
+    # カテゴリグラフ：上位5つとその他に分ける
+    if category_data.exists():
+        top_categories = list(category_data[:5])
+        other_total = sum(float(entry['total']) for entry in category_data[5:])
+        
+        category_labels = [entry['category__name'] for entry in top_categories]
+        category_amounts = [float(entry['total']) for entry in top_categories]
+        
+        # 実際のデータ数に応じて色を設定
+        base_colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7']
+        category_colors = base_colors[:len(category_labels)]
+        
+        if other_total > 0:
+            category_labels.append('その他')
+            category_amounts.append(other_total)
+            category_colors.append('#BDC3C7')
+    else:
+        # データがない場合は灰色で表示
+        category_labels = ['データなし']
+        category_amounts = [1]
+        category_colors = ['#BDC3C7']
+    
+    # メインカテゴリを日本語表記で取得（固定3色）
     major_category_data = transactions.values('major_category').annotate(total=Sum('amount')).order_by('-total')
     major_category_labels = {
         'variable': '変動費',
         'fixed': '固定費',
         'special': '特別費'
     }
-    major_category_data_json = json.dumps({
-        'labels': [major_category_labels[entry['major_category']] for entry in major_category_data],
+    
+    if major_category_data.exists():
+        # 実際のデータ数に応じて色を設定
+        major_colors = {'variable': '#E74C3C', 'fixed': '#3498DB', 'special': '#9B59B6'}
+        major_bg_colors = [major_colors[entry['major_category']] for entry in major_category_data]
+        
+        major_category_data_json = json.dumps({
+            'labels': [major_category_labels[entry['major_category']] for entry in major_category_data],
+            'datasets': [{
+                'data': [float(entry['total']) for entry in major_category_data],
+                'backgroundColor': major_bg_colors,
+            }]
+        })
+    else:
+        # データがない場合は灰色で表示
+        major_category_data_json = json.dumps({
+            'labels': ['データなし'],
+            'datasets': [{
+                'data': [1],
+                'backgroundColor': ['#BDC3C7'],
+            }]
+        })
+
+    category_data_json = json.dumps({
+        'labels': category_labels,
         'datasets': [{
-            'data': [float(entry['total']) for entry in major_category_data],  # Decimalをfloatに変換
-            'backgroundColor': ['#4BC0C0', '#FF9F40', '#9966FF'],
+            'data': category_amounts,
+            'backgroundColor': category_colors,
         }]
     })
 
@@ -69,14 +149,7 @@ def index(request):
         current_balance += float(daily_income) - float(daily_expense)  # Decimalをfloatに変換
         expense_data.append(float(daily_expense))  # Decimalをfloatに変換
         balance_data.append(float(current_balance))  # Decimalをfloatに変換
-
-    category_data_json = json.dumps({
-        'labels': [entry['category__name'] for entry in category_data],
-        'datasets': [{
-            'data': [float(entry['total']) for entry in category_data],  # Decimalをfloatに変換
-            'backgroundColor': ['#FF6384', '#36A2EB', '#FFCE56'],
-        }]
-    })
+        balance_data.append(float(current_balance))  # Decimalをfloatに変換
 
     expense_data_json = json.dumps({
         'labels': date_range,
@@ -103,6 +176,17 @@ def index(request):
         'major_category_data_json': major_category_data_json,
         'expense_data_json': expense_data_json,
         'balance_data_json': balance_data_json,
+        'total_income': total_income,
+        'total_expense': total_expense,
+        'net_balance': net_balance,
+        'target_month': target_date.strftime('%Y年%m月'),
+        'search_query': search_query,
+        'user_categories': user_categories,
+        'user_payment_methods': user_payment_methods,
+        'filter_transaction_type': filter_transaction_type,
+        'filter_major_category': filter_major_category,
+        'filter_category': filter_category,
+        'filter_payment_method': filter_payment_method,
         'default_target_date': target_date.strftime('%Y-%m')  # 今日の日付をテンプレートに渡す
     })
     

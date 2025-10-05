@@ -2,69 +2,269 @@
 {% load static %}
 {% block content %}
 <div class="container mt-5">
-    <h2 class="mb-4">投稿一覧</h2>
+    <h2 class="mb-4">家計簿もどき</h2>
 
-    <!-- フィルター用フォーム -->
-    <form id="filterForm" class="form-inline mb-4">
-        <label for="target_date" class="mr-2">対象月:</label>
-        <input type="month" id="target_date" name="target_date" class="form-control mr-2" value="{{ default_target_date }}">
-    </form>
+    <!-- 月選択フォーム -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <form id="filterForm" class="form-inline">
+                <label for="target_date" class="mr-2">対象月:</label>
+                <input type="month" id="target_date" name="target_date" class="form-control" value="{{ default_target_date }}">
+            </form>
+        </div>
+    </div>
+
+    <!-- 月次サマリー表示 -->
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header py-2">
+                    <h6 class="mb-0">{{ target_month }} のサマリー</h6>
+                </div>
+                <div class="card-body py-2">
+                    <div class="row text-center">
+                        <div class="col-6 col-md-3">
+                            <small class="text-primary">収入</small>
+                            <div class="h6 text-primary mb-0">+¥{{ total_income|floatformat:0 }}</div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-danger">支出</small>
+                            <div class="h6 text-danger mb-0">-¥{{ total_expense|floatformat:0 }}</div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small {% if net_balance >= 0 %}class="text-success"{% else %}class="text-warning"{% endif %}>収支</small>
+                            <div {% if net_balance >= 0 %}class="h6 text-success mb-0"{% else %}class="h6 text-warning mb-0"{% endif %}>{% if net_balance >= 0 %}+{% endif %}¥{{ net_balance|floatformat:0 }}</div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-info">取引件数</small>
+                            <div class="h6 text-info mb-0">{{ transactions|length }}件</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- グラフ表示エリア -->
-    <div class="row mb-4">
-        <div class="col-md-3 col-sm-12">
-            <canvas id="categoryPieChart" class="chart-canvas"></canvas>
+    <div class="row mb-3">
+        <!-- モバイル: 円グラフを横並び、PC: 左上にカテゴリ -->
+        <div class="col-md-3 col-6 mb-3">
+            <div style="height: 200px;">
+                <canvas id="categoryPieChart" class="chart-canvas"></canvas>
+            </div>
         </div>
-        <div class="col-md-9 col-sm-12">
-            <canvas id="expenseBarChart" class="chart-canvas"></canvas>
+        <!-- モバイル: 円グラフを横並び、PC: 右上に棒グラフ -->
+        <div class="col-md-9 col-6 mb-3">
+            <div class="d-md-block d-none" style="height: 200px;">
+                <canvas id="expenseBarChart" class="chart-canvas"></canvas>
+            </div>
+            <!-- モバイル: メインカテゴリ円グラフ -->
+            <div class="d-md-none" style="height: 200px;">
+                <canvas id="majorCategoryChart" class="chart-canvas"></canvas>
+            </div>
         </div>
     </div>
-    <div class="row mb-4">
-        <div class="col-md-3 col-sm-12">
-            <canvas id="majorCategoryChart" class="chart-canvas"></canvas>
+    
+    <!-- PC用下段、モバイル用棒グラフ・折れ線グラフ -->
+    <div class="row mb-3">
+        <!-- PC: 左下にメインカテゴリ -->
+        <div class="col-md-3 d-none d-md-block mb-3">
+            <div style="height: 200px;">
+                <canvas id="majorCategoryChartPC" class="chart-canvas"></canvas>
+            </div>
         </div>
-        <div class="col-md-9 col-sm-12">
-            <canvas id="balanceLineChart" class="chart-canvas"></canvas>
+        <!-- PC: 右下に折れ線グラフ -->
+        <div class="col-md-9 d-none d-md-block mb-3">
+            <div style="height: 200px;">
+                <canvas id="balanceLineChart" class="chart-canvas"></canvas>
+            </div>
+        </div>
+        
+        <!-- モバイル: 棒グラフ（全幅） -->
+        <div class="col-12 d-md-none mb-3">
+            <div style="height: 300px;">
+                <canvas id="expenseBarChartMobile" class="chart-canvas"></canvas>
+            </div>
+        </div>
+        
+        <!-- モバイル: 折れ線グラフ（全幅） -->
+        <div class="col-12 d-md-none mb-3">
+            <div style="height: 300px;">
+                <canvas id="balanceLineChartMobile" class="chart-canvas"></canvas>
+            </div>
         </div>
     </div>
 
-    <!-- 投稿一覧 -->
-    <div style="overflow-x: auto;">
-        <table class="table table-striped" style="table-layout: fixed; width: 100%; font-size: 14px;">
-            <thead>
-                <tr>
-                    <th style="width: 15%; padding: 8px;">日付</th>
-                    <th style="width: 15%; padding: 8px;">メインカテゴリ</th>
-                    <th style="width: 15%; padding: 8px;">カテゴリ</th>
-                    <th style="width: 20%; padding: 8px;">使用用途</th>
-                    <th style="width: 15%; padding: 8px;">取引タイプ</th>
-                    <th style="width: 10%; padding: 8px;">支払方法</th>
-                    <th style="width: 10%; padding: 8px;">金額</th>
-                    <th style="width: 10%; padding: 8px;">アクション</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for transaction in transactions %}
-                <tr>
-                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.date|date:'Y-m-d' }}">{{ transaction.date|date:"Y-m-d" }}</td>
-                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.get_major_category_display }}">{{ transaction.get_major_category_display }}</td>
-                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.category }}">{{ transaction.category }}</td>
-                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.purpose }}">{{ transaction.purpose }}</td>
-                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.get_transaction_type_display }}">{{ transaction.get_transaction_type_display }}</td>
-                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.payment_method }}">{{ transaction.payment_method }}</td>
-                    <td style="padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ transaction.amount|floatformat:0 }}">{{ transaction.amount|floatformat:0 }}</td>
-                    <td style="padding: 8px;">
-                        <a href="{% url 'edit_transaction' transaction.id %}" class="btn btn-sm btn-warning">編集</a>
-                        <a href="{% url 'delete_transaction' transaction.id %}" class="btn btn-sm btn-danger">削除</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- 検索・絞り込み機能 -->
+    <div class="card mb-3">
+        <div class="card-header py-2">
+            <button class="btn btn-link btn-sm p-0" type="button" data-toggle="collapse" data-target="#searchFilterCollapse" aria-expanded="false">
+                <i class="fas fa-search"></i> 検索・絞り込み
+            </button>
+        </div>
+        <div class="collapse" id="searchFilterCollapse">
+            <div class="card-body py-2">
+                <form method="GET">
+                    <input type="hidden" name="target_date" value="{{ default_target_date }}">
+                    
+                    <!-- 検索 -->
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <div class="input-group input-group-sm">
+                                <input type="text" name="search" class="form-control" placeholder="用途、カテゴリ、支払方法で検索..." value="{{ search_query }}">
+                                <div class="input-group-append">
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 絞り込み -->
+                    <div class="row">
+                        <div class="col-6 col-md-3">
+                            <select name="transaction_type" class="form-control form-control-sm">
+                                <option value="">全ての取引タイプ</option>
+                                <option value="income" {% if filter_transaction_type == 'income' %}selected{% endif %}>収入</option>
+                                <option value="expense" {% if filter_transaction_type == 'expense' %}selected{% endif %}>支出</option>
+                                <option value="no_change" {% if filter_transaction_type == 'no_change' %}selected{% endif %}>変動なし</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <select name="major_category" class="form-control form-control-sm">
+                                <option value="">全ての費用タイプ</option>
+                                <option value="variable" {% if filter_major_category == 'variable' %}selected{% endif %}>変動費</option>
+                                <option value="fixed" {% if filter_major_category == 'fixed' %}selected{% endif %}>固定費</option>
+                                <option value="special" {% if filter_major_category == 'special' %}selected{% endif %}>特別費</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <select name="category" class="form-control form-control-sm">
+                                <option value="">全てのカテゴリ</option>
+                                {% for category in user_categories %}
+                                <option value="{{ category.id }}" {% if filter_category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <select name="payment_method" class="form-control form-control-sm">
+                                <option value="">全ての支払方法</option>
+                                {% for payment_method in user_payment_methods %}
+                                <option value="{{ payment_method.id }}" {% if filter_payment_method == payment_method.id|stringformat:"s" %}selected{% endif %}>{{ payment_method.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary btn-sm">絞り込み</button>
+                            <a href="?target_date={{ default_target_date }}" class="btn btn-outline-secondary btn-sm ml-1">クリア</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 取引一覧 -->
+    {% if search_query or filter_transaction_type or filter_major_category or filter_category or filter_payment_method %}
+    <div class="alert alert-info alert-sm py-2">
+        <i class="fas fa-filter"></i> 絞り込み結果: {{ transactions|length }}件
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        {% for transaction in transactions %}
+        <div class="col-md-6 col-lg-4 mb-2">
+            <div class="card card-sm">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <h6 class="card-title mb-0 text-truncate" title="{{ transaction.purpose }}" style="font-size: 0.9rem;">
+                            {{ transaction.purpose }}
+                        </h6>
+                        <small class="text-muted">{{ transaction.date|date:"m/d" }}</small>
+                    </div>
+                    
+                    <div class="mb-1">
+                        <h6 class="mb-0 
+                            {% if transaction.transaction_type == 'income' %}text-primary
+                            {% elif transaction.transaction_type == 'expense' %}text-danger
+                            {% else %}text-secondary{% endif %}">
+                            {% if transaction.transaction_type == 'income' %}+{% elif transaction.transaction_type == 'expense' %}-{% endif %}¥{{ transaction.amount|floatformat:0 }}
+                        </h6>
+                    </div>
+                    
+                    <div class="small text-muted mb-1">
+                        <div class="d-flex justify-content-between">
+                            <span><i class="fas fa-tag"></i> {{ transaction.category }}</span>
+                            <span><i class="fas fa-credit-card"></i> {{ transaction.payment_method }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <span class="badge badge-secondary badge-sm">{{ transaction.get_major_category_display }}</span>
+                            <span class="badge badge-sm
+                                {% if transaction.transaction_type == 'income' %}badge-primary
+                                {% elif transaction.transaction_type == 'expense' %}badge-danger
+                                {% else %}badge-secondary{% endif %}">
+                                {{ transaction.get_transaction_type_display }}
+                            </span>
+                        </div>
+                        {% if transaction.purpose_description %}
+                        <div class="mt-1">
+                            <small class="text-muted" title="{{ transaction.purpose_description }}">
+                                <i class="fas fa-comment"></i> {{ transaction.purpose_description|truncatechars:20 }}
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-flex justify-content-end">
+                        <a href="{% url 'edit_transaction' transaction.id %}" class="btn btn-sm btn-outline-warning mr-1 py-0 px-1">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{% url 'delete_transaction' transaction.id %}" class="btn btn-sm btn-outline-danger py-0 px-1">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center py-2">
+                <i class="fas fa-info-circle"></i>
+                {% if search_query or filter_transaction_type or filter_major_category or filter_category or filter_payment_method %}
+                    検索・絞り込み条件に一致する取引がありません。
+                {% else %}
+                    この月の取引はありません。
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
     </div>
     <a href="{% url 'create_transaction' %}" class="btn btn-primary">新規登録</a>
     <a href="{% url 'settings' %}" class="btn btn-primary">設定</a>
 </div>
+
+<!-- カスタムCSS -->
+<style>
+.card-sm {
+    margin-bottom: 0.5rem;
+}
+.badge-sm {
+    font-size: 0.7rem;
+}
+.alert-sm {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+@media (max-width: 768px) {
+    .chart-canvas {
+        height: 200px !important;
+    }
+}
+</style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -73,99 +273,369 @@
     var balanceData = {{ balance_data_json|safe }};
     var majorCategoryData = {{ major_category_data_json|safe }};
 
-    // カテゴリの割合を表す円グラフ
+    // PC用カテゴリの割合を表す円グラフ
     var ctxPie = document.getElementById('categoryPieChart').getContext('2d');
     var categoryPieChart = new Chart(ctxPie, {
         type: 'pie',
         data: categoryData,
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 title: {
                     display: true,
                     text: 'カテゴリ別割合'
+                },
+                legend: {
+                    display: categoryData.labels[0] !== 'データなし',
+                    position: 'bottom'
                 }
             }
         }
     });
 
-    // 支出を表す棒グラフ
-    var ctxBar = document.getElementById('expenseBarChart').getContext('2d');
-    var expenseBarChart = new Chart(ctxBar, {
-        type: 'bar',
-        data: expenseData,
-        options: {
-            responsive: true,
-            scales: {
-                x: {
-                    type: 'category',
-                    ticks: {
-                        autoSkip: true,
-                        maxTicksLimit: 10, // 日付のみ表示し、ラベルを減らす
+    // PC用支出を表す棒グラフ
+    var ctxBar = document.getElementById('expenseBarChart');
+    if (ctxBar) {
+        var expenseBarChart = new Chart(ctxBar.getContext('2d'), {
+            type: 'bar',
+            data: expenseData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '日別支出'
                     }
                 },
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(255, 99, 132, 0.2)' // 薄い赤線を追加
+                scales: {
+                    x: {
+                        type: 'category',
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 10,
+                        }
                     },
-                    ticks: {
-                        autoSkip: true,
-                        maxTicksLimit: 5 // 縦軸のラベルを減らす
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 99, 132, 0.2)'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 5
+                        }
                     }
                 }
             }
-        }
-    });
+        });
+    }
 
-    // メインカテゴリを表すグラフ
+    // モバイル用支出を表す棒グラフ
+    var ctxBarMobile = document.getElementById('expenseBarChartMobile');
+    if (ctxBarMobile) {
+        var expenseBarChartMobile = new Chart(ctxBarMobile.getContext('2d'), {
+            type: 'bar',
+            data: expenseData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '日別支出'
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category',
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 8,
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 99, 132, 0.2)'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 4
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // モバイル用メインカテゴリを表すグラフ
     var ctxMajorCategory = document.getElementById('majorCategoryChart').getContext('2d');
     var majorCategoryChart = new Chart(ctxMajorCategory, {
         type: 'pie',
         data: majorCategoryData,
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 title: {
                     display: true,
-                    text: 'メインカテゴリ'
+                    text: '費用タイプ別割合'
+                },
+                legend: {
+                    display: majorCategoryData.labels[0] !== 'データなし',
+                    position: 'bottom'
                 }
             }
         }
     });
 
-    // 所持金の遷移を表す折れ線グラフ
-    var ctxLine = document.getElementById('balanceLineChart').getContext('2d');
-    var balanceLineChart = new Chart(ctxLine, {
-        type: 'line',
-        data: balanceData,
-        options: {
-            responsive: true,
-            scales: {
-                x: {
-                    type: 'category',
-                    ticks: {
-                        autoSkip: true,
-                        maxTicksLimit: 10, // 日付のみ表示し、ラベルを減らす
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(255, 99, 132, 0.2)' // 薄い赤線を追加
+    // PC用メインカテゴリを表すグラフ
+    var ctxMajorCategoryPC = document.getElementById('majorCategoryChartPC');
+    if (ctxMajorCategoryPC) {
+        var majorCategoryChartPC = new Chart(ctxMajorCategoryPC.getContext('2d'), {
+            type: 'pie',
+            data: majorCategoryData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '費用タイプ別割合'
                     },
-                    ticks: {
-                        autoSkip: true,
-                        maxTicksLimit: 5 // 縦軸のラベルを減らす
+                    legend: {
+                        display: majorCategoryData.labels[0] !== 'データなし',
+                        position: 'bottom'
                     }
                 }
             }
+        });
+    }
+
+    // PC用所持金の遷移を表す折れ線グラフ
+    var ctxLine = document.getElementById('balanceLineChart');
+    if (ctxLine) {
+        var balanceLineChart = new Chart(ctxLine.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: balanceData.labels,
+                datasets: [{
+                    label: balanceData.datasets[0].label,
+                    data: [],
+                    fill: balanceData.datasets[0].fill,
+                    borderColor: balanceData.datasets[0].borderColor,
+                    backgroundColor: balanceData.datasets[0].backgroundColor || 'rgba(54, 162, 235, 0.2)',
+                    tension: 0.1,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 2000,
+                    easing: 'easeInOutQuart'
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '日別収支推移'
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category',
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 10,
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 99, 132, 0.2)'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 5
+                        }
+                    }
+                }
+            }
+        });
+
+        // Y軸範囲を事前に計算
+        const originalData = balanceData.datasets[0].data;
+        const minValue = Math.min(...originalData);
+        const maxValue = Math.max(...originalData);
+        
+        // 自然な目盛りを生成する関数
+        function getNiceScale(min, max) {
+            const range = max - min;
+            const roughStep = range / 5; // 5程度の目盛りを目指す
+            const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+            const normalizedStep = roughStep / magnitude;
+            
+            let niceStep;
+            if (normalizedStep < 1.5) {
+                niceStep = 1 * magnitude;
+            } else if (normalizedStep < 3) {
+                niceStep = 2 * magnitude;
+            } else if (normalizedStep < 7) {
+                niceStep = 5 * magnitude;
+            } else {
+                niceStep = 10 * magnitude;
+            }
+            
+            const niceMin = Math.floor(min / niceStep) * niceStep;
+            const niceMax = Math.ceil(max / niceStep) * niceStep;
+            
+            return { min: niceMin, max: niceMax, step: niceStep };
         }
-    });
+        
+        const scale = getNiceScale(minValue, maxValue);
+        // 余裕を持たせるため、さらに1ステップ分拡張
+        const yMin = Math.min(scale.min - scale.step, 0); // 0を下限として考慮し、さらに余裕を持たせる
+        const yMax = scale.max + scale.step;
+        
+        // Y軸範囲を固定
+        balanceLineChart.options.scales.y.min = yMin;
+        balanceLineChart.options.scales.y.max = yMax;
+        balanceLineChart.options.scales.y.ticks.stepSize = scale.step;
+        balanceLineChart.update('none');
+
+        // アニメーション: ドットを一つずつ表示
+        let currentIndex = 0;
+        
+        function addNextPoint() {
+            if (currentIndex < originalData.length) {
+                balanceLineChart.data.datasets[0].data.push(originalData[currentIndex]);
+                balanceLineChart.update('none'); // アニメーションなしで更新
+                currentIndex++;
+                setTimeout(addNextPoint, 30); // 30msごとに次のポイントを追加
+            }
+        }
+        
+        setTimeout(addNextPoint, 10); // 10ms後にアニメーション開始
+    }
+
+    // モバイル用所持金の遷移を表す折れ線グラフ
+    var ctxLineMobile = document.getElementById('balanceLineChartMobile');
+    if (ctxLineMobile) {
+        var balanceLineChartMobile = new Chart(ctxLineMobile.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: balanceData.labels,
+                datasets: [{
+                    label: balanceData.datasets[0].label,
+                    data: [],
+                    fill: balanceData.datasets[0].fill,
+                    borderColor: balanceData.datasets[0].borderColor,
+                    backgroundColor: balanceData.datasets[0].backgroundColor || 'rgba(54, 162, 235, 0.2)',
+                    tension: 0.1,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 2000,
+                    easing: 'easeInOutQuart'
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '日別収支推移'
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category',
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 8,
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 99, 132, 0.2)'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 4
+                        }
+                    }
+                }
+            }
+        });
+
+        // Y軸範囲を事前に計算
+        const originalDataMobile = balanceData.datasets[0].data;
+        const minValueMobile = Math.min(...originalDataMobile);
+        const maxValueMobile = Math.max(...originalDataMobile);
+        
+        // 自然な目盛りを生成する関数（モバイル用）
+        function getNiceScaleMobile(min, max) {
+            const range = max - min;
+            const roughStep = range / 4; // モバイルでは4程度の目盛りを目指す
+            const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+            const normalizedStep = roughStep / magnitude;
+            
+            let niceStep;
+            if (normalizedStep < 1.5) {
+                niceStep = 1 * magnitude;
+            } else if (normalizedStep < 3) {
+                niceStep = 2 * magnitude;
+            } else if (normalizedStep < 7) {
+                niceStep = 5 * magnitude;
+            } else {
+                niceStep = 10 * magnitude;
+            }
+            
+            const niceMin = Math.floor(min / niceStep) * niceStep;
+            const niceMax = Math.ceil(max / niceStep) * niceStep;
+            
+            return { min: niceMin, max: niceMax, step: niceStep };
+        }
+        
+        const scaleMobile = getNiceScaleMobile(minValueMobile, maxValueMobile);
+        // 余裕を持たせるため、さらに1ステップ分拡張
+        const yMinMobile = Math.min(scaleMobile.min - scaleMobile.step, 0); // 0を下限として考慮し、さらに余裕を持たせる
+        const yMaxMobile = scaleMobile.max + scaleMobile.step;
+        
+        // Y軸範囲を固定
+        balanceLineChartMobile.options.scales.y.min = yMinMobile;
+        balanceLineChartMobile.options.scales.y.max = yMaxMobile;
+        balanceLineChartMobile.options.scales.y.ticks.stepSize = scaleMobile.step;
+        balanceLineChartMobile.update('none');
+
+        // アニメーション: ドットを一つずつ表示
+        let currentIndexMobile = 0;
+        
+        function addNextPointMobile() {
+            if (currentIndexMobile < originalDataMobile.length) {
+                balanceLineChartMobile.data.datasets[0].data.push(originalDataMobile[currentIndexMobile]);
+                balanceLineChartMobile.update('none'); // アニメーションなしで更新
+                currentIndexMobile++;
+                setTimeout(addNextPointMobile, 30); // 30msごとに次のポイントを追加
+            }
+        }
+        
+        setTimeout(addNextPointMobile, 10); // 10ms後にアニメーション開始
+    }
 
     // フィルター変更時に自動的にグラフを更新
     document.getElementById('filterForm').addEventListener('change', function() {
-        this.submit();
+        // 検索クエリも保持
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('target_date', document.getElementById('target_date').value);
+        window.location.href = currentUrl.toString();
     });
 </script>  
 {% endblock %}

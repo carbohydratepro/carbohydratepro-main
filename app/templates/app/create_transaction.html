@@ -1,10 +1,11 @@
 
 {% extends "app/base.html" %}
 {% load app_filters %}
+{% load static %}
 
 {% block content %}
 <div class="container mt-5">
-    <h2 class="mb-4">新しいトランザクションを作成</h2>
+    <h2 class="mb-4">新しい取引</h2>
     <form method="post" class="w-100">
         {% csrf_token %}
         <div class="form-group row">
@@ -29,4 +30,6 @@
         </div>
     </form>
 </div>
+
+<script src="{% static 'app/transaction.js' %}"></script>
 {% endblock %}

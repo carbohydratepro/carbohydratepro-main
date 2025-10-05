@@ -1,18 +1,35 @@
 from django import forms
+from django.utils import timezone
 from .models import Transaction, PaymentMethod, Category, VideoPost, Comment, Task, Memo, ShoppingItem
 
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
         fields = ['date', 'amount', 'purpose', 'transaction_type', 'category', 'major_category', 'payment_method']
+        labels = {
+            'date': '日付',
+            'amount': '金額',
+            'purpose': '用途',
+            'transaction_type': '取引タイプ',
+            'category': 'カテゴリ',
+            'major_category': '費用タイプ',
+            'payment_method': '支払方法',
+        }
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'amount': forms.NumberInput(attrs={'step': '1.0', 'class': 'form-control'}),
+            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control datepicker'}),
+            'amount': forms.NumberInput(attrs={'step': '1', 'min': '0', 'class': 'form-control'}),
+            'purpose': forms.TextInput(attrs={'class': 'form-control'}),
+            'transaction_type': forms.Select(attrs={'class': 'form-control'}),
+            'major_category': forms.Select(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)  # 'user' キーワード引数を取得
         super(TransactionForm, self).__init__(*args, **kwargs)
+        
+        # 新規作成時はデフォルトで今日の日付を設定
+        if not self.instance.pk and not self.data:
+            self.fields['date'].initial = timezone.now().date()
         
         # ユーザーに基づいてクエリセットをフィルタリング
         if user is not None:

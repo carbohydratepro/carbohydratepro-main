@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 @login_required
-def index(request):
+def expenses_list(request):
     target_date = request.GET.get('target_date', None)
     search_query = request.GET.get('search', '')
     
@@ -171,7 +171,7 @@ def index(request):
         }]
     })
 
-    return render(request, 'app/transaction/list.html', {
+    return render(request, 'app/expenses/list.html', {
         'transactions': transactions,
         'category_data_json': category_data_json,
         'major_category_data_json': major_category_data_json,
@@ -192,7 +192,7 @@ def index(request):
     })
     
 @login_required
-def create_transaction(request):
+def create_expenses(request):
     if request.method == 'POST':
         form = TransactionForm(request.POST, user=request.user)
         if form.is_valid():
@@ -201,21 +201,17 @@ def create_transaction(request):
             transaction.save()
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': True})
-            return redirect('index')
+            return redirect('expense_list')
         else:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = TransactionForm(user=request.user)
     
-    # Ajaxリクエストの場合はモーダル用のHTMLを返す
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render(request, 'app/transaction/create_modal.html', {'form': form})
-    
-    return render(request, 'app/create_transaction.html', {'form': form})
+    return render(request, 'app/expenses/create_modal.html', {'form': form})
 
 @login_required
-def settings_view(request):
+def expenses_settings(request):
     payment_limit = 10
     purpose_limit = 30
 
@@ -238,11 +234,11 @@ def settings_view(request):
                 payment_form = PaymentMethodForm(request.POST, instance=payment, prefix='payment')
                 if payment_form.is_valid():
                     payment_form.save()
-                    return redirect('settings')
+                    return redirect('exppenses_settings')
                 edit_payment_instance = payment
             elif 'delete_payment' in request.POST:
                 payment.delete()
-                return redirect('settings')
+                return redirect('expenses_settings')
 
         elif 'purpose_id' in request.POST:
             purpose = get_object_or_404(Category, id=request.POST.get('purpose_id'), user=request.user)
@@ -250,11 +246,11 @@ def settings_view(request):
                 purpose_form = CategoryForm(request.POST, instance=purpose, prefix='purpose')
                 if purpose_form.is_valid():
                     purpose_form.save()
-                    return redirect('settings')
+                    return redirect('expenses_settings')
                 edit_purpose_instance = purpose
             elif 'delete_purpose' in request.POST:
                 purpose.delete()
-                return redirect('settings')
+                return redirect('expenses_settings')
 
         else:
             if 'payment' in request.POST:
@@ -265,7 +261,7 @@ def settings_view(request):
                     new_payment_method = payment_form.save(commit=False)
                     new_payment_method.user = request.user
                     new_payment_method.save()
-                    return redirect('settings')
+                    return redirect('expenses_settings')
 
             elif 'purpose' in request.POST:
                 purpose_form = CategoryForm(request.POST, prefix='purpose')
@@ -275,9 +271,9 @@ def settings_view(request):
                     new_purpose = purpose_form.save(commit=False)
                     new_purpose.user = request.user
                     new_purpose.save()
-                    return redirect('settings')
+                    return redirect('expenses_settings')
 
-    return render(request, 'app/settings.html', {
+    return render(request, 'app/expenses/settings.html', {
         'payment_form': payment_form,
         'purpose_form': purpose_form,
         'payments': payments,
@@ -287,7 +283,7 @@ def settings_view(request):
     })
 
 @login_required
-def edit_transaction(request, transaction_id):
+def edit_expenses(request, transaction_id):
     transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
     if request.method == 'POST':
         form = TransactionForm(request.POST, instance=transaction, user=request.user)
@@ -295,26 +291,22 @@ def edit_transaction(request, transaction_id):
             form.save()
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': True})
-            return redirect('index')
+            return redirect('expense_list')
         else:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = TransactionForm(instance=transaction, user=request.user)
     
-    # Ajaxリクエストの場合はモーダル用のHTMLを返す
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render(request, 'app/transaction/edit_modal.html', {'form': form, 'transaction': transaction})
-    
-    return render(request, 'app/edit_transaction.html', {'form': form})
+    return render(request, 'app/expenses/edit_modal.html', {'form': form, 'transaction': transaction})
 
 @login_required
-def delete_transaction(request, transaction_id):
+def delete_expenses(request, transaction_id):
     transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
     if request.method == 'POST':
         transaction.delete()
-        return redirect('index')
-    return redirect('index')
+        return redirect('expense_list')
+    return redirect('expense_list')
 
 @api_view(['POST'])
 def receive_data(request):
@@ -614,11 +606,7 @@ def create_task(request):
     else:
         form = TaskForm()
     
-    # Ajaxリクエストの場合はモーダル用のHTMLを返す
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render(request, 'app/task/create_modal.html', {'form': form})
-    
-    return render(request, 'app/create_task.html', {'form': form})
+    return render(request, 'app/task/create_modal.html', {'form': form})
 
 
 @login_required
@@ -639,11 +627,7 @@ def edit_task(request, task_id):
     else:
         form = TaskForm(instance=task)
     
-    # Ajaxリクエストの場合はモーダル用のHTMLを返す
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render(request, 'app/task/edit_modal.html', {'form': form, 'task': task})
-    
-    return render(request, 'app/edit_task.html', {'form': form, 'task': task})
+    return render(request, 'app/task/edit_modal.html', {'form': form, 'task': task})
 
 
 @login_required
@@ -710,11 +694,7 @@ def create_memo(request):
     else:
         form = MemoForm()
     
-    # Ajaxリクエストの場合はモーダル用のHTMLを返す
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render(request, 'app/memo/create_modal.html', {'form': form})
-    
-    return render(request, 'app/create_memo.html', {'form': form})
+    return render(request, 'app/memo/create_modal.html', {'form': form})
 
 
 @login_required
@@ -735,11 +715,7 @@ def edit_memo(request, memo_id):
     else:
         form = MemoForm(instance=memo)
     
-    # Ajaxリクエストの場合はモーダル用のHTMLを返す
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render(request, 'app/memo/edit_modal.html', {'form': form, 'memo': memo})
-    
-    return render(request, 'app/edit_memo.html', {'form': form, 'memo': memo})
+    return render(request, 'app/memo/edit_modal.html', {'form': form, 'memo': memo})
 
 
 @login_required
@@ -812,11 +788,7 @@ def create_shopping_item(request):
     else:
         form = ShoppingItemForm()
     
-    # Ajaxリクエストの場合はモーダル用のHTMLを返す
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render(request, 'app/shopping/create_modal.html', {'form': form})
-    
-    return render(request, 'app/create_shopping_item.html', {'form': form})
+    return render(request, 'app/shopping/create_modal.html', {'form': form})
 
 
 @login_required
@@ -837,11 +809,7 @@ def edit_shopping_item(request, item_id):
     else:
         form = ShoppingItemForm(instance=shopping_item)
     
-    # Ajaxリクエストの場合はモーダル用のHTMLを返す
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render(request, 'app/shopping/edit_modal.html', {'form': form, 'shopping_item': shopping_item})
-    
-    return render(request, 'app/edit_shopping_item.html', {'form': form, 'shopping_item': shopping_item})
+    return render(request, 'app/shopping/edit_modal.html', {'form': form, 'shopping_item': shopping_item})
 
 
 @login_required

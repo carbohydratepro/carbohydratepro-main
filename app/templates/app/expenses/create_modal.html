@@ -5,7 +5,7 @@
             <span aria-hidden="true">&times;</span>
         </button>
     </div>
-    <form id="createTransactionForm" method="post" action="{% url 'create_transaction' %}">
+    <form id="createExpensesForm" method="post" action="{% url 'create_expenses' %}">
         <div class="modal-body">
             {% csrf_token %}
             {% for field in form %}

@@ -223,7 +223,7 @@
                         <button onclick="openEditModal({{ transaction.id }})" class="btn btn-sm btn-outline-warning mr-1 py-0 px-1">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <form method="post" action="{% url 'delete_transaction' transaction.id %}" style="display: inline;" onsubmit="return confirm('この取引を削除してもよろしいですか？');">
+                        <form method="post" action="{% url 'delete_expenses' transaction.id %}" style="display: inline;" onsubmit="return confirm('この取引を削除してもよろしいですか？');">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" style="border: none; background: none; padding: 0;">
                                 <i class="fas fa-trash"></i>
@@ -249,7 +249,7 @@
     <button onclick="openCreateModal()" class="btn btn-primary">
         <i class="fas fa-plus"></i> 新規登録
     </button>
-    <a href="{% url 'settings' %}" class="btn btn-secondary">
+    <a href="{% url 'expenses_settings' %}" class="btn btn-secondary">
         <i class="fas fa-cog"></i> 設定
     </a>
 </div>

@@ -3,7 +3,7 @@
 // 編集モーダル関連
 function openEditModal(transactionId) {
     $.ajax({
-        url: '/carbohydratepro/edit/' + transactionId + '/',
+        url: '/carbohydratepro/expenses/edit/' + transactionId + '/',
         type: 'GET',
         headers: {
             'X-Requested-With': 'XMLHttpRequest'
@@ -46,7 +46,7 @@ function openEditModal(transactionId) {
 function openCreateModal(createUrl) {
     // createUrlが指定されていない場合はデフォルトのURLを使用
     if (!createUrl) {
-        createUrl = '/carbohydratepro/create/';
+        createUrl = '/carbohydratepro/expenses/create/';
     }
     
     $.ajax({

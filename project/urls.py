@@ -67,7 +67,7 @@ def robots_txt(request):
 
 urlpatterns = [
     # 推測困難な管理URL（本番環境では更に複雑にすること推奨）
-    path('system-control-panel-x7k9m2/', secure_admin_site.urls),
+    path('system-control-panel/', secure_admin_site.urls),
     # 元の管理URLは404エラーを返す
     path('admin/', lambda request: Http404()),
     path('carbohydratepro/', include('app.urls')),

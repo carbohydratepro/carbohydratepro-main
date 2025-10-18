@@ -1,0 +1,34 @@
+/* タスク管理用CSS */
+.task-card {
+    transition: all 0.3s ease;
+    margin-bottom: 0.5rem;
+}
+
+.task-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.task-card .card-body {
+    padding: 0.75rem;
+}
+
+.task-card .card-title {
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+}
+
+.task-card .small {
+    font-size: 0.8rem;
+    line-height: 1.2;
+}
+
+.task-card .badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+}
+
+.task-card .btn {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.85rem;
+}

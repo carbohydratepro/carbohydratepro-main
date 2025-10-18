@@ -76,11 +76,20 @@
                             <p class="card-text text-muted small">{{ item.memo|highlight:search_query|truncatechars:100 }}</p>
                             {% endif %}
                             
-                            <div class="mt-2">
-                                <a href="{% url 'edit_shopping_item' item.id %}" class="btn btn-sm btn-warning">編集</a>
-                                <a href="{% url 'delete_shopping_item' item.id %}" class="btn btn-sm btn-danger">削除</a>
-                                <button class="btn btn-sm btn-secondary" onclick="updateCount({{ item.id }}, 'reset')">
-                                    リセット
+                            <div class="mt-2 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <button onclick="openEditShoppingModal({{ item.id }})" class="btn btn-sm btn-outline-warning py-0 px-1" title="編集">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <form method="post" action="{% url 'delete_shopping_item' item.id %}" style="display: inline;" onsubmit="return confirm('この商品を削除してもよろしいですか？');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1 ml-1" title="削除">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                <button class="btn btn-sm btn-secondary py-1 px-2" onclick="updateCount({{ item.id }}, 'reset')">
+                                    <i class="fas fa-redo"></i> リセット
                                 </button>
                             </div>
                         </div>
@@ -141,11 +150,20 @@
                             <p class="card-text text-muted small">{{ item.memo|highlight:search_query|truncatechars:100 }}</p>
                             {% endif %}
                             
-                            <div class="mt-2">
-                                <a href="{% url 'edit_shopping_item' item.id %}" class="btn btn-sm btn-warning">編集</a>
-                                <a href="{% url 'delete_shopping_item' item.id %}" class="btn btn-sm btn-danger">削除</a>
-                                <button class="btn btn-sm btn-secondary" onclick="updateCount({{ item.id }}, 'reset')">
-                                    リセット
+                            <div class="mt-2 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <button onclick="openEditShoppingModal({{ item.id }})" class="btn btn-sm btn-outline-warning py-0 px-1" title="編集">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <form method="post" action="{% url 'delete_shopping_item' item.id %}" style="display: inline;" onsubmit="return confirm('この商品を削除してもよろしいですか？');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1 ml-1" title="削除">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                <button class="btn btn-sm btn-secondary py-1 px-2" onclick="updateCount({{ item.id }}, 'reset')">
+                                    <i class="fas fa-redo"></i> リセット
                                 </button>
                             </div>
                         </div>
@@ -159,65 +177,16 @@
         </div>
     </div>
 
-    <a href="{% url 'create_shopping_item' %}" class="btn btn-primary">新規商品追加</a>
+    <button onclick="openCreateShoppingModal()" class="btn btn-primary">
+        <i class="fas fa-plus"></i> 新規商品追加
+    </button>
 </div>
 
-<style>
-.shopping-item-card {
-    transition: all 0.3s ease;
-}
-
-.shopping-item-card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.shopping-item-card.border-danger {
-    border-width: 2px;
-}
-
-.shopping-item-card.border-success {
-    border-width: 2px;
-}
-</style>
+<link rel="stylesheet" href="{% static 'app/modal.css' %}">
+<link rel="stylesheet" href="{% static 'app/shopping.css' %}">
+<script src="{% static 'app/shopping.js' %}"></script>
 
 <script>
-    // 残数の更新
-    function updateCount(itemId, action) {
-        fetch(`/carbohydratepro/shopping/update-count/${itemId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `action=${action}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById(`count-${itemId}`).textContent = data.remaining_count;
-                
-                // ステータスバッジの更新
-                const card = document.querySelector(`#count-${itemId}`).closest('.shopping-item-card');
-                const badge = card.querySelector('.badge');
-                
-                if (data.status_code === 'insufficient') {
-                    badge.className = 'badge badge-danger';
-                    card.className = card.className.replace('border-success', 'border-danger');
-                } else {
-                    badge.className = 'badge badge-success';
-                    card.className = card.className.replace('border-danger', 'border-success');
-                }
-                badge.textContent = data.status;
-                
-                // 不足の場合は上位に移動するため、少し待ってからページをリロード
-                if (action === 'decrease' && data.remaining_count === 0) {
-                    setTimeout(() => location.reload(), 500);
-                }
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    }
-
     // 検索フォームの処理
     document.getElementById('searchForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -231,4 +200,18 @@
         }
     });
 </script>
+
+<!-- 編集モーダル -->
+<div class="modal fade" id="editShoppingModal" tabindex="-1" role="dialog" aria-labelledby="editShoppingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" role="document">
+        <!-- モーダルの内容はAjaxで読み込まれます -->
+    </div>
+</div>
+
+<!-- 新規作成モーダル -->
+<div class="modal fade" id="createShoppingModal" tabindex="-1" role="dialog" aria-labelledby="createShoppingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" role="document">
+        <!-- モーダルの内容はAjaxで読み込まれます -->
+    </div>
+</div>
 {% endblock %}

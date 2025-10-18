@@ -46,57 +46,72 @@
     {% endif %}
 
     <!-- メモリスト -->
-    <div class="memo-list">
+    <div class="row">
         {% for memo in page_obj %}
-        <div class="card mb-3 memo-card" data-memo-id="{{ memo.id }}">
-            <div class="card-header d-flex justify-content-between align-items-center cursor-pointer" 
-                 onclick="toggleMemoExpand({{ memo.id }})">
-                <div class="d-flex align-items-center">
-                    {% if memo.is_favorite %}
-                    <i class="fas fa-star text-warning mr-2" title="お気に入り"></i>
-                    {% endif %}
-                    <h6 class="mb-0">{{ memo.title|highlight:search_query }}</h6>
-                    <span class="badge badge-primary ml-2">{{ memo.get_memo_type_display }}</span>
-                </div>
-                <div class="d-flex align-items-center">
-                    <small class="text-muted mr-3">{{ memo.updated_date|date:"Y-m-d H:i" }}</small>
-                    <i class="fas fa-chevron-down expand-icon" id="icon-{{ memo.id }}"></i>
-                </div>
-            </div>
-            <div class="card-body memo-content" id="content-{{ memo.id }}" style="display: none;">
-                <div class="row">
-                    <div class="col-md-8">
-                        <div class="memo-text">
-                            {{ memo.content|highlight:search_query|linebreaks }}
+        <div class="col-lg-6 col-md-12 mb-3">
+            <div class="card memo-card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-1">
+                                {% if memo.is_favorite %}
+                                <i class="fas fa-star text-warning mr-2" title="お気に入り"></i>
+                                {% endif %}
+                                <h6 class="card-title mb-0">{{ memo.title|highlight:search_query }}</h6>
+                            </div>
+                            <span class="badge badge-primary">{{ memo.get_memo_type_display }}</span>
+                        </div>
+                        <div class="d-flex">
+                            <button class="btn btn-sm btn-outline-warning mr-1 py-0 px-1" 
+                                    onclick="event.stopPropagation(); toggleFavorite({{ memo.id }}, this)"
+                                    data-favorite="{{ memo.is_favorite|yesno:'true,false' }}"
+                                    title="{% if memo.is_favorite %}お気に入り解除{% else %}お気に入り{% endif %}">
+                                <i class="{% if memo.is_favorite %}fas{% else %}far{% endif %} fa-star"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); openEditMemoModal({{ memo.id }})" 
+                                    class="btn btn-sm btn-outline-warning mr-1 py-0 px-1" title="編集">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <form method="post" action="{% url 'delete_memo' memo.id %}" style="display: inline;" 
+                                  onsubmit="event.stopPropagation(); return confirm('このメモを削除してもよろしいですか？');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="削除">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="memo-info">
-                            <p><strong>種別:</strong> {{ memo.get_memo_type_display }}</p>
-                            <p><strong>登録日:</strong> {{ memo.created_date|date:"Y年m月d日 H:i" }}</p>
-                            <p><strong>更新日:</strong> {{ memo.updated_date|date:"Y年m月d日 H:i" }}</p>
+                    
+                    <div class="memo-preview cursor-pointer" onclick="toggleMemoExpand({{ memo.id }})">
+                        <p class="card-text text-muted small mb-2" id="preview-{{ memo.id }}">
+                            {{ memo.content|highlight:search_query|truncatechars:100 }}
+                        </p>
+                        <div class="memo-full-content" id="full-content-{{ memo.id }}" style="display: none;">
+                            <p class="card-text text-muted small mb-2">
+                                {{ memo.content|highlight:search_query|linebreaks }}
+                            </p>
                         </div>
-                        <div class="memo-actions mt-3">
-                            <button class="btn btn-sm btn-outline-warning mr-2" 
-                                    onclick="toggleFavorite({{ memo.id }}, this)"
-                                    data-favorite="{{ memo.is_favorite|yesno:'true,false' }}">
-                                <i class="{% if memo.is_favorite %}fas{% else %}far{% endif %} fa-star"></i>
-                                {% if memo.is_favorite %}お気に入り解除{% else %}お気に入り{% endif %}
-                            </button>
-                            <a href="{% url 'edit_memo' memo.id %}" class="btn btn-sm btn-warning mr-2">編集</a>
-                            <a href="{% url 'delete_memo' memo.id %}" class="btn btn-sm btn-danger">削除</a>
+                        <div class="text-center">
+                            <i class="fas fa-chevron-down expand-icon" id="icon-{{ memo.id }}"></i>
                         </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center text-muted small mt-2">
+                        <span><i class="far fa-calendar-plus"></i> {{ memo.created_date|date:"Y-m-d H:i" }}</span>
+                        <span><i class="far fa-clock"></i> {{ memo.updated_date|date:"Y-m-d H:i" }}</span>
                     </div>
                 </div>
             </div>
         </div>
         {% empty %}
-        <div class="alert alert-secondary text-center">
-            {% if search_query or memo_type_filter or favorite_filter %}
-                検索条件に一致するメモが見つかりませんでした。
-            {% else %}
-                メモが登録されていません。
-            {% endif %}
+        <div class="col-12">
+            <div class="alert alert-secondary text-center">
+                {% if search_query or memo_type_filter or favorite_filter %}
+                    検索条件に一致するメモが見つかりませんでした。
+                {% else %}
+                    メモが登録されていません。
+                {% endif %}
+            </div>
         </div>
         {% endfor %}
     </div>
@@ -144,86 +159,16 @@
     </div>
     {% endif %}
 
-    <a href="{% url 'create_memo' %}" class="btn btn-primary mt-3">新規メモ作成</a>
+    <button onclick="openCreateMemoModal()" class="btn btn-primary mt-3">
+        <i class="fas fa-plus"></i> 新規メモ作成
+    </button>
 </div>
 
-<style>
-.cursor-pointer {
-    cursor: pointer;
-}
-
-.memo-card {
-    transition: all 0.3s ease;
-}
-
-.memo-card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.expand-icon {
-    transition: transform 0.3s ease;
-}
-
-.expand-icon.expanded {
-    transform: rotate(180deg);
-}
-
-.memo-text {
-    max-height: 300px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-}
-
-.memo-info p {
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-}
-</style>
+<link rel="stylesheet" href="{% static 'app/modal.css' %}">
+<link rel="stylesheet" href="{% static 'app/memo.css' %}">
+<script src="{% static 'app/memo.js' %}"></script>
 
 <script>
-    // メモの展開/折りたたみ
-    function toggleMemoExpand(memoId) {
-        const content = document.getElementById(`content-${memoId}`);
-        const icon = document.getElementById(`icon-${memoId}`);
-        
-        if (content.style.display === 'none') {
-            content.style.display = 'block';
-            icon.classList.add('expanded');
-        } else {
-            content.style.display = 'none';
-            icon.classList.remove('expanded');
-        }
-    }
-
-    // お気に入りの切り替え
-    function toggleFavorite(memoId, button) {
-        fetch(`/carbohydratepro/memos/toggle-favorite/${memoId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
-                'Content-Type': 'application/json',
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const icon = button.querySelector('i');
-                if (data.is_favorite) {
-                    icon.className = 'fas fa-star';
-                    button.innerHTML = '<i class="fas fa-star"></i> お気に入り解除';
-                    button.setAttribute('data-favorite', 'true');
-                } else {
-                    icon.className = 'far fa-star';
-                    button.innerHTML = '<i class="far fa-star"></i> お気に入り';
-                    button.setAttribute('data-favorite', 'false');
-                }
-                // ページをリロードしてソート順を更新
-                setTimeout(() => location.reload(), 500);
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    }
-
     // フィルター関連のイベント処理
     document.getElementById('filterForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -245,4 +190,18 @@
         }
     });
 </script>
+
+<!-- 編集モーダル -->
+<div class="modal fade" id="editMemoModal" tabindex="-1" role="dialog" aria-labelledby="editMemoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" role="document">
+        <!-- モーダルの内容はAjaxで読み込まれます -->
+    </div>
+</div>
+
+<!-- 新規作成モーダル -->
+<div class="modal fade" id="createMemoModal" tabindex="-1" role="dialog" aria-labelledby="createMemoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" role="document">
+        <!-- モーダルの内容はAjaxで読み込まれます -->
+    </div>
+</div>
 {% endblock %}

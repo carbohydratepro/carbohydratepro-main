@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.db.models import Sum, F, Q, Avg
 from django.utils.timezone import make_aware
 from .forms import TransactionForm, PaymentMethodForm, CategoryForm, VideoPostForm, CommentForm, TaskForm, MemoForm, ShoppingItemForm
@@ -170,7 +171,7 @@ def index(request):
         }]
     })
 
-    return render(request, 'app/index.html', {
+    return render(request, 'app/transaction/list.html', {
         'transactions': transactions,
         'category_data_json': category_data_json,
         'major_category_data_json': major_category_data_json,
@@ -198,9 +199,19 @@ def create_transaction(request):
             transaction = form.save(commit=False)
             transaction.user = request.user
             transaction.save()
-            return redirect('index')  # 投稿後は一覧画面にリダイレクト
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
+            return redirect('index')
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = TransactionForm(user=request.user)
+    
+    # Ajaxリクエストの場合はモーダル用のHTMLを返す
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'app/transaction/create_modal.html', {'form': form})
+    
     return render(request, 'app/create_transaction.html', {'form': form})
 
 @login_required
@@ -282,9 +293,19 @@ def edit_transaction(request, transaction_id):
         form = TransactionForm(request.POST, instance=transaction, user=request.user)
         if form.is_valid():
             form.save()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
             return redirect('index')
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = TransactionForm(instance=transaction, user=request.user)
+    
+    # Ajaxリクエストの場合はモーダル用のHTMLを返す
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'app/transaction/edit_modal.html', {'form': form, 'transaction': transaction})
+    
     return render(request, 'app/edit_transaction.html', {'form': form})
 
 @login_required
@@ -293,7 +314,7 @@ def delete_transaction(request, transaction_id):
     if request.method == 'POST':
         transaction.delete()
         return redirect('index')
-    return render(request, 'app/confirm_delete.html', {'transaction': transaction})
+    return redirect('index')
 
 @api_view(['POST'])
 def receive_data(request):
@@ -565,7 +586,7 @@ def task_list(request):
             Q(description__icontains=search_query)
         )
     
-    return render(request, 'app/task_list.html', {
+    return render(request, 'app/task/list.html', {
         'tasks': tasks,
         'status_filter': status_filter,
         'priority_filter': priority_filter,
@@ -584,9 +605,18 @@ def create_task(request):
             task = form.save(commit=False)
             task.user = request.user
             task.save()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
             return redirect('task_list')
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = TaskForm()
+    
+    # Ajaxリクエストの場合はモーダル用のHTMLを返す
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'app/task/create_modal.html', {'form': form})
     
     return render(request, 'app/create_task.html', {'form': form})
 
@@ -600,9 +630,18 @@ def edit_task(request, task_id):
         form = TaskForm(request.POST, instance=task)
         if form.is_valid():
             form.save()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
             return redirect('task_list')
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = TaskForm(instance=task)
+    
+    # Ajaxリクエストの場合はモーダル用のHTMLを返す
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'app/task/edit_modal.html', {'form': form, 'task': task})
     
     return render(request, 'app/edit_task.html', {'form': form, 'task': task})
 
@@ -616,7 +655,7 @@ def delete_task(request, task_id):
         task.delete()
         return redirect('task_list')
     
-    return render(request, 'app/confirm_delete_task.html', {'task': task})
+    return redirect('task_list')
 
 
 # メモ管理関連のビュー
@@ -644,7 +683,7 @@ def memo_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    return render(request, 'app/memo_list.html', {
+    return render(request, 'app/memo/list.html', {
         'page_obj': page_obj,
         'memo_type_filter': memo_type_filter,
         'search_query': search_query,
@@ -662,9 +701,18 @@ def create_memo(request):
             memo = form.save(commit=False)
             memo.user = request.user
             memo.save()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
             return redirect('memo_list')
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = MemoForm()
+    
+    # Ajaxリクエストの場合はモーダル用のHTMLを返す
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'app/memo/create_modal.html', {'form': form})
     
     return render(request, 'app/create_memo.html', {'form': form})
 
@@ -678,9 +726,18 @@ def edit_memo(request, memo_id):
         form = MemoForm(request.POST, instance=memo)
         if form.is_valid():
             form.save()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
             return redirect('memo_list')
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = MemoForm(instance=memo)
+    
+    # Ajaxリクエストの場合はモーダル用のHTMLを返す
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'app/memo/edit_modal.html', {'form': form, 'memo': memo})
     
     return render(request, 'app/edit_memo.html', {'form': form, 'memo': memo})
 
@@ -694,7 +751,7 @@ def delete_memo(request, memo_id):
         memo.delete()
         return redirect('memo_list')
     
-    return render(request, 'app/confirm_delete_memo.html', {'memo': memo})
+    return redirect('memo_list')
 
 
 @login_required
@@ -729,7 +786,7 @@ def shopping_list(request):
     one_time_items = shopping_items.filter(frequency='one_time').order_by('status', '-updated_date')
     recurring_items = shopping_items.filter(frequency='recurring').order_by('status', '-updated_date')
     
-    return render(request, 'app/shopping_list.html', {
+    return render(request, 'app/shopping/list.html', {
         'one_time_items': one_time_items,
         'recurring_items': recurring_items,
         'search_query': search_query,
@@ -746,9 +803,18 @@ def create_shopping_item(request):
             shopping_item = form.save(commit=False)
             shopping_item.user = request.user
             shopping_item.save()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
             return redirect('shopping_list')
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = ShoppingItemForm()
+    
+    # Ajaxリクエストの場合はモーダル用のHTMLを返す
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'app/shopping/create_modal.html', {'form': form})
     
     return render(request, 'app/create_shopping_item.html', {'form': form})
 
@@ -762,9 +828,18 @@ def edit_shopping_item(request, item_id):
         form = ShoppingItemForm(request.POST, instance=shopping_item)
         if form.is_valid():
             form.save()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True})
             return redirect('shopping_list')
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = ShoppingItemForm(instance=shopping_item)
+    
+    # Ajaxリクエストの場合はモーダル用のHTMLを返す
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'app/shopping/edit_modal.html', {'form': form, 'shopping_item': shopping_item})
     
     return render(request, 'app/edit_shopping_item.html', {'form': form, 'shopping_item': shopping_item})
 
@@ -778,7 +853,7 @@ def delete_shopping_item(request, item_id):
         shopping_item.delete()
         return redirect('shopping_list')
     
-    return render(request, 'app/confirm_delete_shopping_item.html', {'shopping_item': shopping_item})
+    return redirect('shopping_list')
 
 
 @login_required

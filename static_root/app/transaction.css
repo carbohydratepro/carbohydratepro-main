@@ -1,0 +1,52 @@
+/* 取引管理用CSS */
+.card-sm {
+    margin-bottom: 0.5rem;
+}
+
+.card-sm .card-body {
+    padding: 0.75rem;
+}
+
+.card-sm .card-title {
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+}
+
+.card-sm h6 {
+    font-size: 1rem;
+    margin-bottom: 0.3rem;
+}
+
+.card-sm .small {
+    font-size: 0.8rem;
+    line-height: 1.2;
+}
+
+.card-sm .badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+}
+
+.card-sm .btn {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.85rem;
+}
+
+.badge-sm {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+}
+
+.alert-sm {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* グラフ用 */
+@media (max-width: 768px) {
+    .chart-canvas {
+        height: 200px !important;
+    }
+}

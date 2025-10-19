@@ -83,3 +83,46 @@ function openCreateTaskModal() {
         }
     });
 }
+
+// フィルター関連のイベント処理
+function initializeTaskFilters() {
+    // フィルター変更時とEnterキー押下時の処理
+    var filterForm = document.getElementById('filterForm');
+    if (filterForm) {
+        filterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            this.submit();
+        });
+    }
+
+    // セレクトボックス変更時に自動検索
+    var statusFilter = document.getElementById('status_filter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+    }
+    
+    var priorityFilter = document.getElementById('priority_filter');
+    if (priorityFilter) {
+        priorityFilter.addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+    }
+
+    // 検索フィールドでEnterキー押下時の処理
+    var searchInput = document.getElementById('search');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('filterForm').submit();
+            }
+        });
+    }
+}
+
+// ページ読み込み時にフィルターを初期化
+document.addEventListener('DOMContentLoaded', function() {
+    initializeTaskFilters();
+});

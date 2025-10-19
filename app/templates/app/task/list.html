@@ -51,31 +51,44 @@
         {% for task in tasks %}
         <div class="col-lg-6 col-md-12 mb-3">
             <div class="card task-card h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div class="flex-grow-1">
-                            <h6 class="card-title mb-1">{{ task.title|highlight:search_query }}</h6>
-                            <div class="d-flex flex-wrap align-items-center mb-2">
-                                <span class="badge badge-secondary mr-1">{{ task.get_task_type_display }}</span>
-                                {% if task.frequency %}
-                                <span class="badge badge-info mr-1">{{ task.get_frequency_display }}</span>
-                                {% endif %}
-                                <span class="badge 
-                                    {% if task.priority == 'high' %}badge-danger
-                                    {% elif task.priority == 'medium' %}badge-warning
-                                    {% else %}badge-secondary{% endif %} mr-1">
-                                    {{ task.get_priority_display }}
-                                </span>
-                                <span class="badge 
-                                    {% if task.status == 'completed' %}badge-success
-                                    {% elif task.status == 'in_progress' %}badge-info
-                                    {% else %}badge-light{% endif %}">
-                                    {{ task.get_status_display }}
-                                </span>
-                            </div>
+                <div class="card-body py-2 px-3">
+                    <!-- 1行目: タイトル（左寄せ）と期限（右寄せ） -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="card-title mb-0 flex-grow-1 mr-2">{{ task.title|highlight:search_query }}</h6>
+                        {% if task.due_date %}
+                        <span class="text-muted small {% if task.status != 'completed' %}text-danger{% endif %}" style="white-space: nowrap;">
+                            <i class="far fa-calendar-times"></i> {{ task.due_date|date:"m/d H:i" }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- 説明文（オプション） -->
+                    {% if task.description %}
+                    <p class="card-text text-muted small mb-2">{{ task.description|highlight:search_query|truncatechars:60 }}</p>
+                    {% endif %}
+                    
+                    <!-- 2行目: ラベル（左寄せ）と編集・削除ボタン（右寄せ） -->
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex flex-wrap align-items-center">
+                            <span class="badge badge-secondary mr-1 mb-1">{{ task.get_task_type_display }}</span>
+                            {% if task.frequency %}
+                            <span class="badge badge-info mr-1 mb-1">{{ task.get_frequency_display }}</span>
+                            {% endif %}
+                            <span class="badge 
+                                {% if task.priority == 'high' %}badge-danger
+                                {% elif task.priority == 'medium' %}badge-warning
+                                {% else %}badge-secondary{% endif %} mr-1 mb-1">
+                                {{ task.get_priority_display }}
+                            </span>
+                            <span class="badge 
+                                {% if task.status == 'completed' %}badge-success
+                                {% elif task.status == 'in_progress' %}badge-info
+                                {% else %}badge-light{% endif %} mb-1">
+                                {{ task.get_status_display }}
+                            </span>
                         </div>
-                        <div class="d-flex flex-column">
-                            <button onclick="openEditTaskModal({{ task.id }})" class="btn btn-sm btn-outline-warning mb-1 py-0 px-1" title="編集">
+                        <div class="d-flex" style="white-space: nowrap;">
+                            <button onclick="openEditTaskModal({{ task.id }})" class="btn btn-sm btn-outline-warning py-0 px-1 mr-1" title="編集">
                                 <i class="fas fa-edit"></i>
                             </button>
                             <form method="post" action="{% url 'delete_task' task.id %}" style="display: inline;" onsubmit="return confirm('このタスクを削除してもよろしいですか？');">
@@ -85,19 +98,6 @@
                                 </button>
                             </form>
                         </div>
-                    </div>
-                    
-                    {% if task.description %}
-                    <p class="card-text text-muted small mb-2">{{ task.description|highlight:search_query|truncatechars:80 }}</p>
-                    {% endif %}
-                    
-                    <div class="d-flex justify-content-between align-items-center text-muted small">
-                        <span><i class="far fa-calendar-plus"></i> {{ task.created_date|date:"Y-m-d H:i" }}</span>
-                        {% if task.due_date %}
-                        <span class="{% if task.status != 'completed' %}text-danger{% endif %}">
-                            <i class="far fa-calendar-times"></i> {{ task.due_date|date:"Y-m-d H:i" }}
-                        </span>
-                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -123,31 +123,6 @@
 <link rel="stylesheet" href="{% static 'app/modal.css' %}">
 <link rel="stylesheet" href="{% static 'app/task.css' %}">
 <script src="{% static 'app/task.js' %}"></script>
-
-<script>
-    // フィルター変更時とEnterキー押下時の処理
-    document.getElementById('filterForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        this.submit();
-    });
-
-    // セレクトボックス変更時に自動検索
-    document.getElementById('status_filter').addEventListener('change', function() {
-        document.getElementById('filterForm').submit();
-    });
-    
-    document.getElementById('priority_filter').addEventListener('change', function() {
-        document.getElementById('filterForm').submit();
-    });
-
-    // 検索フィールドでEnterキー押下時の処理
-    document.getElementById('search').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            document.getElementById('filterForm').submit();
-        }
-    });
-</script>
 
 <!-- 編集モーダル -->
 <div class="modal fade" id="editTaskModal" tabindex="-1" role="dialog" aria-labelledby="editTaskModalLabel" aria-hidden="true">

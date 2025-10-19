@@ -213,7 +213,7 @@ def create_expenses(request):
 @login_required
 def expenses_settings(request):
     payment_limit = 10
-    purpose_limit = 30
+    purpose_limit = 10
 
     payments = PaymentMethod.objects.filter(user=request.user)
     purposes = Category.objects.filter(user=request.user)
@@ -234,7 +234,7 @@ def expenses_settings(request):
                 payment_form = PaymentMethodForm(request.POST, instance=payment, prefix='payment')
                 if payment_form.is_valid():
                     payment_form.save()
-                    return redirect('exppenses_settings')
+                    return redirect('expenses_settings')
                 edit_payment_instance = payment
             elif 'delete_payment' in request.POST:
                 payment.delete()
@@ -758,9 +758,9 @@ def shopping_list(request):
             Q(memo__icontains=search_query)
         )
     
-    # 頻度別に分けて取得（不足を上位に表示）
-    one_time_items = shopping_items.filter(frequency='one_time').order_by('status', '-updated_date')
-    recurring_items = shopping_items.filter(frequency='recurring').order_by('status', '-updated_date')
+    # 頻度別に分けて取得（不足を上位に、その後残数が少ない順）
+    one_time_items = shopping_items.filter(frequency='one_time').order_by('status', 'remaining_count', '-updated_date')
+    recurring_items = shopping_items.filter(frequency='recurring').order_by('status', 'remaining_count', '-updated_date')
     
     return render(request, 'app/shopping/list.html', {
         'one_time_items': one_time_items,
@@ -826,23 +826,44 @@ def delete_shopping_item(request, item_id):
 
 @login_required
 def update_shopping_count(request, item_id):
-    """残数の更新（Ajax用）"""
+    """残数・不足数の更新（Ajax用）"""
     if request.method == 'POST':
         shopping_item = get_object_or_404(ShoppingItem, id=item_id, user=request.user)
+        field_type = request.POST.get('field_type')  # 'remaining' or 'threshold'
         action = request.POST.get('action')
         
-        if action == 'increase':
-            shopping_item.remaining_count += 1
-        elif action == 'decrease' and shopping_item.remaining_count > 0:
-            shopping_item.remaining_count -= 1
-        elif action == 'reset':
-            shopping_item.remaining_count = 0
+        # どのフィールドを更新するか判定
+        if field_type == 'remaining':
+            if action == 'increase':
+                shopping_item.remaining_count += 1
+            elif action == 'increase10':
+                shopping_item.remaining_count += 10
+            elif action == 'decrease':
+                # 0未満にならないように制限
+                if shopping_item.remaining_count > 0:
+                    shopping_item.remaining_count -= 1
+            elif action == 'decrease10':
+                # 0未満にならないように制限
+                shopping_item.remaining_count = max(0, shopping_item.remaining_count - 10)
+        elif field_type == 'threshold':
+            if action == 'increase':
+                shopping_item.threshold_count += 1
+            elif action == 'increase10':
+                shopping_item.threshold_count += 10
+            elif action == 'decrease':
+                # 0未満にならないように制限
+                if shopping_item.threshold_count > 0:
+                    shopping_item.threshold_count -= 1
+            elif action == 'decrease10':
+                # 0未満にならないように制限
+                shopping_item.threshold_count = max(0, shopping_item.threshold_count - 10)
         
         shopping_item.save()  # save()メソッドでステータスも自動更新される
         
         return JsonResponse({
             'success': True,
             'remaining_count': shopping_item.remaining_count,
+            'threshold_count': shopping_item.threshold_count,
             'status': shopping_item.get_status_display(),
             'status_code': shopping_item.status
         })

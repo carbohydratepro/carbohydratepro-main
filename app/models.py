@@ -4,14 +4,14 @@ from datetime import datetime
 
 class PaymentMethod(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payment_methods')
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=20)
     
     def __str__(self):
         return self.name
 
 class Category(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='categories')
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=20)
     
     def __str__(self):
         return self.name
@@ -164,6 +164,7 @@ class ShoppingItem(models.Model):
     frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, verbose_name="頻度")
     price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name="金額")
     remaining_count = models.IntegerField(default=0, verbose_name="残数")
+    threshold_count = models.IntegerField(default=0, verbose_name="不足数")  # 追加: この数以下になると不足とみなす
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='insufficient', verbose_name="ステータス")
     memo = models.TextField(blank=True, verbose_name="メモ")
     created_date = models.DateTimeField(auto_now_add=True, verbose_name="登録日")
@@ -173,12 +174,16 @@ class ShoppingItem(models.Model):
         return f"{self.title} - {self.get_status_display()}"
 
     def save(self, *args, **kwargs):
-        # 残数に基づいてステータスを自動更新
-        if self.remaining_count <= 0:
+        # 残数が0未満にならないように制限
+        if self.remaining_count < 0:
+            self.remaining_count = 0
+        
+        # 残数と不足数を比較してステータスを自動更新
+        if self.remaining_count <= self.threshold_count:
             self.status = 'insufficient'
         else:
             self.status = 'available'
         super().save(*args, **kwargs)
 
     class Meta:
-        ordering = ['status', '-updated_date']  # 不足を上位に、その後は更新日順
+        ordering = ['status', 'remaining_count', '-updated_date']  # 不足を上位に、その後残数が少ない順、更新日順

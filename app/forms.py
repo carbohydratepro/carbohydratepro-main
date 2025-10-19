@@ -57,7 +57,13 @@ class PaymentMethodForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            field.widget.attrs['class'] = 'form-control'  
+            field.widget.attrs['class'] = 'form-control'
+            field.widget.attrs['maxlength'] = '20'
+        # エラーメッセージのカスタマイズ
+        self.fields['name'].error_messages = {
+            'max_length': '上限文字数は20です。',
+            'required': 'この項目は必須です。',
+        }
             
 class CategoryForm(forms.ModelForm):
     class Meta:
@@ -68,7 +74,13 @@ class CategoryForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            field.widget.attrs['class'] = 'form-control'  
+            field.widget.attrs['class'] = 'form-control'
+            field.widget.attrs['maxlength'] = '20'
+        # エラーメッセージのカスタマイズ
+        self.fields['name'].error_messages = {
+            'max_length': '上限文字数は20です。',
+            'required': 'この項目は必須です。',
+        }  
 
 # user：取引を行ったユーザー
 # amount：金額
@@ -178,12 +190,13 @@ class MemoForm(forms.ModelForm):
 class ShoppingItemForm(forms.ModelForm):
     class Meta:
         model = ShoppingItem
-        fields = ['title', 'frequency', 'price', 'remaining_count', 'memo']
+        fields = ['title', 'frequency', 'price', 'remaining_count', 'threshold_count', 'memo']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'frequency': forms.Select(attrs={'class': 'form-control'}),
             'price': forms.NumberInput(attrs={'step': '0.01', 'class': 'form-control'}),
             'remaining_count': forms.NumberInput(attrs={'min': '0', 'class': 'form-control'}),
+            'threshold_count': forms.NumberInput(attrs={'min': '0', 'class': 'form-control'}),
             'memo': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
         }
 

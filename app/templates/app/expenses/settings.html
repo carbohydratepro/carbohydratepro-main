@@ -41,7 +41,7 @@
                             <div class="modal-body">
                                 <div class="form-group">
                                     <label for="payment-name-{{ payment.id }}">支払方法</label>
-                                    <input type="text" name="payment-name" class="form-control" id="payment-name-{{ payment.id }}" value="{{ payment.name }}">
+                                    <input type="text" name="payment-name" class="form-control" id="payment-name-{{ payment.id }}" value="{{ payment.name }}" maxlength="20">
                                 </div>
                                 <input type="hidden" name="payment_id" value="{{ payment.id }}">
                                 <input type="hidden" name="edit_payment" value="true">
@@ -81,24 +81,38 @@
                 </div>
             </div>
             {% endfor %}
-            {% if payment_form.non_field_errors %}
-            <div class="alert alert-danger">
-                {{ payment_form.non_field_errors }}
-            </div>
-            {% endif %}
+            
             <!-- 新しい支払方法の追加行 -->
             <tr>
                 <form method="post">
                     {% csrf_token %}
-                    <td>
-                        <input type="text" name="payment-name" placeholder="新しい支払方法" class="form-control">
-                    </td>
-                    <td>
-                        <input type="hidden" name="payment" value="true">
-                        <button type="submit" class="btn btn-sm btn-primary">追加</button>
+                    <td colspan="2">
+                        <div class="form-group mb-0">
+                            <input type="text" name="payment-name" placeholder="新しい支払方法" class="form-control" maxlength="20">
+                            <input type="hidden" name="payment" value="true">
+                        </div>
+                        {% if payment_form.non_field_errors %}
+                        <div class="alert alert-danger alert-sm mt-2 mb-0 py-1 px-2">
+                            {% for error in payment_form.non_field_errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% elif payment_form.errors %}
+                        <div class="alert alert-danger alert-sm mt-2 mb-0 py-1 px-2">
+                            {% for field, errors in payment_form.errors.items %}
+                                {% for error in errors %}
+                                    {{ error }}<br>
+                                {% endfor %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </td>
                 </form>
-                
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="this.closest('tr').previousElementSibling.querySelector('form').submit()">追加</button>
+                </td>
             </tr>
         </tbody>
     </table>
@@ -138,7 +152,7 @@
                             <div class="modal-body">
                                 <div class="form-group">
                                     <label for="purpose-name-{{ purpose.id }}">使用用途</label>
-                                    <input type="text" name="purpose-name" class="form-control" id="purpose-name-{{ purpose.id }}" value="{{ purpose.name }}">
+                                    <input type="text" name="purpose-name" class="form-control" id="purpose-name-{{ purpose.id }}" value="{{ purpose.name }}" maxlength="20">
                                 </div>
                                 <input type="hidden" name="purpose_id" value="{{ purpose.id }}">
                                 <input type="hidden" name="edit_purpose" value="true">
@@ -183,21 +197,34 @@
             <tr>
                 <form method="post">
                     {% csrf_token %}
-                    <td>
-                        <input type="text" name="purpose-name" placeholder="新しい使用用途" class="form-control">
-                    </td>
-                    <td>
-                        <input type="hidden" name="purpose" value="true">
-                        <button type="submit" class="btn btn-sm btn-primary">追加</button>
+                    <td colspan="2">
+                        <div class="form-group mb-0">
+                            <input type="text" name="purpose-name" placeholder="新しい使用用途" class="form-control" maxlength="20">
+                            <input type="hidden" name="purpose" value="true">
+                        </div>
+                        {% if purpose_form.non_field_errors %}
+                        <div class="alert alert-danger alert-sm mt-2 mb-0 py-1 px-2">
+                            {% for error in purpose_form.non_field_errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% elif purpose_form.errors %}
+                        <div class="alert alert-danger alert-sm mt-2 mb-0 py-1 px-2">
+                            {% for field, errors in purpose_form.errors.items %}
+                                {% for error in errors %}
+                                    {{ error }}<br>
+                                {% endfor %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </td>
                 </form>
             </tr>
-                
-            {% if purpose_form.non_field_errors %}
-            <div class="alert alert-danger">
-                {{ purpose_form.non_field_errors }}
-            </div>
-            {% endif %}
+            <tr>
+                <td colspan="2">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="this.closest('tr').previousElementSibling.querySelector('form').submit()">追加</button>
+                </td>
+            </tr>
         </tbody>
     </table>
 </div>

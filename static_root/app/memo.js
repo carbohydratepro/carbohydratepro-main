@@ -130,3 +130,43 @@ function openCreateMemoModal() {
         }
     });
 }
+
+// フィルター関連のイベント処理
+function initializeMemoFilters() {
+    var filterForm = document.getElementById('filterForm');
+    if (filterForm) {
+        filterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            this.submit();
+        });
+    }
+
+    var memoTypeFilter = document.getElementById('memo_type_filter');
+    if (memoTypeFilter) {
+        memoTypeFilter.addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+    }
+    
+    var favoriteFilter = document.getElementById('favorite_filter');
+    if (favoriteFilter) {
+        favoriteFilter.addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+    }
+
+    var searchInput = document.getElementById('search');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('filterForm').submit();
+            }
+        });
+    }
+}
+
+// ページ読み込み時にフィルターを初期化
+document.addEventListener('DOMContentLoaded', function() {
+    initializeMemoFilters();
+});

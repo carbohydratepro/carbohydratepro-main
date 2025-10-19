@@ -260,6 +260,13 @@ EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_USE_SSL = False # TLSとSSLは併用しない
 DEFAULT_FROM_EMAIL = env('EMAIL_HOST_USER', default='no-reply@gmail.com')
 
+# セキュリティアラート送信先メールアドレス
+SECURITY_ALERT_EMAIL = 'carbohydratepro@gmail.com'
+
+# セキュリティアラート設定
+SEND_INSTANT_SECURITY_EMAIL = env.bool('SEND_INSTANT_SECURITY_EMAIL', default=False)  # ログイン時の即座メール送信
+SEND_PERIODIC_SECURITY_EMAIL = env.bool('SEND_PERIODIC_SECURITY_EMAIL', default=True)  # 5分ごとの定期レポート
+
 # メール送信の詳細ログを有効化
 LOGGING['loggers']['django.core.mail'] = {
     'handlers': ['file', 'console'],

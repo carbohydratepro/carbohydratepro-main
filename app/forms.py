@@ -17,7 +17,7 @@ class TransactionForm(forms.ModelForm):
         }
         widgets = {
             'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control datepicker'}),
-            'amount': forms.NumberInput(attrs={'step': '1', 'min': '0', 'class': 'form-control'}),
+            'amount': forms.NumberInput(attrs={'step': '1', 'min': '0', 'max': '99999999', 'class': 'form-control'}),
             'purpose': forms.TextInput(attrs={'class': 'form-control'}),
             'transaction_type': forms.Select(attrs={'class': 'form-control'}),
             'major_category': forms.Select(attrs={'class': 'form-control'}),
@@ -46,6 +46,15 @@ class TransactionForm(forms.ModelForm):
                 field.widget.attrs['class'] += ' form-control'
             else:
                 field.widget.attrs['class'] = 'form-control'
+    
+    def clean_amount(self):
+        amount = self.cleaned_data.get('amount')
+        if amount is not None:
+            if amount < 0:
+                raise forms.ValidationError('金額は0以上である必要があります。')
+            if amount > 99999999:
+                raise forms.ValidationError('金額は99,999,999以下である必要があります。')
+        return amount
 
 
 class PaymentMethodForm(forms.ModelForm):

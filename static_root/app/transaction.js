@@ -1,5 +1,36 @@
 // 取引管理用JavaScript
 
+// エラーメッセージを表示する関数
+function displayFormErrors(errors) {
+    // 既存のエラーメッセージをクリア
+    $('.field-error').remove();
+    
+    // 各フィールドのエラーを表示
+    for (var fieldName in errors) {
+        var field = $('#id_' + fieldName);
+        var errorMessages = errors[fieldName];
+        
+        if (field.length) {
+            // エラーメッセージを作成
+            var errorHtml = '<div class="field-error text-danger small mt-1">';
+            if (Array.isArray(errorMessages)) {
+                errorMessages.forEach(function(msg) {
+                    errorHtml += msg + '<br>';
+                });
+            } else {
+                errorHtml += errorMessages;
+            }
+            errorHtml += '</div>';
+            
+            // フィールドの親要素（form-group）の後に追加
+            field.closest('.form-group').append(errorHtml);
+            
+            // フィールドに赤枠を追加
+            field.addClass('is-invalid');
+        }
+    }
+}
+
 // 編集モーダル関連
 function openEditModal(transactionId) {
     $.ajax({
@@ -15,6 +46,11 @@ function openEditModal(transactionId) {
             // フォーム送信時の処理
             $('#editTransactionForm').on('submit', function(e) {
                 e.preventDefault();
+                
+                // エラー表示をクリア
+                $('.field-error').remove();
+                $('input, select, textarea').removeClass('is-invalid');
+                
                 $.ajax({
                     url: $(this).attr('action'),
                     type: 'POST',
@@ -26,6 +62,8 @@ function openEditModal(transactionId) {
                         if (response.success) {
                             $('#editModal').modal('hide');
                             location.reload();
+                        } else if (response.errors) {
+                            displayFormErrors(response.errors);
                         } else {
                             alert('エラーが発生しました。入力内容を確認してください。');
                         }
@@ -68,6 +106,11 @@ function openCreateModal(createUrl) {
             // フォーム送信時の処理
             $('#createTransactionForm').on('submit', function(e) {
                 e.preventDefault();
+                
+                // エラー表示をクリア
+                $('.field-error').remove();
+                $('input, select, textarea').removeClass('is-invalid');
+                
                 $.ajax({
                     url: $(this).attr('action'),
                     type: 'POST',
@@ -79,6 +122,8 @@ function openCreateModal(createUrl) {
                         if (response.success) {
                             $('#createModal').modal('hide');
                             location.reload();
+                        } else if (response.errors) {
+                            displayFormErrors(response.errors);
                         } else {
                             alert('エラーが発生しました。入力内容を確認してください。');
                         }

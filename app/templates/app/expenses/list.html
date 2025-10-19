@@ -1,5 +1,6 @@
 {% extends "app/base.html" %}
 {% load static %}
+{% load app_filters %}
 {% block content %}
 <div class="container mt-5">
     <h2 class="mb-4">家計簿もどき</h2>
@@ -25,15 +26,15 @@
                     <div class="row text-center">
                         <div class="col-6 col-md-3">
                             <small class="text-primary">収入</small>
-                            <div class="h6 text-primary mb-0">+¥{{ total_income|floatformat:0 }}</div>
+                            <div class="h6 text-primary mb-0">+¥{{ total_income_formatted }}</div>
                         </div>
                         <div class="col-6 col-md-3">
                             <small class="text-danger">支出</small>
-                            <div class="h6 text-danger mb-0">-¥{{ total_expense|floatformat:0 }}</div>
+                            <div class="h6 text-danger mb-0">-¥{{ total_expense_formatted }}</div>
                         </div>
                         <div class="col-6 col-md-3">
                             <small {% if net_balance >= 0 %}class="text-success"{% else %}class="text-warning"{% endif %}>収支</small>
-                            <div {% if net_balance >= 0 %}class="h6 text-success mb-0"{% else %}class="h6 text-warning mb-0"{% endif %}>{% if net_balance >= 0 %}+{% endif %}¥{{ net_balance|floatformat:0 }}</div>
+                            <div {% if net_balance >= 0 %}class="h6 text-success mb-0"{% else %}class="h6 text-warning mb-0"{% endif %}>{% if net_balance >= 0 %}+{% endif %}¥{{ net_balance_formatted }}</div>
                         </div>
                         <div class="col-6 col-md-3">
                             <small class="text-info">取引件数</small>
@@ -81,15 +82,15 @@
         </div>
         
         <!-- モバイル: 棒グラフ（全幅） -->
-        <div class="col-12 d-md-none mb-3">
-            <div style="height: 300px;">
+        <div class="col-12 d-md-none mb-2">
+            <div style="height: 200px;">
                 <canvas id="expenseBarChartMobile" class="chart-canvas"></canvas>
             </div>
         </div>
         
         <!-- モバイル: 折れ線グラフ（全幅） -->
-        <div class="col-12 d-md-none mb-3">
-            <div style="height: 300px;">
+        <div class="col-12 d-md-none mb-2">
+            <div style="height: 200px;">
                 <canvas id="balanceLineChartMobile" class="chart-canvas"></canvas>
             </div>
         </div>
@@ -194,7 +195,7 @@
                             {% if transaction.transaction_type == 'income' %}text-primary
                             {% elif transaction.transaction_type == 'expense' %}text-danger
                             {% else %}text-secondary{% endif %}">
-                            {% if transaction.transaction_type == 'income' %}+{% elif transaction.transaction_type == 'expense' %}-{% endif %}¥{{ transaction.amount|floatformat:0 }}
+                            {% if transaction.transaction_type == 'income' %}+{% elif transaction.transaction_type == 'expense' %}-{% endif %}¥{{ transaction.amount|comma_format }}
                         </h6>
                         <small class="text-muted" title="{{ transaction.payment_method }}">
                             <i class="fas fa-credit-card"></i> {{ transaction.payment_method|truncatechars:10 }}

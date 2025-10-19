@@ -5,7 +5,7 @@ from django.contrib.auth.views import (
 from django.shortcuts import render, redirect, resolve_url
 from django.contrib.auth.decorators import login_required
 from django.views import generic
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, login
 from django.contrib.auth.mixins import UserPassesTestMixin
 from .forms import LoginForm, SignupForm, UserUpdateForm, MyPasswordChangeForm, MyPasswordResetForm, MySetPasswordForm
 from django.urls import reverse_lazy
@@ -52,7 +52,12 @@ class Signup(generic.CreateView):
         user.is_staff = False
         user.is_superuser = False
         user.save()
-        return redirect('signup_done')
+        
+        # サインアップ後に自動的にログイン
+        login(self.request, user)
+        
+        # ログイン後、通常のログインと同じ場所（家計簿）にリダイレクト
+        return redirect('expense_list')
     
     # データ送信
     def get_context_data(self, **kwargs):

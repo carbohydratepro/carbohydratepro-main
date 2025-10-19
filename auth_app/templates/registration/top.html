@@ -1,8 +1,96 @@
 {% extends "registration/base.html" %}
+{% load static %}
 
 <!-- コンテンツ -->
 {% block content %}
-<div class="container">
-  <h1>Top Page!!</h1>
+<link rel="stylesheet" href="{% static 'app/top.css' %}">
+
+<div class="container mt-5">
+  <div class="row">
+    <div class="col-md-12">
+      <!-- サイト更新履歴セクション -->
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0"><i class="fas fa-history"></i> サイト更新履歴</h4>
+        </div>
+        <div class="card-body">
+          <!-- 2025/11/15 不要機能廃止&新機能公開 -->
+          <div class="update-item mb-4">
+            <div class="d-flex align-items-center mb-2">
+              <span class="badge badge-info mr-2">2025/11/15</span>
+              <h5 class="mb-0">不要機能廃止 & 新機能公開</h5>
+            </div>
+            <ul class="list-unstyled ml-4">
+              <li class="mb-2"><i class="fas fa-minus-circle text-danger"></i> 「センサーを用いたグラフ機能」を廃止しました。</li>
+              <li class="mb-2"><i class="fas fa-minus-circle text-danger"></i> 「動画共有機能」を廃止しました。</li>
+              <li class="mb-2"><i class="fas fa-plus-circle text-success"></i> 「タスク管理機能」を公開しました。</li>
+              <li class="mb-2"><i class="fas fa-plus-circle text-success"></i> 「メモ管理機能」を公開しました。</li>
+              <li class="mb-2"><i class="fas fa-plus-circle text-success"></i> 「買い物リスト機能」を公開しました。</li>
+              <li class="mb-2"><i class="fas fa-chart-line text-primary"></i> 「支出管理機能」を強化しました。</li>
+              <li class="mb-2"><i class="fas fa-paint-brush text-info"></i> 全体的にデザインを一新しました。</li>
+            </ul>
+          </div>
+          
+          <hr>
+          
+          <!-- 2025/10/30 新機能公開（動画共有） -->
+          <div class="update-item mb-4">
+            <div class="d-flex align-items-center mb-2">
+              <span class="badge badge-info mr-2">2025/10/30</span>
+              <h5 class="mb-0">新機能公開</h5>
+            </div>
+            <ul class="list-unstyled ml-4">
+              <li class="mb-2"><i class="fas fa-plus-circle text-success"></i> 「動画共有機能」を公開しました。</li>
+            </ul>
+          </div>
+          
+          <hr>
+          
+          <!-- 2025/10/30 新機能公開（センサー） -->
+          <div class="update-item mb-4">
+            <div class="d-flex align-items-center mb-2">
+              <span class="badge badge-info mr-2">2025/10/30</span>
+              <h5 class="mb-0">新機能公開</h5>
+            </div>
+            <ul class="list-unstyled ml-4">
+              <li class="mb-2"><i class="fas fa-plus-circle text-success"></i> 「センサーを用いたグラフ機能」を実装しました。</li>
+            </ul>
+          </div>
+          
+          <hr>
+          
+          <!-- 2024/6/2 サイト公開 -->
+          <div class="update-item">
+            <div class="d-flex align-items-center mb-2">
+              <span class="badge badge-info mr-2">2024/06/02</span>
+              <h5 class="mb-0">サイト公開</h5>
+            </div>
+            <ul class="list-unstyled ml-4">
+              <li class="mb-2"><i class="fas fa-rocket text-warning"></i> サイトを公開しました。</li>
+              <li class="mb-2"><i class="fas fa-plus-circle text-success"></i> 「支出管理機能」を追加しました。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      <!-- ログイン・サインアップボタン（未ログイン時のみ） -->
+      {% if not user.is_authenticated %}
+      <div class="text-center mt-4">
+        <a href="{% url 'login' %}" class="btn btn-primary btn-lg mr-2">
+          <i class="fas fa-sign-in-alt"></i> ログイン
+        </a>
+        <a href="{% url 'signup' %}" class="btn btn-success btn-lg">
+          <i class="fas fa-user-plus"></i> サインアップ
+        </a>
+      </div>
+      {% else %}
+      <div class="text-center mt-4 mb-4">
+        <a href="{% url 'expense_list' %}" class="btn btn-primary btn-lg">
+          <i class="fas fa-chart-pie"></i> 家計簿へ
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
 </div>
 {% endblock %}

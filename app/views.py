@@ -39,12 +39,12 @@ def expenses_list(request):
         target_date = make_aware(datetime.strptime(target_date, '%Y-%m'))
     else:
         # target_dateが指定されていない場合、現在の月をデフォルトとして設定
-        target_date = make_aware(datetime.now().replace(day=1))
+        target_date = make_aware(datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0))
 
-    start_date = target_date.replace(day=1)
-    end_date = (start_date + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    start_date = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    end_date = (start_date + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0) - timedelta(microseconds=1)
 
-    transactions = Transaction.objects.filter(user=request.user, date__range=(start_date, end_date))
+    transactions = Transaction.objects.filter(user=request.user, date__range=(start_date, end_date)).order_by('-date', '-id')
     
     # 検索機能
     if search_query:
@@ -77,15 +77,17 @@ def expenses_list(request):
     # 日付範囲の作成（固定された月初から月末）
     date_range = [(start_date + timedelta(days=i)).strftime('%Y-%m-%d') for i in range((end_date - start_date).days + 1)]
 
-    # カテゴリグラフ用データの作成（上位5つ + その他）
-    category_data = transactions.values('category__name').annotate(total=Sum('amount')).order_by('-total')
+    # カテゴリグラフ用データの作成（支出のみ、上位5つ + その他）
+    expense_transactions = transactions.filter(transaction_type='expense')
+    category_data = expense_transactions.values('category__name').annotate(total=Sum('amount')).order_by('-total')
     
     # カテゴリグラフ：上位5つとその他に分ける
     if category_data.exists():
         top_categories = list(category_data[:5])
         other_total = sum(float(entry['total']) for entry in category_data[5:])
         
-        category_labels = [entry['category__name'] for entry in top_categories]
+        # ラベルを10文字で切り詰める
+        category_labels = [entry['category__name'][:10] + ('...' if len(entry['category__name']) > 10 else '') for entry in top_categories]
         category_amounts = [float(entry['total']) for entry in top_categories]
         
         # 実際のデータ数に応じて色を設定
@@ -102,8 +104,8 @@ def expenses_list(request):
         category_amounts = [1]
         category_colors = ['#BDC3C7']
     
-    # メインカテゴリを日本語表記で取得（固定3色）
-    major_category_data = transactions.values('major_category').annotate(total=Sum('amount')).order_by('-total')
+    # メインカテゴリを日本語表記で取得（支出のみ、固定3色）
+    major_category_data = expense_transactions.values('major_category').annotate(total=Sum('amount')).order_by('-total')
     major_category_labels = {
         'variable': '変動費',
         'fixed': '固定費',
@@ -150,7 +152,6 @@ def expenses_list(request):
         current_balance += float(daily_income) - float(daily_expense)  # Decimalをfloatに変換
         expense_data.append(float(daily_expense))  # Decimalをfloatに変換
         balance_data.append(float(current_balance))  # Decimalをfloatに変換
-        balance_data.append(float(current_balance))  # Decimalをfloatに変換
 
     expense_data_json = json.dumps({
         'labels': date_range,
@@ -171,6 +172,11 @@ def expenses_list(request):
         }]
     })
 
+    # 三桁区切りフォーマット済みの値を作成
+    total_income_formatted = '{:,.0f}'.format(float(total_income))
+    total_expense_formatted = '{:,.0f}'.format(float(total_expense))
+    net_balance_formatted = '{:,.0f}'.format(float(net_balance))
+    
     return render(request, 'app/expenses/list.html', {
         'transactions': transactions,
         'category_data_json': category_data_json,
@@ -180,6 +186,9 @@ def expenses_list(request):
         'total_income': total_income,
         'total_expense': total_expense,
         'net_balance': net_balance,
+        'total_income_formatted': total_income_formatted,
+        'total_expense_formatted': total_expense_formatted,
+        'net_balance_formatted': net_balance_formatted,
         'target_month': target_date.strftime('%Y年%m月'),
         'search_query': search_query,
         'user_categories': user_categories,

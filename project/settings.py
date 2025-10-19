@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',  # 数値のカンマ区切り表示用
     'app',
     'rest_framework',
 ]
@@ -135,6 +136,11 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
+
+# 数値の三桁区切り表示を有効化
+USE_THOUSAND_SEPARATOR = True
+THOUSAND_SEPARATOR = ','
+NUMBER_GROUPING = 3
 
 
 # Static files (CSS, JavaScript, Images)

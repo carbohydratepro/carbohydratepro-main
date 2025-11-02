@@ -3,8 +3,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum, F, Q, Avg
 from django.utils.timezone import make_aware
-from .forms import TransactionForm, PaymentMethodForm, CategoryForm, VideoPostForm, CommentForm, TaskForm, MemoForm, ShoppingItemForm
-from .models import Transaction, PaymentMethod, Category, VideoPost, Comment, Task, Memo, ShoppingItem
+from django.core.mail import send_mail
+from django.conf import settings
+from .forms import TransactionForm, PaymentMethodForm, CategoryForm, VideoPostForm, CommentForm, TaskForm, MemoForm, ShoppingItemForm, ContactMessageForm
+from .models import Transaction, PaymentMethod, Category, VideoPost, Comment, Task, Memo, ShoppingItem, ContactMessage
 from datetime import datetime, timedelta
 
 import json
@@ -878,3 +880,77 @@ def update_shopping_count(request, item_id):
         })
     
     return JsonResponse({'success': False})
+
+
+@login_required
+def contact(request):
+    """お問い合わせフォーム表示・送信"""
+    if request.method == 'POST':
+        form = ContactMessageForm(request.POST)
+        if form.is_valid():
+            # フォームを保存（ユーザー情報を追加）
+            contact_message = form.save(commit=False)
+            contact_message.user = request.user
+            contact_message.save()
+            
+            # 管理者にメール送信
+            try:
+                inquiry_type_display = contact_message.get_inquiry_type_display()
+                subject = f'【お問い合わせ】{inquiry_type_display}: {contact_message.subject}'
+                
+                message = f'''
+新しいお問い合わせが届きました。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【お問い合わせ情報】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+種類: {inquiry_type_display}
+件名: {contact_message.subject}
+送信者: {request.user.email}
+送信日時: {contact_message.created_at.strftime('%Y年%m月%d日 %H:%M:%S')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【お問い合わせ内容】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{contact_message.message}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+このメールは自動送信されています。
+お問い合わせへの対応が完了したら、管理画面で「対応済み」にマークしてください。
+'''
+                
+                # 管理者メールアドレスを取得
+                admin_email = getattr(settings, 'SECURITY_ALERT_EMAIL', 'carbohydratepro@gmail.com')
+                
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[admin_email],
+                    fail_silently=False,
+                )
+                
+                messages.success(request, 'お問い合わせを送信しました。ご連絡ありがとうございます。')
+                logger.info(f'お問い合わせメール送信成功: {request.user.email} - {inquiry_type_display}')
+                
+            except Exception as e:
+                logger.error(f'お問い合わせメール送信エラー: {str(e)}')
+                messages.warning(request, 'お問い合わせは保存されましたが、メール送信に失敗しました。')
+            
+            return redirect('contact')
+        else:
+            messages.error(request, 'フォームに入力エラーがあります。')
+    else:
+        form = ContactMessageForm()
+    
+    # ユーザーの過去のお問い合わせ履歴を取得
+    user_messages = ContactMessage.objects.filter(user=request.user)[:10]
+    
+    context = {
+        'form': form,
+        'user_messages': user_messages,
+    }
+    return render(request, 'app/contact.html', context)

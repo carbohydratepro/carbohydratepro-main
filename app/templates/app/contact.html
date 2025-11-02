@@ -1,0 +1,102 @@
+{% extends 'app/base.html' %}
+{% load static %}
+
+{% block title %}お問い合わせ{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app/contact.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="contact-container">
+    <div class="contact-header">
+        <h2>📧 お問い合わせ</h2>
+        <p>バグ報告、機能要望、ご質問などお気軽にお送りください</p>
+    </div>
+    
+    <div class="form-card">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="{{ form.inquiry_type.id_for_label }}">
+                    {{ form.inquiry_type.label }}
+                    <span class="required">*</span>
+                </label>
+                {{ form.inquiry_type }}
+                {% if form.inquiry_type.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.inquiry_type.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.subject.id_for_label }}">
+                    {{ form.subject.label }}
+                    <span class="required">*</span>
+                </label>
+                {{ form.subject }}
+                {% if form.subject.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.subject.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.message.id_for_label }}">
+                    {{ form.message.label }}
+                    <span class="required">*</span>
+                </label>
+                {{ form.message }}
+                {% if form.message.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.message.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                <small class="form-text text-muted">
+                    できるだけ詳しくご記入ください。エラーメッセージがある場合は、その内容も含めてください。
+                </small>
+            </div>
+            
+            <button type="submit" class="btn-submit">送信する</button>
+        </form>
+    </div>
+    
+    {% if user_messages %}
+    <div class="history-card">
+        <div class="history-header">
+            <h2>📝 お問い合わせ履歴</h2>
+        </div>
+        
+        {% for msg in user_messages %}
+        <div class="history-item">
+            <div class="history-item-header">
+                <div>
+                    <span class="history-type {{ msg.inquiry_type }}">
+                        {{ msg.get_inquiry_type_display }}
+                    </span>
+                </div>
+                <span class="history-date">{{ msg.created_at|date:"Y/m/d H:i" }}</span>
+            </div>
+            <div class="history-subject">{{ msg.subject }}</div>
+            <div class="history-message">{{ msg.message|truncatewords:30 }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="history-card">
+        <div class="no-history">
+            まだお問い合わせ履歴がありません
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,314 @@
+/* お問い合わせフォームのスタイル */
+.contact-container {
+    max-width: 800px;
+    margin: 30px auto;
+    padding: 20px;
+}
+
+.contact-header {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #333333;
+}
+
+.contact-header h2 {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.contact-header p {
+    color: #6c757d;
+    font-size: 14px;
+}
+
+/* フォームカード */
+.form-card {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin-bottom: 30px;
+}
+
+.contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #333333;
+    font-size: 14px;
+    display: block;
+}
+
+.required {
+    color: #dc3545;
+    margin-left: 4px;
+}
+
+.form-control,
+.form-group input,
+.form-group select,
+.form-group textarea {
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    background-color: #ffffff;
+    color: #333333;
+    font-size: 14px;
+    transition: border-color 0.3s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.form-control:focus,
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.form-group textarea {
+    min-height: 150px;
+    resize: vertical;
+}
+
+.form-group select {
+    cursor: pointer;
+}
+
+.form-text {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 5px;
+}
+
+/* ボタン */
+.btn-submit,
+.submit-button {
+    width: 100%;
+    padding: 12px 30px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.btn-submit:hover,
+.submit-button:hover {
+    background-color: #0056b3;
+    transform: translateY(-1px);
+}
+
+.btn-submit:active,
+.submit-button:active {
+    background-color: #004085;
+    transform: translateY(0);
+}
+
+/* エラーメッセージ */
+.errorlist {
+    list-style: none;
+    padding: 0;
+    margin: 5px 0 0 0;
+    color: #dc3545;
+    font-size: 12px;
+}
+
+/* 履歴カード */
+.history-card {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+}
+
+.history-header {
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.history-header h2 {
+    margin: 0;
+    color: #333;
+    font-size: 1.5rem;
+}
+
+.history-item {
+    padding: 15px;
+    border-left: 4px solid #007bff;
+    background: #f9f9f9;
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+
+.history-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.history-type {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.history-type.bug {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.history-type.feature {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.history-type.question {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.history-type.other {
+    background: #f3e5f5;
+    color: #6a1b9a;
+}
+
+.history-date {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.history-subject {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.history-message {
+    color: #666;
+    line-height: 1.5;
+    max-height: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+/* 対応済みステータスバッジは非表示（管理者のみ表示） */
+.status-pending,
+.status-resolved {
+    display: none;
+}
+
+.no-history {
+    text-align: center;
+    color: #999;
+    padding: 40px;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+/* 成功メッセージ */
+.success-message {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 15px;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.info-box {
+    background-color: #e7f3ff;
+    border-left: 4px solid #007bff;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+.info-box p {
+    margin: 0;
+    color: #004085;
+    font-size: 13px;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .contact-container {
+        margin: 15px;
+        padding: 15px;
+    }
+
+    .form-card,
+    .history-card {
+        padding: 20px;
+    }
+
+    .contact-header h2 {
+        font-size: 24px;
+    }
+
+    .form-control,
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 16px; /* モバイルでのズーム防止 */
+    }
+
+    .history-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .status-badge {
+        margin-left: 0;
+        margin-top: 5px;
+    }
+    
+    /* ダイアログのモバイル対応 */
+    .message-dialog {
+        min-width: 90%;
+        max-width: 90%;
+        margin: 0 20px;
+    }
+    
+    .message-dialog-content {
+        padding: 20px;
+        gap: 15px;
+    }
+    
+    .message-icon {
+        font-size: 30px;
+    }
+    
+    .message-text {
+        font-size: 14px;
+    }
+}

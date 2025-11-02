@@ -39,4 +39,6 @@ urlpatterns = [
     path('shopping/edit/<int:item_id>/', views.edit_shopping_item, name='edit_shopping_item'),
     path('shopping/delete/<int:item_id>/', views.delete_shopping_item, name='delete_shopping_item'),
     path('shopping/update-count/<int:item_id>/', views.update_shopping_count, name='update_shopping_count'),
+    # お問い合わせ
+    path('contact/', views.contact, name='contact'),
 ]

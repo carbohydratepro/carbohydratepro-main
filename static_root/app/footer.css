@@ -1,0 +1,60 @@
+/* フッターのスタイル */
+.site-footer {
+    background-color: #343a40; /* ナビバーと同じダークカラー */
+    color: #ffffff;
+    padding: 8px 0;
+    text-align: center;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 20px;
+    font-size: 11px;
+    line-height: 20px;
+    z-index: 1000;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.site-footer a {
+    color: #ffffff;
+    text-decoration: none;
+    margin: 0 10px;
+    transition: color 0.3s;
+}
+
+.site-footer a:hover {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.footer-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+.footer-divider {
+    margin: 0 8px;
+    color: #6c757d;
+}
+
+/* フッターがある場合のbody調整 */
+body {
+    padding-bottom: 30px; /* フッターの高さ + 余白 */
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .site-footer {
+        font-size: 10px;
+    }
+    
+    .site-footer a {
+        margin: 0 5px;
+    }
+    
+    .footer-divider {
+        margin: 0 5px;
+    }
+}

@@ -105,66 +105,6 @@ h1 {
     text-decoration: underline;
 }
 
-/* モーダル背景 (画面全体を覆う) */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6); /* 半透明の背景 */
-    z-index: 1000; /* 他要素よりも前面に配置 */
-    display: none; /* 初期状態は非表示 */
-}
-
-/* モーダルウィンドウ */
-.modal-content {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 90%; /* 画面幅の90% */
-    max-width: 600px; /* 最大幅600px */
-    padding: 20px;
-    background-color: #ffffff; /* モーダルの背景色 */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    z-index: 1001; /* 背景よりも前面に配置 */
-}
-
-/* 閉じるボタン */
-.modal-close {
-    float: right;
-    font-size: 1.5em;
-    cursor: pointer;
-}
-
-/* モーダルのフォーム */
-.modal-form {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.modal-form label {
-    font-weight: bold;
-}
-
-.modal-form input,
-.modal-form select,
-.modal-form textarea,
-.modal-form button {
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-/* ボタン */
-.modal-form button {
-    cursor: pointer;
-}
-
-
 .comment-section {
     /* 左右に分割する親要素 */
     display: flex;           /* flexレイアウト */
@@ -227,3 +167,119 @@ h1 {
   font-weight: bold;
 }
 
+/* メッセージダイアログ */
+.message-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;  /* 初期状態は非表示 */
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.message-dialog-overlay.show {
+    display: flex;  /* 表示時はflexに変更 */
+    opacity: 1;
+}
+
+.message-dialog {
+    background: #ffffff;  /* 白背景を明示的に指定 */
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    min-width: 400px;
+    max-width: 600px;
+    animation: slideDown 0.3s ease;
+    overflow: hidden;  /* 角丸を効かせる */
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.message-dialog-content {
+    padding: 30px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    background-color: #ffffff;  /* 白背景を明示的に指定 */
+}
+
+.message-dialog-content.success {
+    border-left: 5px solid #28a745;
+    background-color: #f8fff9;  /* 薄い緑背景 */
+}
+
+.message-dialog-content.error {
+    border-left: 5px solid #dc3545;
+    background-color: #fff8f8;  /* 薄い赤背景 */
+}
+
+.message-dialog-content.warning {
+    border-left: 5px solid #ffc107;
+    background-color: #fffef8;  /* 薄い黄色背景 */
+}
+
+.message-dialog-content.info {
+    border-left: 5px solid #17a2b8;
+    background-color: #f8fcff;  /* 薄い青背景 */
+}
+
+.message-icon {
+    font-size: 40px;
+    flex-shrink: 0;
+}
+
+.message-dialog-content.success .message-icon {
+    color: #28a745;
+}
+
+.message-dialog-content.error .message-icon {
+    color: #dc3545;
+}
+
+.message-dialog-content.warning .message-icon {
+    color: #ffc107;
+}
+
+.message-dialog-content.info .message-icon {
+    color: #17a2b8;
+}
+
+.message-text {
+    flex: 1;
+    font-size: 16px;
+    color: #333;
+    line-height: 1.5;
+}
+
+.message-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #999;
+    cursor: pointer;
+    padding: 5px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.message-close-btn:hover {
+    color: #333;
+}

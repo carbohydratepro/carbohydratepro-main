@@ -13,9 +13,17 @@ function updateCount(itemId, fieldType, action) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // 残数と不足数の表示を更新
-            document.getElementById(`remaining-count-${itemId}`).textContent = data.remaining_count;
-            document.getElementById(`threshold-count-${itemId}`).textContent = data.threshold_count;
+            // デスクトップ版の残数と不足数の表示を更新
+            const remainingDesktop = document.getElementById(`remaining-count-${itemId}`);
+            const thresholdDesktop = document.getElementById(`threshold-count-${itemId}`);
+            if (remainingDesktop) remainingDesktop.textContent = data.remaining_count;
+            if (thresholdDesktop) thresholdDesktop.textContent = data.threshold_count;
+            
+            // モバイル版の残数と不足数の表示を更新
+            const remainingMobile = document.getElementById(`remaining-count-mobile-${itemId}`);
+            const thresholdMobile = document.getElementById(`threshold-count-mobile-${itemId}`);
+            if (remainingMobile) remainingMobile.textContent = data.remaining_count;
+            if (thresholdMobile) thresholdMobile.textContent = data.threshold_count;
             
             // カードの枠線の色を更新
             updateCardBorder(itemId, data.remaining_count, data.threshold_count);

@@ -233,8 +233,8 @@ class ShoppingItemForm(forms.ModelForm):
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'frequency': forms.Select(attrs={'class': 'form-control'}),
             'price': forms.NumberInput(attrs={'step': '0.01', 'class': 'form-control'}),
-            'remaining_count': forms.NumberInput(attrs={'min': '0', 'class': 'form-control'}),
-            'threshold_count': forms.NumberInput(attrs={'min': '0', 'class': 'form-control'}),
+            'remaining_count': forms.NumberInput(attrs={'min': '0', 'max': '999', 'class': 'form-control'}),
+            'threshold_count': forms.NumberInput(attrs={'min': '0', 'max': '999', 'class': 'form-control'}),
             'memo': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
         }
 

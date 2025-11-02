@@ -50,3 +50,42 @@
     font-size: 0.9rem;
     margin-bottom: 0.3rem;
 }
+
+/* 残数と不足数のラベル幅は揃えない（デスクトップ用） */
+.shopping-controls-desktop .text-muted {
+    display: inline-block;
+}
+
+/* モバイル表示用のボタンサイズ調整（768px以下） */
+@media (max-width: 768px) {
+    /* モバイル用のラベル幅も揃える */
+    .shopping-controls-mobile .text-muted {
+        display: inline-block;
+        min-width: 4em;
+    }
+    
+    /* モバイル用のボタンを少し小さく */
+    .shopping-controls-mobile .btn-sm {
+        padding: 0.15rem 0.3rem;
+        font-size: 0.75rem;
+    }
+    
+    /* モバイル用のアイコンサイズ調整 */
+    .shopping-controls-mobile .btn-sm i {
+        font-size: 0.7rem;
+    }
+    
+    /* モバイル用のmargin調整 */
+    .shopping-controls-mobile .mx-1 {
+        margin-left: 0.25rem;
+        margin-right: 0.25rem;
+    }
+    
+    .shopping-controls-mobile .mr-1 {
+        margin-right: 0.25rem;
+    }
+    
+    .shopping-controls-mobile .ml-1 {
+        margin-left: 0.25rem;
+    }
+}

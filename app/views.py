@@ -846,9 +846,9 @@ def update_shopping_count(request, item_id):
         # どのフィールドを更新するか判定
         if field_type == 'remaining':
             if action == 'increase':
-                shopping_item.remaining_count += 1
+                shopping_item.remaining_count = min(999, shopping_item.remaining_count + 1)
             elif action == 'increase10':
-                shopping_item.remaining_count += 10
+                shopping_item.remaining_count = min(999, shopping_item.remaining_count + 10)
             elif action == 'decrease':
                 # 0未満にならないように制限
                 if shopping_item.remaining_count > 0:
@@ -858,9 +858,9 @@ def update_shopping_count(request, item_id):
                 shopping_item.remaining_count = max(0, shopping_item.remaining_count - 10)
         elif field_type == 'threshold':
             if action == 'increase':
-                shopping_item.threshold_count += 1
+                shopping_item.threshold_count = min(999, shopping_item.threshold_count + 1)
             elif action == 'increase10':
-                shopping_item.threshold_count += 10
+                shopping_item.threshold_count = min(999, shopping_item.threshold_count + 10)
             elif action == 'decrease':
                 # 0未満にならないように制限
                 if shopping_item.threshold_count > 0:

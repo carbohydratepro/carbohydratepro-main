@@ -128,7 +128,7 @@ class Task(models.Model):
     STATUS_CHOICES = [
         ('not_started', '未着手'),
         ('in_progress', '実施中'),
-        ('completed', '終了済み'),
+        ('completed', '完了'),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tasks')
@@ -199,9 +199,17 @@ class ShoppingItem(models.Model):
         return f"{self.title} - {self.get_status_display()}"
 
     def save(self, *args, **kwargs):
-        # 残数が0未満にならないように制限
+        # 残数を0～999の範囲に制限
         if self.remaining_count < 0:
             self.remaining_count = 0
+        elif self.remaining_count > 999:
+            self.remaining_count = 999
+        
+        # 不足数を0～999の範囲に制限
+        if self.threshold_count < 0:
+            self.threshold_count = 0
+        elif self.threshold_count > 999:
+            self.threshold_count = 999
         
         # 残数と不足数を比較してステータスを自動更新
         if self.remaining_count <= self.threshold_count:

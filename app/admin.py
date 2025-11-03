@@ -1,6 +1,5 @@
 from django.contrib import admin
-from .models import SensorData
-from .models import VideoPost
+from .models import SensorData, VideoPost, TaskLabel, Task
 
 @admin.register(SensorData)
 class SensorDataAdmin(admin.ModelAdmin):
@@ -25,3 +24,17 @@ class VideoPostAdmin(admin.ModelAdmin):
     list_display = ('date', 'user', 'result', 'video_url')
     search_fields = ('user__username', 'result', 'notes')
     list_filter = ('result', 'date')
+
+
+@admin.register(TaskLabel)
+class TaskLabelAdmin(admin.ModelAdmin):
+    list_display = ('name', 'color', 'user')
+    search_fields = ('name', 'user__username')
+    list_filter = ('user',)
+
+
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+    list_display = ('title', 'user', 'label', 'status', 'priority', 'due_date')
+    search_fields = ('title', 'description', 'user__username')
+    list_filter = ('status', 'priority', 'label', 'user')

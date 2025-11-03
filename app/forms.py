@@ -1,6 +1,6 @@
 from django import forms
 from django.utils import timezone
-from .models import Transaction, PaymentMethod, Category, VideoPost, Comment, Task, Memo, ShoppingItem, ContactMessage
+from .models import Transaction, PaymentMethod, Category, VideoPost, Comment, Task, TaskLabel, Memo, ShoppingItem, ContactMessage
 
 
 class ContactMessageForm(forms.ModelForm):
@@ -166,10 +166,28 @@ class CommentForm(forms.ModelForm):
         }
 
 
+class TaskLabelForm(forms.ModelForm):
+    class Meta:
+        model = TaskLabel
+        fields = ['name', 'color']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '20'}),
+            'color': forms.TextInput(attrs={'type': 'color', 'class': 'form-control form-control-color'}),
+        }
+        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # エラーメッセージのカスタマイズ
+        self.fields['name'].error_messages = {
+            'max_length': '上限文字数は20です。',
+            'required': 'この項目は必須です。',
+        }
+
+
 class TaskForm(forms.ModelForm):
     class Meta:
         model = Task
-        fields = ['title', 'task_type', 'frequency', 'priority', 'status', 'due_date', 'description']
+        fields = ['title', 'task_type', 'frequency', 'priority', 'status', 'label', 'due_date', 'description']
         widgets = {
             'due_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
             'description': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
@@ -177,7 +195,14 @@ class TaskForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        
+        # ユーザーに基づいてラベルのクエリセットをフィルタリング
+        if user is not None:
+            self.fields['label'].queryset = TaskLabel.objects.filter(user=user)
+            self.fields['label'].empty_label = 'ラベルなし'
+            self.fields['label'].required = False
         
         # すべてのフィールドに 'form-control' クラスを追加
         for field_name, field in self.fields.items():

@@ -5,9 +5,10 @@ from django.db.models import Sum, F, Q, Avg
 from django.utils.timezone import make_aware
 from django.core.mail import send_mail
 from django.conf import settings
-from .forms import TransactionForm, PaymentMethodForm, CategoryForm, VideoPostForm, CommentForm, TaskForm, MemoForm, ShoppingItemForm, ContactMessageForm
-from .models import Transaction, PaymentMethod, Category, VideoPost, Comment, Task, Memo, ShoppingItem, ContactMessage
+from .forms import TransactionForm, PaymentMethodForm, CategoryForm, VideoPostForm, CommentForm, TaskForm, TaskLabelForm, MemoForm, ShoppingItemForm, ContactMessageForm
+from .models import Transaction, PaymentMethod, Category, VideoPost, Comment, Task, TaskLabel, Memo, ShoppingItem, ContactMessage
 from datetime import datetime, timedelta
+import calendar
 
 import json
 import logging
@@ -573,29 +574,76 @@ class ReorderView(View):
 @login_required
 def task_list(request):
     """タスク一覧表示"""
+    # 月選択パラメータ取得
+    target_date = request.GET.get('target_date', None)
+    
+    if target_date:
+        target_date = make_aware(datetime.strptime(target_date, '%Y-%m'))
+    else:
+        # 現在の月をデフォルトとして設定
+        target_date = make_aware(datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0))
+    
+    # 月の開始日と終了日
+    start_date = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    end_date = (start_date + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0) - timedelta(microseconds=1)
+    
+    # フィルターパラメータ取得
     status_filter = request.GET.get('status', '')
     priority_filter = request.GET.get('priority', '')
     search_query = request.GET.get('search', '')
     
+    # 選択された月のタスクを取得（期限日が選択月内のもの）
     tasks = Task.objects.filter(user=request.user)
     
+    # 月フィルター（期限が設定されているタスクのみ対象）
+    month_tasks = tasks.filter(due_date__range=(start_date, end_date))
+    
+    # 検索・フィルター適用
+    filtered_tasks = tasks
     if status_filter:
-        tasks = tasks.filter(status=status_filter)
+        filtered_tasks = filtered_tasks.filter(status=status_filter)
     if priority_filter:
-        tasks = tasks.filter(priority=priority_filter)
+        filtered_tasks = filtered_tasks.filter(priority=priority_filter)
     if search_query:
-        tasks = tasks.filter(
+        filtered_tasks = filtered_tasks.filter(
             Q(title__icontains=search_query) | 
             Q(description__icontains=search_query)
         )
     
+    # カレンダー生成
+    year = target_date.year
+    month = target_date.month
+    cal = calendar.monthcalendar(year, month)
+    
+    # 各日のタスクを辞書形式で取得（最大5個まで）
+    calendar_data = []
+    for week in cal:
+        week_data = []
+        for day in week:
+            if day == 0:
+                week_data.append({'day': 0, 'tasks': []})
+            else:
+                day_start = make_aware(datetime(year, month, day, 0, 0, 0))
+                day_end = make_aware(datetime(year, month, day, 23, 59, 59))
+                day_tasks = list(month_tasks.filter(due_date__range=(day_start, day_end)).order_by('due_date')[:5])
+                week_data.append({
+                    'day': day,
+                    'tasks': day_tasks,
+                    'task_count': len(day_tasks)
+                })
+        calendar_data.append(week_data)
+    
     return render(request, 'app/task/list.html', {
-        'tasks': tasks,
+        'tasks': filtered_tasks,
         'status_filter': status_filter,
         'priority_filter': priority_filter,
         'search_query': search_query,
         'status_choices': Task.STATUS_CHOICES,
         'priority_choices': Task.PRIORITY_CHOICES,
+        'target_month': target_date.strftime('%Y年%m月'),
+        'default_target_date': target_date.strftime('%Y-%m'),
+        'calendar_data': calendar_data,
+        'weekday_labels': ['月', '火', '水', '木', '金', '土', '日'],
     })
 
 
@@ -603,7 +651,7 @@ def task_list(request):
 def create_task(request):
     """タスク新規作成"""
     if request.method == 'POST':
-        form = TaskForm(request.POST)
+        form = TaskForm(request.POST, user=request.user)
         if form.is_valid():
             task = form.save(commit=False)
             task.user = request.user
@@ -615,7 +663,7 @@ def create_task(request):
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'errors': form.errors})
     else:
-        form = TaskForm()
+        form = TaskForm(user=request.user)
     
     return render(request, 'app/task/create_modal.html', {'form': form})
 
@@ -626,7 +674,7 @@ def edit_task(request, task_id):
     task = get_object_or_404(Task, id=task_id, user=request.user)
     
     if request.method == 'POST':
-        form = TaskForm(request.POST, instance=task)
+        form = TaskForm(request.POST, instance=task, user=request.user)
         if form.is_valid():
             form.save()
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -636,7 +684,7 @@ def edit_task(request, task_id):
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'errors': form.errors})
     else:
-        form = TaskForm(instance=task)
+        form = TaskForm(instance=task, user=request.user)
     
     return render(request, 'app/task/edit_modal.html', {'form': form, 'task': task})
 
@@ -651,6 +699,84 @@ def delete_task(request, task_id):
         return redirect('task_list')
     
     return redirect('task_list')
+
+
+@login_required
+def get_day_tasks(request, date):
+    """指定日のタスクを取得（API）"""
+    try:
+        # 日付をパース
+        target_date = datetime.strptime(date, '%Y-%m-%d')
+        day_start = make_aware(datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0))
+        day_end = make_aware(datetime(target_date.year, target_date.month, target_date.day, 23, 59, 59))
+        
+        # その日のタスクを取得
+        tasks = Task.objects.filter(
+            user=request.user,
+            due_date__range=(day_start, day_end)
+        ).order_by('due_date')
+        
+        # JSON形式で返す
+        tasks_data = []
+        for task in tasks:
+            tasks_data.append({
+                'id': task.id,
+                'title': task.title,
+                'description': task.description[:100] if task.description else '',
+                'status': task.status,
+                'status_display': task.get_status_display(),
+                'priority': task.priority,
+                'priority_display': task.get_priority_display(),
+                'due_date': task.due_date.strftime('%Y-%m-%d %H:%M') if task.due_date else None,
+                'label': {
+                    'id': task.label.id,
+                    'name': task.label.name,
+                    'color': task.label.color
+                } if task.label else None,
+            })
+        
+        return JsonResponse({'success': True, 'tasks': tasks_data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def task_settings(request):
+    """タスク設定画面（ラベル管理）"""
+    labels = TaskLabel.objects.filter(user=request.user)
+    
+    # ラベル作成
+    if request.method == 'POST':
+        if 'create_label' in request.POST:
+            form = TaskLabelForm(request.POST)
+            if form.is_valid():
+                label = form.save(commit=False)
+                label.user = request.user
+                label.save()
+                messages.success(request, 'ラベルを作成しました。')
+                return redirect('task_settings')
+        
+        # ラベル編集
+        elif 'edit_label' in request.POST:
+            label_id = request.POST.get('label_id')
+            label = get_object_or_404(TaskLabel, id=label_id, user=request.user)
+            form = TaskLabelForm(request.POST, instance=label)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'ラベルを更新しました。')
+                return redirect('task_settings')
+        
+        # ラベル削除
+        elif 'delete_label' in request.POST:
+            label_id = request.POST.get('label_id')
+            label = get_object_or_404(TaskLabel, id=label_id, user=request.user)
+            label.delete()
+            messages.success(request, 'ラベルを削除しました。')
+            return redirect('task_settings')
+    
+    return render(request, 'app/task/settings.html', {
+        'labels': labels,
+    })
 
 
 # メモ管理関連のビュー

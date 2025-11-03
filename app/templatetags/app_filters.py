@@ -55,3 +55,38 @@ def comma_format(value):
     except (ValueError, TypeError, AttributeError) as e:
         # エラーが発生した場合は元の値を返す
         return str(value)
+
+
+@register.filter(name='darker')
+def darker(color, factor=0.7):
+    """色を暗くするフィルター"""
+    if not color:
+        return color
+    
+    # #記号を除去
+    color = color.lstrip('#')
+    
+    # 16進数カラーコードをRGBに変換
+    try:
+        if len(color) == 3:
+            # 3桁の場合は6桁に変換 (#RGB -> #RRGGBB)
+            color = ''.join([c*2 for c in color])
+        
+        if len(color) != 6:
+            return f'#{color}'
+        
+        # RGBに分割
+        r = int(color[0:2], 16)
+        g = int(color[2:4], 16)
+        b = int(color[4:6], 16)
+        
+        # 各成分を暗くする
+        r = int(r * factor)
+        g = int(g * factor)
+        b = int(b * factor)
+        
+        # 16進数に戻す
+        return f'#{r:02x}{g:02x}{b:02x}'
+    except (ValueError, TypeError):
+        # エラーが発生した場合は元の色を返す
+        return f'#{color}' if not color.startswith('#') else color

@@ -8,17 +8,161 @@
     <form id="editTaskForm" method="post" action="{% url 'edit_task' task.id %}">
         <div class="modal-body">
             {% csrf_token %}
-            {% for field in form %}
-                <div class="form-group">
-                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.errors %}
-                        <div class="text-danger small">
-                            {{ field.errors }}
-                        </div>
-                    {% endif %}
+            
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors }}
                 </div>
-            {% endfor %}
+            {% endif %}
+            
+            <!-- タイトル -->
+            <div class="form-group">
+                <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+                {{ form.title }}
+                {% if form.title.errors %}
+                    <div class="text-danger small">{{ form.title.errors }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- 日時設定 -->
+            <div class="card mb-3">
+                <div class="card-header py-2">
+                    <strong>日時設定</strong>
+                </div>
+                <div class="card-body">
+                    <!-- 終日チェックボックス -->
+                    <div class="form-group">
+                        <div class="form-check">
+                            {{ form.all_day }}
+                            <label class="form-check-label" for="{{ form.all_day.id_for_label }}">
+                                {{ form.all_day.label }}
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- 開始日時 -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.start_date.id_for_label }}">{{ form.start_date.label }}</label>
+                                {{ form.start_date }}
+                                {% if form.start_date.errors %}
+                                    <div class="text-danger small">{{ form.start_date.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group time-field">
+                                <label for="{{ form.start_time.id_for_label }}">{{ form.start_time.label }}</label>
+                                {{ form.start_time }}
+                                {% if form.start_time.errors %}
+                                    <div class="text-danger small">{{ form.start_time.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 終了日時 -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.end_date.id_for_label }}">{{ form.end_date.label }}</label>
+                                {{ form.end_date }}
+                                {% if form.end_date.errors %}
+                                    <div class="text-danger small">{{ form.end_date.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group time-field">
+                                <label for="{{ form.end_time.id_for_label }}">{{ form.end_time.label }}</label>
+                                {{ form.end_time }}
+                                {% if form.end_time.errors %}
+                                    <div class="text-danger small">{{ form.end_time.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 繰り返し設定 -->
+            <div class="card mb-3">
+                <div class="card-header py-2">
+                    <strong>繰り返し設定</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.frequency.id_for_label }}">{{ form.frequency.label }}</label>
+                                {{ form.frequency }}
+                                {% if form.frequency.errors %}
+                                    <div class="text-danger small">{{ form.frequency.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3 repeat-field" style="display: none;">
+                            <div class="form-group">
+                                <label for="{{ form.repeat_interval.id_for_label }}">{{ form.repeat_interval.label }}</label>
+                                {{ form.repeat_interval }}
+                                {% if form.repeat_interval.errors %}
+                                    <div class="text-danger small">{{ form.repeat_interval.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3 repeat-field" style="display: none;">
+                            <div class="form-group">
+                                <label for="{{ form.repeat_count.id_for_label }}">{{ form.repeat_count.label }}</label>
+                                {{ form.repeat_count }}
+                                {% if form.repeat_count.errors %}
+                                    <div class="text-danger small">{{ form.repeat_count.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- その他設定 -->
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="{{ form.priority.id_for_label }}">{{ form.priority.label }}</label>
+                        {{ form.priority }}
+                        {% if form.priority.errors %}
+                            <div class="text-danger small">{{ form.priority.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                            <div class="text-danger small">{{ form.status.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="{{ form.label.id_for_label }}">{{ form.label.label }}</label>
+                        {{ form.label }}
+                        {% if form.label.errors %}
+                            <div class="text-danger small">{{ form.label.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 詳細 -->
+            <div class="form-group">
+                <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                    <div class="text-danger small">{{ form.description.errors }}</div>
+                {% endif %}
+            </div>
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>

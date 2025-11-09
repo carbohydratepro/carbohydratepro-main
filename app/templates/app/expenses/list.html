@@ -184,7 +184,7 @@
                     <!-- 1行目: タイトル（左）と日付（右） -->
                     <div class="d-flex justify-content-between align-items-start mb-1">
                         <h6 class="card-title mb-0 text-truncate" title="{{ transaction.purpose }}" style="font-size: 0.9rem;">
-                            {{ transaction.purpose }}
+                            {{ transaction.purpose|truncatechars:30 }}
                         </h6>
                         <small class="text-muted">{{ transaction.date|date:"m/d" }}</small>
                     </div>

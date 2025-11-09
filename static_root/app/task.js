@@ -1,5 +1,44 @@
 // タスク管理用JavaScript
 
+// 表示モード切替関数
+function switchViewMode(mode) {
+    const currentUrl = new URL(window.location.href);
+    const targetDate = currentUrl.searchParams.get('target_date');
+    
+    // 新しいURLを構築
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('view_mode', mode);
+    
+    if (mode === 'day') {
+        // 日表示に切り替え: 今日の日付を設定
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0];
+        newUrl.searchParams.set('target_date', dateStr);
+    } else {
+        // 日表示から月表示に切り替え: 日付を月に変換
+        if (targetDate && targetDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            newUrl.searchParams.set('target_date', targetDate.substring(0, 7));
+        } else if (targetDate && targetDate.match(/^\d{4}-\d{2}$/)) {
+            // すでに月形式の場合はそのまま
+            newUrl.searchParams.set('target_date', targetDate);
+        } else {
+            // 今月を設定
+            const today = new Date();
+            const monthStr = today.toISOString().substring(0, 7);
+            newUrl.searchParams.set('target_date', monthStr);
+        }
+    }
+    
+    window.location.href = newUrl.toString();
+}
+
+// テキストを指定文字数で切り詰める関数
+function truncateText(text, maxLength) {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
+
 // カレンダーセルのクリックイベント処理
 function setupCalendarClickEvents() {
     // カレンダーセル全体のクリックイベント
@@ -34,8 +73,17 @@ function setupCalendarClickEvents() {
 
 // 日付のタスク一覧を表示するモーダル
 function showDayTasksModal(year, month, day, monthLabel) {
-    const modalTitle = `${monthLabel} ${day}日のタスク`;
+    // タイトルをyyyy/mm/dd形式に変更
+    const paddedMonth = String(month).padStart(2, '0');
+    const paddedDay = String(day).padStart(2, '0');
+    const modalTitle = `${year}/${paddedMonth}/${paddedDay}`;
     document.getElementById('dayTasksModalLabel').textContent = modalTitle;
+    
+    // 日付をモーダルのデータ属性に保存（ガントチャート表示用）
+    const modal = document.getElementById('dayTasksModal');
+    modal.dataset.year = year;
+    modal.dataset.month = paddedMonth;
+    modal.dataset.day = paddedDay;
     
     // 「この日にタスクを追加」ボタンのイベント設定
     const addTaskBtn = document.getElementById('addTaskForDayBtn');
@@ -50,6 +98,20 @@ function showDayTasksModal(year, month, day, monthLabel) {
             setTimeout(function() {
                 openCreateTaskModalWithDate(year, month, day);
             }, 300);
+        });
+    }
+    
+    // 「ガントチャートで表示」ボタンのイベント設定
+    const ganttViewBtn = document.getElementById('viewGanttForDayBtn');
+    if (ganttViewBtn) {
+        // 既存のイベントリスナーを削除
+        const newGanttBtn = ganttViewBtn.cloneNode(true);
+        ganttViewBtn.parentNode.replaceChild(newGanttBtn, ganttViewBtn);
+        
+        // 新しいイベントリスナーを追加
+        newGanttBtn.addEventListener('click', function() {
+            const targetDate = `${year}-${paddedMonth}-${paddedDay}`;
+            window.location.href = `?view_mode=day&target_date=${targetDate}`;
         });
     }
     
@@ -78,7 +140,7 @@ function showDayTasksModal(year, month, day, monthLabel) {
                         <div class="card task-card-mini mb-2" ${borderStyle}>
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h6 class="mb-0 flex-grow-1">${task.title}</h6>
+                                    <h6 class="mb-0 flex-grow-1">${truncateText(task.title, 30)}</h6>
                                     <div class="d-flex ml-2" style="white-space: nowrap;">
                                         <button onclick="openEditTaskModalFromList(${task.id})" class="btn btn-sm btn-outline-warning py-0 px-1 mr-1" title="編集">
                                             <i class="fas fa-edit"></i>
@@ -158,7 +220,7 @@ function deleteTaskFromList(taskId) {
 
 // 指定日付で新規タスク作成モーダルを開く
 function openCreateTaskModalWithDate(year, month, day) {
-    const dueDate = `${year}-${month}-${day}T09:00`;
+    const selectedDate = `${year}-${month.padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
     
     $.ajax({
         url: '/carbohydratepro/tasks/create/',
@@ -169,13 +231,20 @@ function openCreateTaskModalWithDate(year, month, day) {
         success: function(response) {
             $('#createTaskModal .modal-dialog').html(response);
             
-            // 期限日フィールドに日付を設定
-            const dueDateField = document.getElementById('id_due_date');
-            if (dueDateField) {
-                dueDateField.value = dueDate;
+            // 開始日と終了日フィールドに日付を設定
+            const startDateField = document.getElementById('id_start_date');
+            const endDateField = document.getElementById('id_end_date');
+            if (startDateField) {
+                startDateField.value = selectedDate;
+            }
+            if (endDateField) {
+                endDateField.value = selectedDate;
             }
             
             $('#createTaskModal').modal('show');
+            
+            // フォーム制御を初期化
+            initializeTaskFormControls();
             
             // フォーム送信時の処理
             $('#createTaskForm').on('submit', function(e) {
@@ -219,6 +288,9 @@ function openEditTaskModal(taskId) {
             $('#editTaskModal .modal-dialog').html(response);
             $('#editTaskModal').modal('show');
             
+            // フォーム制御を初期化
+            initializeTaskFormControls();
+            
             // フォーム送信時の処理
             $('#editTaskForm').on('submit', function(e) {
                 e.preventDefault();
@@ -260,6 +332,9 @@ function openCreateTaskModal() {
         success: function(response) {
             $('#createTaskModal .modal-dialog').html(response);
             $('#createTaskModal').modal('show');
+            
+            // フォーム制御を初期化
+            initializeTaskFormControls();
             
             // フォーム送信時の処理
             $('#createTaskForm').on('submit', function(e) {
@@ -344,4 +419,87 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeMonthFilter();
     initializeTaskFilters();
     setupCalendarClickEvents();
+    initializeTaskFormControls();
+    initializeGanttScroll();
 });
+
+// ガントチャートの初期スクロール位置を設定
+function initializeGanttScroll() {
+    const ganttContainer = document.getElementById('ganttContainer');
+    if (!ganttContainer) return;
+    
+    // 現在時刻を取得
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    
+    // 現在時刻の位置を計算（1時間 = 100px）
+    const scrollPosition = (currentHour * 100) + (currentMinute * 100 / 60);
+    
+    // コンテナの幅を考慮して中央に配置
+    const containerWidth = ganttContainer.clientWidth;
+    const scrollLeft = Math.max(0, scrollPosition - (containerWidth / 2));
+    
+    // スクロール位置を設定
+    ganttContainer.scrollLeft = scrollLeft;
+}
+
+// タスクフォーム制御の初期化
+function initializeTaskFormControls() {
+    // 終日チェックボックスの制御
+    const allDayCheckbox = document.querySelector('#id_all_day');
+    if (allDayCheckbox) {
+        // 初期状態の設定
+        toggleTimeFields();
+        
+        // チェックボックスの変更イベント
+        allDayCheckbox.addEventListener('change', toggleTimeFields);
+    }
+    
+    // 頻度選択の制御
+    const frequencySelect = document.querySelector('#id_frequency');
+    if (frequencySelect) {
+        // 初期状態の設定
+        toggleRepeatFields();
+        
+        // セレクトボックスの変更イベント
+        frequencySelect.addEventListener('change', toggleRepeatFields);
+    }
+}
+
+// 時間フィールドの表示/非表示を切り替え
+function toggleTimeFields() {
+    const allDayCheckbox = document.querySelector('#id_all_day');
+    const timeFields = document.querySelectorAll('.time-field');
+    
+    if (allDayCheckbox && timeFields.length > 0) {
+        const isAllDay = allDayCheckbox.checked;
+        timeFields.forEach(field => {
+            if (isAllDay) {
+                field.style.display = 'none';
+                // 時間フィールドをクリア
+                const input = field.querySelector('input[type="time"]');
+                if (input) input.value = '';
+            } else {
+                field.style.display = 'block';
+            }
+        });
+    }
+}
+
+// 繰り返し設定フィールドの表示/非表示を切り替え
+function toggleRepeatFields() {
+    const frequencySelect = document.querySelector('#id_frequency');
+    const repeatFields = document.querySelectorAll('.repeat-field');
+    
+    if (frequencySelect && repeatFields.length > 0) {
+        const hasFrequency = frequencySelect.value && frequencySelect.value !== '';
+        repeatFields.forEach(field => {
+            if (hasFrequency) {
+                field.style.display = 'block';
+            } else {
+                field.style.display = 'none';
+            }
+        });
+    }
+}

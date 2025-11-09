@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from datetime import datetime
 
+
 class ContactMessage(models.Model):
     """お問い合わせメッセージモデル"""
     INQUIRY_TYPE_CHOICES = [
@@ -25,6 +26,21 @@ class ContactMessage(models.Model):
     
     def __str__(self):
         return f"{self.get_inquiry_type_display()} - {self.subject} ({self.user.email})"
+
+
+class TaskLabel(models.Model):
+    """タスクラベルモデル"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='task_labels')
+    name = models.CharField(max_length=30, verbose_name="ラベル名")
+    color = models.CharField(max_length=7, default='#6c757d', verbose_name="色")  # HEXカラーコード
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'タスクラベル'
+        verbose_name_plural = 'タスクラベル'
 
 
 class PaymentMethod(models.Model):
@@ -110,7 +126,7 @@ class Comment(models.Model):
 class TaskLabel(models.Model):
     """タスクラベルモデル"""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='task_labels')
-    name = models.CharField(max_length=20, verbose_name="ラベル名")
+    name = models.CharField(max_length=30, verbose_name="ラベル名")
     color = models.CharField(max_length=7, default='#6c757d', verbose_name="色")  # HEXカラーコード
     
     def __str__(self):
@@ -123,15 +139,12 @@ class TaskLabel(models.Model):
 
 
 class Task(models.Model):
-    TASK_TYPE_CHOICES = [
-        ('one_time', '一時'),
-        ('recurring', '定期'),
-    ]
-    
     FREQUENCY_CHOICES = [
+        ('', '---'),
         ('daily', '毎日'),
         ('weekly', '毎週'),
         ('monthly', '毎月'),
+        ('yearly', '毎年'),
     ]
     
     PRIORITY_CHOICES = [
@@ -148,14 +161,18 @@ class Task(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tasks')
     title = models.CharField(max_length=200, verbose_name="タイトル")
-    task_type = models.CharField(max_length=10, choices=TASK_TYPE_CHOICES, verbose_name="タスクタイプ")
-    frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, blank=True, null=True, verbose_name="頻度")
-    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, verbose_name="優先度")
+    frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, blank=True, default='', verbose_name="頻度")
+    repeat_interval = models.IntegerField(default=1, verbose_name="繰り返し間隔")  # 例: 2なら「2週ごと」
+    repeat_count = models.IntegerField(blank=True, null=True, verbose_name="繰り返し回数")  # 何回繰り返すか（Noneなら無制限）
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium', verbose_name="優先度")
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='not_started', verbose_name="ステータス")
     label = models.ForeignKey('TaskLabel', on_delete=models.SET_NULL, blank=True, null=True, related_name='tasks', verbose_name="ラベル")
     created_date = models.DateTimeField(auto_now_add=True, verbose_name="登録日")
-    due_date = models.DateTimeField(blank=True, null=True, verbose_name="期限")
+    start_date = models.DateTimeField(blank=True, null=True, verbose_name="開始日時")
+    end_date = models.DateTimeField(blank=True, null=True, verbose_name="終了日時")
+    all_day = models.BooleanField(default=False, verbose_name="終日")
     description = models.TextField(blank=True, verbose_name="詳細")
+    parent_task = models.ForeignKey('self', on_delete=models.CASCADE, blank=True, null=True, related_name='recurring_instances', verbose_name="親タスク")
 
     def __str__(self):
         return f"{self.title} - {self.get_status_display()}"

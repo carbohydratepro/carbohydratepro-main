@@ -6,13 +6,14 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'app/modal.css' %}">
 <link rel="stylesheet" href="{% static 'app/task.css' %}">
+<link rel="stylesheet" href="{% static 'app/label-settings.css' %}">
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4 mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-cog"></i> タスク設定</h2>
-        <a href="{% url 'task_list' %}" class="btn btn-secondary">
+        <h4><i class="fas fa-cog"></i> タスク設定</h4>
+        <a href="{% url 'task_list' %}" class="btn btn-secondary btn-sm">
             <i class="fas fa-arrow-left"></i> タスク一覧に戻る
         </a>
     </div>
@@ -45,7 +46,7 @@
                     <tr>
                         <th style="width: 100px;">色</th>
                         <th>ラベル名</th>
-                        <th style="width: 150px;">操作</th>
+                        <th style="width: 150px;"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -56,10 +57,14 @@
                                 {{ label.color }}
                             </span>
                         </td>
-                        <td>{{ label.name }}</td>
+                        <td>{{ label.name|truncatechars:30 }}</td>
                         <td>
-                            <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editLabelModal{{ label.id }}">編集</button>
-                            <button class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteLabelModal{{ label.id }}">削除</button>
+                            <button class="btn btn-sm btn-outline-warning py-0 px-1 mr-1" data-toggle="modal" data-target="#editLabelModal{{ label.id }}" title="編集">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger py-0 px-1" data-toggle="modal" data-target="#deleteLabelModal{{ label.id }}" title="削除">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </td>
                     </tr>
 
@@ -78,11 +83,31 @@
                                     <div class="modal-body">
                                         <div class="form-group">
                                             <label for="label-name-{{ label.id }}">ラベル名</label>
-                                            <input type="text" name="name" class="form-control" id="label-name-{{ label.id }}" value="{{ label.name }}" maxlength="20" required>
+                                            <input type="text" name="name" class="form-control" id="label-name-{{ label.id }}" value="{{ label.name }}" maxlength="30" required>
                                         </div>
                                         <div class="form-group">
-                                            <label for="label-color-{{ label.id }}">色</label>
-                                            <input type="color" name="color" class="form-control form-control-color" id="label-color-{{ label.id }}" value="{{ label.color }}" required>
+                                            <label>色の選択</label>
+                                            <div class="color-picker-tabs">
+                                                <button type="button" class="color-picker-tab active" data-tab="template" onclick="switchColorTab('template', 'editLabelModal{{ label.id }}')">
+                                                    <i class="fas fa-palette"></i> テンプレート
+                                                </button>
+                                                <button type="button" class="color-picker-tab" data-tab="custom" onclick="switchColorTab('custom', 'editLabelModal{{ label.id }}')">
+                                                    <i class="fas fa-eye-dropper"></i> カスタム
+                                                </button>
+                                            </div>
+                                            
+                                            <!-- テンプレートタブ -->
+                                            <div class="color-picker-content active" data-tab="template">
+                                                <div class="color-template-grid" id="colorTemplateGridEdit{{ label.id }}"></div>
+                                            </div>
+                                            
+                                            <!-- カスタムタブ -->
+                                            <div class="color-picker-content" data-tab="custom">
+                                                <div class="custom-color-picker-wrapper">
+                                                    <input type="color" name="color" class="form-control-color" id="label-color-{{ label.id }}" value="{{ label.color }}" onchange="updateCustomColor(this, 'editLabelModal{{ label.id }}')" required>
+                                                    <div class="color-preview" style="background-color: {{ label.color }};">{{ label.color }}</div>
+                                                </div>
+                                            </div>
                                         </div>
                                         <input type="hidden" name="label_id" value="{{ label.id }}">
                                     </div>
@@ -145,11 +170,31 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label for="label-name">ラベル名</label>
-                        <input type="text" name="name" class="form-control" id="label-name" maxlength="20" required>
+                        <input type="text" name="name" class="form-control" id="label-name" maxlength="30" required>
                     </div>
                     <div class="form-group">
-                        <label for="label-color">色</label>
-                        <input type="color" name="color" class="form-control form-control-color" id="label-color" value="#6c757d" required>
+                        <label>色の選択</label>
+                        <div class="color-picker-tabs">
+                            <button type="button" class="color-picker-tab active" data-tab="template" onclick="switchColorTab('template', 'createLabelModal')">
+                                <i class="fas fa-palette"></i> テンプレート
+                            </button>
+                            <button type="button" class="color-picker-tab" data-tab="custom" onclick="switchColorTab('custom', 'createLabelModal')">
+                                <i class="fas fa-eye-dropper"></i> カスタム
+                            </button>
+                        </div>
+                        
+                        <!-- テンプレートタブ -->
+                        <div class="color-picker-content active" data-tab="template">
+                            <div class="color-template-grid" id="colorTemplateGridCreate"></div>
+                        </div>
+                        
+                        <!-- カスタムタブ -->
+                        <div class="color-picker-content" data-tab="custom">
+                            <div class="custom-color-picker-wrapper">
+                                <input type="color" name="color" class="form-control-color" id="label-color" value="#6c757d" onchange="updateCustomColor(this, 'createLabelModal')" required>
+                                <div class="color-preview" style="background-color: #6c757d;">#6c757d</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -160,4 +205,6 @@
         </div>
     </div>
 </div>
+
+<script src="{% static 'app/label-settings.js' %}"></script>
 {% endblock %}

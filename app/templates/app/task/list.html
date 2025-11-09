@@ -54,15 +54,149 @@
         </div>
     </div>
 
-    <!-- 月選択とカレンダー表示 -->
+    <!-- 表示モード切替と日付選択 -->
+    <div class="card mb-3">
+        <div class="card-body p-2">
+            <div class="view-mode-controls">
+                <!-- 表示モード切替 -->
+                <div class="btn-group btn-group-sm view-mode-buttons" role="group">
+                    <button type="button" class="btn btn-{% if view_mode == 'month' %}primary{% else %}outline-primary{% endif %}" 
+                            onclick="switchViewMode('month')">
+                        <i class="fas fa-calendar-alt"></i> <span class="d-none d-sm-inline">月表示</span><span class="d-sm-none">月</span>
+                    </button>
+                    <button type="button" class="btn btn-{% if view_mode == 'day' %}primary{% else %}outline-primary{% endif %}" 
+                            onclick="switchViewMode('day')">
+                        <i class="fas fa-chart-bar"></i> <span class="d-none d-sm-inline">日表示</span><span class="d-sm-none">日</span>
+                    </button>
+                </div>
+                
+                <!-- 日付選択 -->
+                <form method="GET" class="form-inline date-selection-form" id="dateSelectionForm">
+                    {% if view_mode == 'day' %}
+                    <label for="target_date" class="mr-2 mb-0 d-none d-sm-inline">日選択:</label>
+                    <input type="date" id="target_date" name="target_date" class="form-control form-control-sm" 
+                           value="{{ target_date }}" onchange="this.form.submit()">
+                    <input type="hidden" name="view_mode" value="day">
+                    {% else %}
+                    <label for="target_date" class="mr-2 mb-0 d-none d-sm-inline">月選択:</label>
+                    <input type="month" id="target_date" name="target_date" class="form-control form-control-sm" 
+                           value="{{ default_target_date }}" onchange="this.form.submit()">
+                    <input type="hidden" name="view_mode" value="month">
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% if view_mode == 'day' %}
+    <!-- 日表示: ガントチャート -->
+    <div class="card mb-4">
+        <div class="card-body p-0">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                <h5 class="mb-0">{{ target_date_display }}</h5>
+                <span class="text-muted small">{{ tasks|length }}件のタスク</span>
+            </div>
+            
+            <!-- ガントチャートコンテナ（横スクロール可能） -->
+            <div class="gantt-container" id="ganttContainer">
+                <div class="gantt-content">
+                    <!-- 時間軸ヘッダー -->
+                    <div class="gantt-header">
+                        <div class="gantt-task-label-header">タスク</div>
+                        <div class="gantt-timeline-header">
+                            <div class="gantt-hour-mark">0</div>
+                            <div class="gantt-hour-mark">1</div>
+                            <div class="gantt-hour-mark">2</div>
+                            <div class="gantt-hour-mark">3</div>
+                            <div class="gantt-hour-mark">4</div>
+                            <div class="gantt-hour-mark">5</div>
+                            <div class="gantt-hour-mark">6</div>
+                            <div class="gantt-hour-mark">7</div>
+                            <div class="gantt-hour-mark">8</div>
+                            <div class="gantt-hour-mark">9</div>
+                            <div class="gantt-hour-mark">10</div>
+                            <div class="gantt-hour-mark">11</div>
+                            <div class="gantt-hour-mark">12</div>
+                            <div class="gantt-hour-mark">13</div>
+                            <div class="gantt-hour-mark">14</div>
+                            <div class="gantt-hour-mark">15</div>
+                            <div class="gantt-hour-mark">16</div>
+                            <div class="gantt-hour-mark">17</div>
+                            <div class="gantt-hour-mark">18</div>
+                            <div class="gantt-hour-mark">19</div>
+                            <div class="gantt-hour-mark">20</div>
+                            <div class="gantt-hour-mark">21</div>
+                            <div class="gantt-hour-mark">22</div>
+                            <div class="gantt-hour-mark">23</div>
+                        </div>
+                    </div>
+                    
+                    <!-- ガントチャート本体 -->
+                    <div class="gantt-body">
+                        {% for item in gantt_data %}
+                        <div class="gantt-row">
+                            <!-- タスク情報（左側固定） -->
+                            <div class="gantt-task-label">
+                                <div class="gantt-task-title" title="{{ item.task.title }}">
+                                    {{ item.task.title }}
+                                </div>
+                            </div>
+                            
+                            <!-- タスクバー（タイムライン） -->
+                            <div class="gantt-timeline">
+                                <!-- 24時間のグリッド線 -->
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                <div class="gantt-grid-line"></div>
+                                
+                                <!-- タスクバー -->
+                                <div class="gantt-bar {% if item.is_all_day %}gantt-bar-allday{% endif %}" 
+                                     style="left: {{ item.start_percent }}%; width: {{ item.width_percent }}%; 
+                                            background-color: {% if item.task.label %}{{ item.task.label.color }}{% else %}#007bff{% endif %};"
+                                     data-task-id="{{ item.task.id }}"
+                                     onclick="openEditTaskModal({{ item.task.id }})"
+                                     title="{% if item.is_all_day %}[終日] {% endif %}{{ item.task.title }}{% if not item.is_all_day %} ({{ item.start_time }} 〜 {{ item.end_time }}){% endif %}">
+                                    <span class="gantt-bar-label">{{ item.task.title|truncatechars:20 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center text-muted py-5">
+                            この日にタスクはありません
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- 月表示: カレンダー表示 -->
     <div class="card mb-4">
         <div class="card-body p-0">
             <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
                 <h5 class="mb-0">{{ target_month }}</h5>
-                <form method="GET" class="form-inline">
-                    <label for="target_date" class="mr-2 mb-0">月選択:</label>
-                    <input type="month" id="target_date" name="target_date" class="form-control form-control-sm" value="{{ default_target_date }}" onchange="this.form.submit()">
-                </form>
             </div>
             <table class="table table-bordered mb-0 task-calendar">
                 <thead>
@@ -89,7 +223,7 @@
                                     <div class="task-item" 
                                          data-task-id="{{ task.id }}"
                                          {% if task.label %}style="background-color: {{ task.label.color }}; color: white; border-left: 3px solid {{ task.label.color|darker }};"{% endif %}>
-                                        {{ task.title }}
+                                        {{ task.title|truncatechars:30 }}
                                     </div>
                                     {% endfor %}
                                     {% if day_data.task_count > 5 %}
@@ -105,6 +239,7 @@
             </table>
         </div>
     </div>
+    {% endif %}
 
     <!-- 検索結果表示 -->
     {% if search_query or status_filter or priority_filter %}
@@ -120,12 +255,27 @@
         <div class="col-lg-6 col-md-12 mb-3">
             <div class="card task-card h-100" {% if task.label %}style="border-left: 4px solid {{ task.label.color }};"{% endif %}>
                 <div class="card-body py-2 px-3">
-                    <!-- 1行目: タイトル（左寄せ）と期限（右寄せ） -->
+                    <!-- 1行目: タイトル（左寄せ）と日時（右寄せ） -->
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="card-title mb-0 flex-grow-1 mr-2">{{ task.title|highlight:search_query }}</h6>
-                        {% if task.due_date %}
-                        <span class="text-muted small {% if task.status != 'completed' %}text-danger{% endif %}" style="white-space: nowrap;">
-                            <i class="far fa-calendar-times"></i> {{ task.due_date|date:"m/d H:i" }}
+                        <h6 class="card-title mb-0 flex-grow-1 mr-2">{{ task.title|truncatechars:30|highlight:search_query }}</h6>
+                        {% if task.start_date or task.end_date %}
+                        <span class="text-muted small {% if task.status != 'completed' %}text-primary{% endif %}" style="white-space: nowrap;">
+                            <i class="far fa-calendar"></i>
+                            {% if task.all_day %}
+                                {% if task.start_date %}{{ task.start_date|date:"m/d" }}{% endif %}
+                                {% if task.end_date and task.start_date.date != task.end_date.date %}
+                                    〜{{ task.end_date|date:"m/d" }}
+                                {% endif %}
+                            {% else %}
+                                {% if task.start_date %}{{ task.start_date|date:"m/d H:i" }}{% endif %}
+                                {% if task.end_date %}
+                                    {% if task.start_date.date == task.end_date.date %}
+                                        〜{{ task.end_date|date:"H:i" }}
+                                    {% else %}
+                                        〜{{ task.end_date|date:"m/d H:i" }}
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
                         </span>
                         {% endif %}
                     </div>
@@ -143,9 +293,16 @@
                                 <i class="fas fa-tag"></i> {{ task.label.name }}
                             </span>
                             {% endif %}
-                            <span class="badge badge-secondary mr-1 mb-1">{{ task.get_task_type_display }}</span>
-                            {% if task.frequency %}
-                            <span class="badge badge-info mr-1 mb-1">{{ task.get_frequency_display }}</span>
+                            {% if task.frequency and task.frequency != '' %}
+                            <span class="badge badge-info mr-1 mb-1">
+                                <i class="fas fa-redo"></i> {{ task.get_frequency_display }}
+                                {% if task.repeat_interval > 1 %}({{ task.repeat_interval }}){% endif %}
+                            </span>
+                            {% endif %}
+                            {% if task.all_day %}
+                            <span class="badge badge-secondary mr-1 mb-1">
+                                <i class="fas fa-sun"></i> 終日
+                            </span>
                             {% endif %}
                             <span class="badge 
                                 {% if task.priority == 'high' %}badge-danger
@@ -225,8 +382,11 @@
                 <!-- JavaScriptで動的に生成 -->
             </div>
             <div class="modal-footer py-2">
+                <button type="button" class="btn btn-info btn-sm" id="viewGanttForDayBtn">
+                    <i class="fas fa-chart-bar"></i> 詳細
+                </button>
                 <button type="button" class="btn btn-primary btn-sm" id="addTaskForDayBtn">
-                    <i class="fas fa-plus"></i> この日にタスクを追加
+                    <i class="fas fa-plus"></i> 追加
                 </button>
                 <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">閉じる</button>
             </div>

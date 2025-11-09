@@ -35,6 +35,6 @@ class TaskLabelAdmin(admin.ModelAdmin):
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ('title', 'user', 'label', 'status', 'priority', 'due_date')
+    list_display = ('title', 'user', 'label', 'status', 'priority', 'start_date', 'end_date')
     search_fields = ('title', 'description', 'user__username')
-    list_filter = ('status', 'priority', 'label', 'user')
+    list_filter = ('status', 'priority', 'label', 'user', 'frequency')

@@ -57,6 +57,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'project.middleware.AdminSecurityMiddleware',  # 管理サイトセキュリティ
+    'auth_app.middleware.EmailVerificationMiddleware',  # メール認証チェック
 ]
 
 ROOT_URLCONF = 'project.urls'

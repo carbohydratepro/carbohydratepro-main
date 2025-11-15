@@ -3,6 +3,8 @@ import logging
 from django.http import HttpResponseRedirect, Http404
 from django.urls import reverse
 from django.utils import timezone
+from django.contrib import messages
+from django.shortcuts import redirect
 
 # セキュリティログの設定
 security_logger = logging.getLogger('security')
@@ -74,3 +76,37 @@ class AdminSecurityMiddleware:
         else:
             ip = request.META.get('REMOTE_ADDR')
         return ip
+
+
+class EmailVerificationMiddleware:
+    """メール認証が未完了のユーザーをチェックするミドルウェア"""
+    
+    def __init__(self, get_response):
+        self.get_response = get_response
+    
+    def __call__(self, request):
+        # メール認証チェックを除外するパス
+        excluded_paths = [
+            '/login/', '/logout/', '/signup/', '/signup_done/', 
+            '/verify-email/', '/resend-verification/', '/password_reset/',
+            '/password_reset_done/', '/password_reset_confirm/',
+            '/password_reset_complete/', '/top/', '/static/', '/media/',
+            '/admin/'
+        ]
+        
+        # ユーザーがログインしているか、かつメール未認証の場合
+        if request.user.is_authenticated and hasattr(request.user, 'is_email_verified'):
+            # 除外パスに該当しない場合のみチェック
+            if not any(request.path.startswith(path) for path in excluded_paths):
+                if not request.user.is_email_verified:
+                    messages.warning(
+                        request,
+                        'メールアドレスの確認が完了していません。メールをご確認ください。'
+                    )
+                    # メール未認証の場合はログアウトしてサインアップ完了ページへ
+                    from django.contrib.auth import logout
+                    logout(request)
+                    return redirect('signup_done')
+        
+        response = self.get_response(request)
+        return response

@@ -7,14 +7,29 @@
     <div class="card mt-3 mb-3 bg-light">
       <!-- カードヘッダー -->
       <div class="card-header" style="background-color: #add8e6; color: #333;">
-        <h4>ユーザー登録完了</h4>
+        <h4>ユーザー登録ありがとうございます</h4>
       </div>
       <!-- カードボディー -->
       <div class="card-body">
-        <p>ユーザー登録が完了しました。ログインページへお進みください。</p>
-        <p class="text-danger">"パスワード"は大切に管理してください。</p>
+        <p>ユーザー登録が完了しました。</p>
+        <p><strong>確認メールを送信しました。</strong></p>
+        <p>メールボックスをご確認いただき、記載されているリンクをクリックしてメールアドレスの確認を完了してください。</p>
+        
+        <div class="alert alert-info mt-3" role="alert">
+          <strong>ご注意：</strong>
+          <ul class="mb-0">
+            <li>確認リンクは24時間有効です。</li>
+            <li>メールが届かない場合は、迷惑メールフォルダもご確認ください。</li>
+            <li>メールアドレスの確認が完了するまで、ログインできません。</li>
+          </ul>
+        </div>
+        
         <hr>
-        <a href="{% url 'login' %}">ログイン</a>
+        <p class="mb-2">メールが届かない場合は、こちらから再送信できます：</p>
+        <a href="{% url 'resend_verification' %}" class="btn btn-secondary">確認メールを再送信</a>
+        
+        <hr>
+        <a href="{% url 'login' %}">ログインページへ</a>
       </div>
     </div>
   </div>

@@ -18,4 +18,7 @@ urlpatterns = [
     path('password_reset_done/', views.PasswordResetDone.as_view(), name='password_reset_done'),
     path('password_reset_confirm/<uidb64>/<token>/', views.PasswordResetConfirm.as_view(), name='password_reset_confirm'),
     path('password_reset_complete/', views.PasswordResetComplete.as_view(), name='password_reset_complete'),
+    # メール認証機能
+    path('verify-email/<uuid:token>/', views.verify_email, name='verify_email'),
+    path('resend-verification/', views.resend_verification_email, name='resend_verification'),
 ]

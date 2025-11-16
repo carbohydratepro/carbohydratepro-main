@@ -190,8 +190,7 @@ function initializeExpenseCharts() {
                         text: 'カテゴリ別割合'
                     },
                     legend: {
-                        display: categoryData.labels[0] !== 'データなし',
-                        position: 'bottom'
+                        display: false
                     }
                 }
             }
@@ -297,8 +296,7 @@ function initializeExpenseCharts() {
                         text: '費用タイプ別割合'
                     },
                     legend: {
-                        display: majorCategoryData.labels[0] !== 'データなし',
-                        position: 'bottom'
+                        display: false
                     }
                 }
             }
@@ -320,8 +318,7 @@ function initializeExpenseCharts() {
                         text: '費用タイプ別割合'
                     },
                     legend: {
-                        display: majorCategoryData.labels[0] !== 'データなし',
-                        position: 'bottom'
+                        display: false
                     }
                 }
             }

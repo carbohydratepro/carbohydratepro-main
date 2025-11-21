@@ -1,1220 +1,220 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Sum, F, Q, Avg
-from django.utils.timezone import make_aware
+from django.db.models import Avg
 from django.core.mail import send_mail
 from django.conf import settings
-from .forms import TransactionForm, PaymentMethodForm, CategoryForm, VideoPostForm, CommentForm, TaskForm, TaskLabelForm, MemoForm, ShoppingItemForm, ContactMessageForm
-from .models import Transaction, PaymentMethod, Category, VideoPost, Comment, Task, TaskLabel, Memo, ShoppingItem, ContactMessage
+from .forms import VideoPostForm, CommentForm, DateForm, ContactMessageForm
+from .models import VideoPost, Comment, SensorData, ContactMessage
 from datetime import datetime, timedelta
-import calendar
-
 import json
 import logging
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from rest_framework.response import Response
 from .serializers import SensorDataSerializer
-from .forms import DateForm
-from .models import SensorData
 from django.http import JsonResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views import View
 
-
 logger = logging.getLogger(__name__)
 
+from .expenses.views import expenses_list, create_expenses, expenses_settings, edit_expenses, delete_expenses
+from .memo.views import memo_list, create_memo, edit_memo, delete_memo, toggle_memo_favorite
+from .shopping.views import shopping_list, create_shopping_item, edit_shopping_item, delete_shopping_item, update_shopping_count
+from .task.views import task_list, create_task, edit_task, delete_task, get_day_tasks, task_settings
 
-@login_required
-def expenses_list(request):
-    target_date = request.GET.get('target_date', None)
-    search_query = request.GET.get('search', '')
-    
-    # 絞り込みパラメータ
-    filter_transaction_type = request.GET.get('transaction_type', '')
-    filter_major_category = request.GET.get('major_category', '')
-    filter_category = request.GET.get('category', '')
-    filter_payment_method = request.GET.get('payment_method', '')
-
-    if target_date:
-        target_date = make_aware(datetime.strptime(target_date, '%Y-%m'))
-    else:
-        # target_dateが指定されていない場合、現在の月をデフォルトとして設定
-        target_date = make_aware(datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0))
-
-    start_date = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    end_date = (start_date + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0) - timedelta(microseconds=1)
-
-    transactions = Transaction.objects.filter(user=request.user, date__range=(start_date, end_date)).order_by('-date', '-id')
-    
-    # 検索機能
-    if search_query:
-        transactions = transactions.filter(
-            Q(purpose__icontains=search_query) |
-            Q(purpose_description__icontains=search_query) |
-            Q(category__name__icontains=search_query) |
-            Q(payment_method__name__icontains=search_query)
-        )
-    
-    # 絞り込み機能
-    if filter_transaction_type:
-        transactions = transactions.filter(transaction_type=filter_transaction_type)
-    if filter_major_category:
-        transactions = transactions.filter(major_category=filter_major_category)
-    if filter_category:
-        transactions = transactions.filter(category__id=filter_category)
-    if filter_payment_method:
-        transactions = transactions.filter(payment_method__id=filter_payment_method)
-    
-    # 絞り込み用のオプション取得
-    user_categories = Category.objects.filter(user=request.user)
-    user_payment_methods = PaymentMethod.objects.filter(user=request.user)
-
-    # 月合計の収入・支出を計算
-    total_income = transactions.filter(transaction_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
-    total_expense = transactions.filter(transaction_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
-    net_balance = float(total_income) - float(total_expense)
-
-    # 日付範囲の作成（固定された月初から月末）
-    date_range = [(start_date + timedelta(days=i)).strftime('%Y-%m-%d') for i in range((end_date - start_date).days + 1)]
-
-    # カテゴリグラフ用データの作成（支出のみ、上位5つ + その他）
-    expense_transactions = transactions.filter(transaction_type='expense')
-    category_data = expense_transactions.values('category__name').annotate(total=Sum('amount')).order_by('-total')
-    
-    # カテゴリグラフ：上位5つとその他に分ける
-    if category_data.exists():
-        top_categories = list(category_data[:5])
-        other_total = sum(float(entry['total']) for entry in category_data[5:])
-        
-        # ラベルを10文字で切り詰める
-        category_labels = [entry['category__name'][:10] + ('...' if len(entry['category__name']) > 10 else '') for entry in top_categories]
-        category_amounts = [float(entry['total']) for entry in top_categories]
-        
-        # 実際のデータ数に応じて色を設定
-        base_colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7']
-        category_colors = base_colors[:len(category_labels)]
-        
-        if other_total > 0:
-            category_labels.append('その他')
-            category_amounts.append(other_total)
-            category_colors.append('#BDC3C7')
-    else:
-        # データがない場合は灰色で表示
-        category_labels = ['データなし']
-        category_amounts = [1]
-        category_colors = ['#BDC3C7']
-    
-    # メインカテゴリを日本語表記で取得（支出のみ、固定3色）
-    major_category_data = expense_transactions.values('major_category').annotate(total=Sum('amount')).order_by('-total')
-    major_category_labels = {
-        'variable': '変動費',
-        'fixed': '固定費',
-        'special': '特別費'
-    }
-    
-    if major_category_data.exists():
-        # 実際のデータ数に応じて色を設定
-        major_colors = {'variable': '#E74C3C', 'fixed': '#3498DB', 'special': '#9B59B6'}
-        major_bg_colors = [major_colors[entry['major_category']] for entry in major_category_data]
-        
-        major_category_data_json = json.dumps({
-            'labels': [major_category_labels[entry['major_category']] for entry in major_category_data],
-            'datasets': [{
-                'data': [float(entry['total']) for entry in major_category_data],
-                'backgroundColor': major_bg_colors,
-            }]
-        })
-    else:
-        # データがない場合は灰色で表示
-        major_category_data_json = json.dumps({
-            'labels': ['データなし'],
-            'datasets': [{
-                'data': [1],
-                'backgroundColor': ['#BDC3C7'],
-            }]
-        })
-
-    category_data_json = json.dumps({
-        'labels': category_labels,
-        'datasets': [{
-            'data': category_amounts,
-            'backgroundColor': category_colors,
-        }]
-    })
-
-    expense_data = []
-    balance_data = []
-    current_balance = 0
-
-    for date in date_range:
-        daily_expense = transactions.filter(date__date=date, transaction_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
-        daily_income = transactions.filter(date__date=date, transaction_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
-        current_balance += float(daily_income) - float(daily_expense)  # Decimalをfloatに変換
-        expense_data.append(float(daily_expense))  # Decimalをfloatに変換
-        balance_data.append(float(current_balance))  # Decimalをfloatに変換
-
-    expense_data_json = json.dumps({
-        'labels': date_range,
-        'datasets': [{
-            'label': '支出',
-            'data': expense_data,
-            'backgroundColor': '#FF6384',
-        }]
-    })
-
-    balance_data_json = json.dumps({
-        'labels': date_range,
-        'datasets': [{
-            'label': '所持金',
-            'data': balance_data,
-            'fill': False,
-            'borderColor': '#36A2EB',
-        }]
-    })
-
-    # 三桁区切りフォーマット済みの値を作成
-    total_income_formatted = '{:,.0f}'.format(float(total_income))
-    total_expense_formatted = '{:,.0f}'.format(float(total_expense))
-    net_balance_formatted = '{:,.0f}'.format(float(net_balance))
-    
-    return render(request, 'app/expenses/list.html', {
-        'transactions': transactions,
-        'category_data_json': category_data_json,
-        'major_category_data_json': major_category_data_json,
-        'expense_data_json': expense_data_json,
-        'balance_data_json': balance_data_json,
-        'total_income': total_income,
-        'total_expense': total_expense,
-        'net_balance': net_balance,
-        'total_income_formatted': total_income_formatted,
-        'total_expense_formatted': total_expense_formatted,
-        'net_balance_formatted': net_balance_formatted,
-        'target_month': target_date.strftime('%Y年%m月'),
-        'search_query': search_query,
-        'user_categories': user_categories,
-        'user_payment_methods': user_payment_methods,
-        'filter_transaction_type': filter_transaction_type,
-        'filter_major_category': filter_major_category,
-        'filter_category': filter_category,
-        'filter_payment_method': filter_payment_method,
-        'default_target_date': target_date.strftime('%Y-%m')  # 今日の日付をテンプレートに渡す
-    })
-    
-@login_required
-def create_expenses(request):
-    if request.method == 'POST':
-        form = TransactionForm(request.POST, user=request.user)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.user = request.user
-            transaction.save()
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': True})
-            return redirect('expense_list')
-        else:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'errors': form.errors})
-    else:
-        form = TransactionForm(user=request.user)
-    
-    return render(request, 'app/expenses/create_modal.html', {'form': form})
-
-@login_required
-def expenses_settings(request):
-    payment_limit = 10
-    purpose_limit = 10
-
-    payments = PaymentMethod.objects.filter(user=request.user)
-    purposes = Category.objects.filter(user=request.user)
-
-    payment_count = payments.count()
-    purpose_count = purposes.count()
-
-    payment_form = PaymentMethodForm(prefix='payment')
-    purpose_form = CategoryForm(prefix='purpose')
-
-    edit_payment_instance = None
-    edit_purpose_instance = None
-
-    if request.method == 'POST':
-        if 'payment_id' in request.POST:
-            payment = get_object_or_404(PaymentMethod, id=request.POST.get('payment_id'), user=request.user)
-            if 'edit_payment' in request.POST:
-                payment_form = PaymentMethodForm(request.POST, instance=payment, prefix='payment')
-                if payment_form.is_valid():
-                    payment_form.save()
-                    return redirect('expenses_settings')
-                edit_payment_instance = payment
-            elif 'delete_payment' in request.POST:
-                payment.delete()
-                return redirect('expenses_settings')
-
-        elif 'purpose_id' in request.POST:
-            purpose = get_object_or_404(Category, id=request.POST.get('purpose_id'), user=request.user)
-            if 'edit_purpose' in request.POST:
-                purpose_form = CategoryForm(request.POST, instance=purpose, prefix='purpose')
-                if purpose_form.is_valid():
-                    purpose_form.save()
-                    return redirect('expenses_settings')
-                edit_purpose_instance = purpose
-            elif 'delete_purpose' in request.POST:
-                purpose.delete()
-                return redirect('expenses_settings')
-
-        else:
-            if 'payment' in request.POST:
-                payment_form = PaymentMethodForm(request.POST, prefix='payment')
-                if payment_count >= payment_limit:
-                    payment_form.add_error(None, f"支払方法の登録上限数は{payment_limit}件です。")
-                elif payment_form.is_valid():
-                    new_payment_method = payment_form.save(commit=False)
-                    new_payment_method.user = request.user
-                    new_payment_method.save()
-                    return redirect('expenses_settings')
-
-            elif 'purpose' in request.POST:
-                purpose_form = CategoryForm(request.POST, prefix='purpose')
-                if purpose_count >= purpose_limit:
-                    purpose_form.add_error(None, f"使用用途の登録上限数は{purpose_limit}件です。")
-                elif purpose_form.is_valid():
-                    new_purpose = purpose_form.save(commit=False)
-                    new_purpose.user = request.user
-                    new_purpose.save()
-                    return redirect('expenses_settings')
-
-    return render(request, 'app/expenses/settings.html', {
-        'payment_form': payment_form,
-        'purpose_form': purpose_form,
-        'payments': payments,
-        'purposes': purposes,
-        'edit_payment_instance': edit_payment_instance,
-        'edit_purpose_instance': edit_purpose_instance,
-    })
-
-@login_required
-def edit_expenses(request, transaction_id):
-    transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
-    if request.method == 'POST':
-        form = TransactionForm(request.POST, instance=transaction, user=request.user)
-        if form.is_valid():
-            form.save()
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': True})
-            return redirect('expense_list')
-        else:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'errors': form.errors})
-    else:
-        form = TransactionForm(instance=transaction, user=request.user)
-    
-    return render(request, 'app/expenses/edit_modal.html', {'form': form, 'transaction': transaction})
-
-@login_required
-def delete_expenses(request, transaction_id):
-    transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
-    if request.method == 'POST':
-        transaction.delete()
-        return redirect('expense_list')
-    return redirect('expense_list')
-
-@api_view(['POST'])
+@api_view(["POST"])
 def receive_data(request):
     serializer = SensorDataSerializer(data=request.data)
     if serializer.is_valid():
-        serializer.save()  # 照度を含むデータを保存
+        serializer.save()
         return Response({"message": "Data saved successfully"}, status=201)
     return Response(serializer.errors, status=400)
 
-
-# グラフ表示用ビュー
 def display_graph(request):
     form = DateForm(request.GET or None)
-    return render(request, 'app/sensor_graph.html', {'form': form})
+    return render(request, "app/sensor_graph.html", {"form": form})
 
-# 選択された日付に基づいてデータを取得するAPI
-@api_view(['GET'])
+@api_view(["GET"])
 def get_sensor_data(request):
-    selected_date = request.GET.get('date', None)
-    
+    selected_date = request.GET.get("date", None)
     if selected_date:
-        # 選択された日付に基づいてデータを取得
-        date_obj = datetime.strptime(selected_date, '%Y-%m-%d')
-
-        # 24時間分のデータを格納するリストを初期化
+        date_obj = datetime.strptime(selected_date, "%Y-%m-%d")
         timestamps = [f"{hour}:00" for hour in range(24)]
         temperatures = []
         humidities = []
         illuminances = []
 
-        # 各時間帯ごとにデータを集計
         for hour in range(24):
             start_time = datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=hour)
             end_time = start_time + timedelta(hours=1)
-
-            # 各時間のデータの平均値を取得
             avg_data = SensorData.objects.filter(timestamp__range=(start_time, end_time)).aggregate(
-                avg_temperature=Avg('temperature'),
-                avg_humidity=Avg('humidity'),
-                avg_illuminance=Avg('illuminance')
+                avg_temperature=Avg("temperature"),
+                avg_humidity=Avg("humidity"),
+                avg_illuminance=Avg("illuminance")
             )
-            
-            # 平均値をリストに追加 (Noneの場合は0にする)
-            temperatures.append(avg_data['avg_temperature'] or 0)
-            humidities.append(avg_data['avg_humidity'] or 0)
-            illuminances.append(avg_data['avg_illuminance'] or 0)
+            temperatures.append(avg_data["avg_temperature"] or 0)
+            humidities.append(avg_data["avg_humidity"] or 0)
+            illuminances.append(avg_data["avg_illuminance"] or 0)
 
-        # 24時間分のデータをレスポンスに返す
         return Response({
-            'timestamps': timestamps,
-            'temperatures': temperatures,
-            'humidities': humidities,
-            'illuminance': illuminances
+            "timestamps": timestamps,
+            "temperatures": temperatures,
+            "humidities": humidities,
+            "illuminance": illuminances
         })
-    
-    return Response({'error': 'Invalid date'}, status=400)
-
-
+    return Response({"error": "Invalid date"}, status=400)
 
 @login_required
 def video_varolant(request):
-    form_error = {}  # エラー変数の初期化
-
-    # --- 検索キーワード取得 ---
-    search_word = request.GET.get('q', '')
+    form_error = {}
+    search_word = request.GET.get("q", "")
 
     try:
-        # POSTリクエスト処理
-        if request.method == 'POST':
-            # JSONデータを解析
+        if request.method == "POST":
             try:
                 data = json.loads(request.body)
             except json.JSONDecodeError:
-                return JsonResponse({'success': False, 'error': 'リクエストデータ形式が不正です。'})
+                return JsonResponse({"success": False, "error": "リクエストデータ形式が不正です。"})
 
-            # 新規投稿処理
-            if 'date' in data:
+            if "date" in data:
                 form = VideoPostForm(data)
                 if form.is_valid():
                     post = form.save(commit=False)
                     post.user = request.user
                     post.save()
-                    return JsonResponse({'success': True})
+                    return JsonResponse({"success": True})
                 else:
-                    # フォームエラーを辞書形式で取得
                     form_error = form.errors.get_json_data()
-                    return JsonResponse({'success': False, 'error': form_error})
+                    return JsonResponse({"success": False, "error": form_error})
 
-            # コメント追加処理
-            elif 'comment_content' in data:
-                post_id = data.get('post_id')
-                comment_content = data.get('comment_content', '').strip()
+            elif "comment_content" in data:
+                post_id = data.get("post_id")
+                comment_content = data.get("comment_content", "").strip()
                 if post_id and comment_content:
                     post = get_object_or_404(VideoPost, id=post_id)
-                    comment = Comment.objects.create(
-                        post=post,
-                        user=request.user,
-                        content=comment_content
-                    )
+                    comment = Comment.objects.create(post=post, user=request.user, content=comment_content)
                     return JsonResponse({
-                        'success': True,
-                        'comment': {
-                            'id': comment.id,
-                            'content': comment.content,
-                            'user': comment.user.username,
-                            # created_at を文字列化
-                            'created_at': comment.created_at.strftime('%Y-%m-%d %H:%M'),
-                            # ログインユーザと同じなら編集/削除を許可 (can_edit=true/false)
-                            'can_edit': (comment.user_id == request.user.id),
+                        "success": True,
+                        "comment": {
+                            "id": comment.id,
+                            "content": comment.content,
+                            "user": comment.user.username,
+                            "created_at": comment.created_at.strftime("%Y-%m-%d %H:%M"),
+                            "can_edit": (comment.user_id == request.user.id),
                         }
                     })
                 else:
-                    return JsonResponse({'success': False, 'error': 'コメント内容が必要です。'})
+                    return JsonResponse({"success": False, "error": "コメント内容が必要です。"})
 
-
-        # GETリクエスト処理
-        posts = VideoPost.objects.prefetch_related('comments').order_by('-date')
-
-
-        # Paginatorを使用（1ページあたり100個表示）
+        posts = VideoPost.objects.prefetch_related("comments").order_by("-date")
         paginator = Paginator(posts, 100)
 
-        # --- 検索フィルタリング (投稿のタイトル, 使用キャラ, 詳細, 投稿ユーザ名, コメント内容) ---
         if search_word:
+            from django.db.models import Q
             posts = posts.filter(
                 Q(title__icontains=search_word) |
                 Q(character__icontains=search_word) |
                 Q(notes__icontains=search_word) |
                 Q(user__username__icontains=search_word) |
                 Q(comments__content__icontains=search_word)
-            ).distinct()  # 同じ投稿が重複しないように
+            ).distinct()
 
         for post in posts:
-            if isinstance(post.date, str):  # 日付が文字列の場合
-                post.date = datetime.strptime(post.date, '%Y-%m-%d')  # datetimeに変換
+            if isinstance(post.date, str):
+                post.date = datetime.strptime(post.date, "%Y-%m-%d")
 
-
-        # Paginatorを使用（1ページあたり100個表示）
         paginator = Paginator(posts, 100)
-
-        # 現在のページ番号をGETパラメータ "?page=数字" から取得 (無ければ1ページ目)
-        page = request.GET.get('page', 1)
+        page = request.GET.get("page", 1)
         try:
             posts_page = paginator.page(page)
         except PageNotAnInteger:
-            # page が整数でない場合は1ページ目を表示
             posts_page = paginator.page(1)
         except EmptyPage:
-            # 有効範囲外のページ番号の場合は最終ページを表示
             posts_page = paginator.page(paginator.num_pages)
 
         comment_form = CommentForm()
-
-        # データレンダリング
-        return render(request, 'app/video_varolant.html', {
-            'form': VideoPostForm(),
-            'posts': posts_page,
-            'comment_form': comment_form,
-            'form_error': form_error,
-            'search_word': search_word,  # テンプレートに渡しておく(検索フォームの初期値など)
+        return render(request, "app/video_varolant.html", {
+            "form": VideoPostForm(),
+            "posts": posts_page,
+            "comment_form": comment_form,
+            "form_error": form_error,
+            "search_word": search_word,
         })
-
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+        return JsonResponse({"success": False, "error": str(e)})
 
 @login_required
 def update_video(request, post_id):
-    """投稿の編集処理 (JSON対応)"""
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
-            # JSON形式でデータ受け取り
             data = json.loads(request.body)
-
-            # データ取得
             post = get_object_or_404(VideoPost, id=post_id, user=request.user)
-
-            # 日付形式変換
             try:
-                date = datetime.strptime(data.get('date'), '%Y-%m-%d').date()
+                date = datetime.strptime(data.get("date"), "%Y-%m-%d").date()
             except ValueError:
-                return JsonResponse({'success': False, 'error': json.dumps({'date': [{'message': '日付が不正です。'}]})})
+                return JsonResponse({"success": False, "error": json.dumps({"date": [{"message": "日付が不正です。"}]})})
 
-            # フィールド更新
             post.date = date
+            result = data.get("result")
+            if result not in ["win", "loss", "draw", "unknown"]:
+                return JsonResponse({"success": False, "error": json.dumps({"result": [{"message": "勝敗の値が不正です。"}]})})
 
-            result = data.get('result')
-            if result not in ['win', 'loss', 'draw', 'unknown']:
-                return JsonResponse({'success': False, 'error': json.dumps({'result': [{'message': '勝敗の値が不正です。'}]})})
-
-            post.title = data.get('title')
-            post.character = data.get('character')
-            post.video_url = data.get('video_url')
-            post.notes = data.get('notes')
-
-            # バリデーションと保存
+            post.title = data.get("title")
+            post.character = data.get("character")
+            post.video_url = data.get("video_url")
+            post.notes = data.get("notes")
             post.full_clean()
             post.save()
-            return JsonResponse({'success': True})
-
+            return JsonResponse({"success": True})
         except Exception as e:
-            return JsonResponse({'success': False, 'error': json.dumps({'error': [{'message': str(e)}]})})
-    return JsonResponse({'success': False, 'error': json.dumps({'error': [{'message': '無効なリクエストです。'}]})})
+            return JsonResponse({"success": False, "error": json.dumps({"error": [{"message": str(e)}]})})
+    return JsonResponse({"success": False, "error": json.dumps({"error": [{"message": "無効なリクエストです。"}]})})
 
 @login_required
 def delete_video(request, post_id):
-    """投稿の削除処理"""
     post = get_object_or_404(VideoPost, id=post_id, user=request.user)
     post.delete()
-    return JsonResponse({'success': True})
+    return JsonResponse({"success": True})
 
 @login_required
 def update_video_comment(request, comment_id):
-    """コメントの編集処理 (Ajax用)"""
-    if request.method == 'POST':
+    if request.method == "POST":
         comment = get_object_or_404(Comment, id=comment_id, user=request.user)
-        comment.content = request.POST.get('content')
+        comment.content = request.POST.get("content")
         comment.save()
-        return JsonResponse({'success': True})
-    return JsonResponse({'success': False})
+        return JsonResponse({"success": True})
+    return JsonResponse({"success": False})
 
 @login_required
 def delete_video_comment(request, comment_id):
-    """コメントの削除処理"""
     comment = get_object_or_404(Comment, id=comment_id, user=request.user)
     comment.delete()
-    return JsonResponse({'success': True})
-
-
+    return JsonResponse({"success": True})
 
 class ReorderView(View):
     def get(self, request):
-        # 通常はデータベースからアイテムを取得するなどしてcontextに渡す
-        # ここでは簡易にテンプレートだけ返す例
-        return render(request, 'app/reorder.html')
+        return render(request, "app/reorder.html")
 
     def post(self, request):
-        order_str = request.POST.get('order', '')
-        # "1,2,3,4" のような文字列になっているのでsplit
-        new_order_ids = order_str.split(',')
-
-        # ここで new_order_ids を使ってDBの並び順を更新したりする
-        # 例:
-        # for i, item_id in enumerate(new_order_ids):
-        #     item = Item.objects.get(pk=item_id)
-        #     item.sort_order = i
-        #     item.save()
-
-        # 更新後に同じページにリダイレクト
-        return redirect('reorder')  # url nameを'reorder'等で設定しておく
-
-
-# タスク管理関連のビュー
-@login_required
-def task_list(request):
-    """タスク一覧表示"""
-    # 表示モードと日付選択
-    view_mode = request.GET.get('view_mode', 'month')  # 'month' or 'day'
-    target_date_str = request.GET.get('target_date', None)
-    
-    # フィルターパラメータ取得
-    status_filter = request.GET.get('status', '')
-    priority_filter = request.GET.get('priority', '')
-    search_query = request.GET.get('search', '')
-    
-    if target_date_str:
-        if view_mode == 'day':
-            # 日表示の場合: YYYY-MM-DD形式
-            target_date = make_aware(datetime.strptime(target_date_str, '%Y-%m-%d'))
-        else:
-            # 月表示の場合: YYYY-MM形式
-            target_date = make_aware(datetime.strptime(target_date_str, '%Y-%m'))
-    else:
-        # デフォルト設定
-        if view_mode == 'day':
-            # 日表示の場合は今日の日付
-            target_date = make_aware(datetime.now())
-        else:
-            # 月表示の場合は現在の月
-            target_date = make_aware(datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0))
-            view_mode = 'month'
-    
-    # 日表示モードの場合
-    if view_mode == 'day':
-        # その日のタスクを取得
-        day_start = make_aware(datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0))
-        day_end = make_aware(datetime(target_date.year, target_date.month, target_date.day, 23, 59, 59))
-        
-        tasks = Task.objects.filter(
-            user=request.user,
-            parent_task__isnull=True
-        ).filter(
-            Q(start_date__lte=day_end, end_date__gte=day_start) |
-            Q(start_date__lte=day_end, end_date__isnull=True) |
-            Q(start_date__isnull=True, end_date__gte=day_start)
-        ).order_by('start_date', 'priority')
-        
-        # 検索・フィルター適用
-        if status_filter:
-            tasks = tasks.filter(status=status_filter)
-        if priority_filter:
-            tasks = tasks.filter(priority=priority_filter)
-        if search_query:
-            tasks = tasks.filter(
-                Q(title__icontains=search_query) | 
-                Q(description__icontains=search_query)
-            )
-        
-        # ガントチャート用のデータ生成
-        gantt_data = []
-        for task in tasks:
-            # 終日タスクの場合
-            if task.all_day:
-                gantt_data.append({
-                    'task': task,
-                    'start_percent': 0,
-                    'width_percent': 100,
-                    'start_time': '終日',
-                    'end_time': '',
-                    'is_all_day': True,
-                })
-                continue
-            
-            # タスクの開始・終了時刻を取得
-            task_start = task.start_date if task.start_date else day_start
-            task_end = task.end_date if task.end_date else day_end
-            
-            # その日の範囲内に制限
-            display_start = max(task_start, day_start)
-            display_end = min(task_end, day_end)
-            
-            # 時刻をパーセンテージに変換（0:00 = 0%, 23:59 = 100%）
-            start_minutes = display_start.hour * 60 + display_start.minute
-            end_minutes = display_end.hour * 60 + display_end.minute
-            
-            start_percent = (start_minutes / 1440) * 100  # 1440 = 24 * 60
-            end_percent = (end_minutes / 1440) * 100
-            width_percent = max(end_percent - start_percent, 1)  # 最小1%
-            
-            gantt_data.append({
-                'task': task,
-                'start_percent': start_percent,
-                'width_percent': width_percent,
-                'start_time': display_start.strftime('%H:%M'),
-                'end_time': display_end.strftime('%H:%M'),
-                'is_all_day': False,
-            })
-        
-        return render(request, 'app/task/list.html', {
-            'view_mode': 'day',
-            'tasks': tasks,
-            'gantt_data': gantt_data,
-            'target_date': target_date.strftime('%Y-%m-%d'),
-            'target_date_display': target_date.strftime('%Y年%m月%d日'),
-            'status_filter': status_filter,
-            'priority_filter': priority_filter,
-            'search_query': search_query,
-            'status_choices': Task.STATUS_CHOICES,
-            'priority_choices': Task.PRIORITY_CHOICES,
-        })
-    
-    # 月表示モード（既存のコード）
-    # 月の開始日と終了日
-    start_date = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    end_date = (start_date + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0) - timedelta(microseconds=1)
-    
-    # 選択された月のタスクを取得（開始日または終了日が選択月内のもの）
-    tasks = Task.objects.filter(user=request.user, parent_task__isnull=True)  # 親タスクのみ表示
-    
-    # 月フィルター（日付が設定されているタスクで、選択月と重なるもの）
-    month_tasks = tasks.filter(
-        Q(start_date__range=(start_date, end_date)) |
-        Q(end_date__range=(start_date, end_date)) |
-        Q(start_date__lte=start_date, end_date__gte=end_date)
-    )
-    
-    # 検索・フィルター適用
-    filtered_tasks = tasks
-    if status_filter:
-        filtered_tasks = filtered_tasks.filter(status=status_filter)
-    if priority_filter:
-        filtered_tasks = filtered_tasks.filter(priority=priority_filter)
-    if search_query:
-        filtered_tasks = filtered_tasks.filter(
-            Q(title__icontains=search_query) | 
-            Q(description__icontains=search_query)
-        )
-    
-    # カレンダー生成
-    year = target_date.year
-    month = target_date.month
-    cal = calendar.monthcalendar(year, month)
-    
-    # 各日のタスクを辞書形式で取得（最大5個まで）
-    # 複数日にまたがるタスクも各日に表示
-    calendar_data = []
-    for week in cal:
-        week_data = []
-        for day in week:
-            if day == 0:
-                week_data.append({'day': 0, 'tasks': []})
-            else:
-                day_start = make_aware(datetime(year, month, day, 0, 0, 0))
-                day_end = make_aware(datetime(year, month, day, 23, 59, 59))
-                
-                # その日に該当するタスク（開始日〜終了日の範囲内）
-                day_tasks = list(month_tasks.filter(
-                    Q(start_date__lte=day_end, end_date__gte=day_start) |
-                    Q(start_date__lte=day_end, end_date__isnull=True) |
-                    Q(start_date__isnull=True, end_date__gte=day_start)
-                ).order_by('start_date')[:5])
-                
-                week_data.append({
-                    'day': day,
-                    'tasks': day_tasks,
-                    'task_count': len(day_tasks)
-                })
-        calendar_data.append(week_data)
-    
-    return render(request, 'app/task/list.html', {
-        'view_mode': 'month',
-        'tasks': filtered_tasks,
-        'status_filter': status_filter,
-        'priority_filter': priority_filter,
-        'search_query': search_query,
-        'status_choices': Task.STATUS_CHOICES,
-        'priority_choices': Task.PRIORITY_CHOICES,
-        'target_month': target_date.strftime('%Y年%m月'),
-        'default_target_date': target_date.strftime('%Y-%m'),
-        'calendar_data': calendar_data,
-        'weekday_labels': ['月', '火', '水', '木', '金', '土', '日'],
-    })
-
-
-@login_required
-def create_task(request):
-    """タスク新規作成"""
-    if request.method == 'POST':
-        form = TaskForm(request.POST, user=request.user)
-        if form.is_valid():
-            task = form.save(commit=False)
-            task.user = request.user
-            task.save()
-            
-            # 繰り返しタスクの場合、子タスクを自動生成
-            if task.frequency and task.frequency != '':
-                create_recurring_tasks(task)
-            
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': True})
-            return redirect('task_list')
-        else:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'errors': form.errors})
-    else:
-        form = TaskForm(user=request.user)
-    
-    return render(request, 'app/task/create_modal.html', {'form': form})
-
-
-def create_recurring_tasks(parent_task):
-    """繰り返しタスクの子タスクを作成"""
-    from dateutil.relativedelta import relativedelta
-    
-    if not parent_task.start_date:
-        return
-    
-    frequency = parent_task.frequency
-    interval = parent_task.repeat_interval or 1
-    count = parent_task.repeat_count
-    
-    # 繰り返し回数が指定されていない、または無効な場合はスキップ
-    if not count or count <= 0:
-        return
-    
-    current_start = parent_task.start_date
-    current_end = parent_task.end_date
-    
-    for i in range(count):
-        # 次の繰り返し日を計算
-        if frequency == 'daily':
-            next_start = current_start + timedelta(days=interval)
-            next_end = current_end + timedelta(days=interval) if current_end else None
-        elif frequency == 'weekly':
-            next_start = current_start + timedelta(weeks=interval)
-            next_end = current_end + timedelta(weeks=interval) if current_end else None
-        elif frequency == 'monthly':
-            next_start = current_start + relativedelta(months=interval)
-            next_end = current_end + relativedelta(months=interval) if current_end else None
-        elif frequency == 'yearly':
-            next_start = current_start + relativedelta(years=interval)
-            next_end = current_end + relativedelta(years=interval) if current_end else None
-        else:
-            break
-        
-        # 子タスクを作成
-        Task.objects.create(
-            user=parent_task.user,
-            title=parent_task.title,
-            frequency='',  # 子タスクは繰り返しなし
-            repeat_interval=1,
-            priority=parent_task.priority,
-            status='not_started',
-            label=parent_task.label,
-            start_date=next_start,
-            end_date=next_end,
-            all_day=parent_task.all_day,
-            description=parent_task.description,
-            parent_task=parent_task,
-        )
-        
-        current_start = next_start
-        current_end = next_end
-
-
-@login_required
-def edit_task(request, task_id):
-    """タスク編集"""
-    task = get_object_or_404(Task, id=task_id, user=request.user)
-    
-    if request.method == 'POST':
-        form = TaskForm(request.POST, instance=task, user=request.user)
-        if form.is_valid():
-            updated_task = form.save()
-            
-            # 繰り返しタスクの設定が変更された場合、既存の子タスクを削除して再作成
-            if updated_task.frequency and updated_task.frequency != '':
-                # 既存の子タスクを削除
-                Task.objects.filter(parent_task=updated_task).delete()
-                # 新しい子タスクを作成
-                create_recurring_tasks(updated_task)
-            
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': True})
-            return redirect('task_list')
-        else:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'errors': form.errors})
-    else:
-        form = TaskForm(instance=task, user=request.user)
-    
-    return render(request, 'app/task/edit_modal.html', {'form': form, 'task': task})
-
-
-@login_required
-def delete_task(request, task_id):
-    """タスク削除"""
-    task = get_object_or_404(Task, id=task_id, user=request.user)
-    
-    if request.method == 'POST':
-        task.delete()
-        return redirect('task_list')
-    
-    return redirect('task_list')
-
-
-@login_required
-def get_day_tasks(request, date):
-    """指定日のタスクを取得（API）"""
-    try:
-        # 日付をパース
-        target_date = datetime.strptime(date, '%Y-%m-%d')
-        day_start = make_aware(datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0))
-        day_end = make_aware(datetime(target_date.year, target_date.month, target_date.day, 23, 59, 59))
-        
-        # その日のタスクを取得（開始日〜終了日の範囲内、または親タスクのみ）
-        tasks = Task.objects.filter(
-            user=request.user,
-            parent_task__isnull=True  # 親タスクのみ
-        ).filter(
-            Q(start_date__lte=day_end, end_date__gte=day_start) |
-            Q(start_date__lte=day_end, end_date__isnull=True) |
-            Q(start_date__isnull=True, end_date__gte=day_start)
-        ).order_by('start_date')
-        
-        # JSON形式で返す
-        tasks_data = []
-        for task in tasks:
-            # 日付表示用のフォーマット
-            if task.all_day:
-                date_display = f"{task.start_date.strftime('%Y-%m-%d')}" if task.start_date else ''
-                if task.end_date and task.start_date.date() != task.end_date.date():
-                    date_display += f" 〜 {task.end_date.strftime('%Y-%m-%d')}"
-            else:
-                date_display = f"{task.start_date.strftime('%Y-%m-%d %H:%M')}" if task.start_date else ''
-                if task.end_date:
-                    if task.start_date.date() == task.end_date.date():
-                        date_display += f" 〜 {task.end_date.strftime('%H:%M')}"
-                    else:
-                        date_display += f" 〜 {task.end_date.strftime('%Y-%m-%d %H:%M')}"
-            
-            tasks_data.append({
-                'id': task.id,
-                'title': task.title,
-                'description': task.description[:100] if task.description else '',
-                'status': task.status,
-                'status_display': task.get_status_display(),
-                'priority': task.priority,
-                'priority_display': task.get_priority_display(),
-                'due_date': date_display,
-                'label': {
-                    'id': task.label.id,
-                    'name': task.label.name,
-                    'color': task.label.color
-                } if task.label else None,
-            })
-        
-        return JsonResponse({'success': True, 'tasks': tasks_data})
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
-
-
-@login_required
-def task_settings(request):
-    """タスク設定画面（ラベル管理）"""
-    labels = TaskLabel.objects.filter(user=request.user)
-    
-    # ラベル作成
-    if request.method == 'POST':
-        if 'create_label' in request.POST:
-            form = TaskLabelForm(request.POST)
-            if form.is_valid():
-                label = form.save(commit=False)
-                label.user = request.user
-                label.save()
-                messages.success(request, 'ラベルを作成しました。')
-                return redirect('task_settings')
-        
-        # ラベル編集
-        elif 'edit_label' in request.POST:
-            label_id = request.POST.get('label_id')
-            label = get_object_or_404(TaskLabel, id=label_id, user=request.user)
-            form = TaskLabelForm(request.POST, instance=label)
-            if form.is_valid():
-                form.save()
-                messages.success(request, 'ラベルを更新しました。')
-                return redirect('task_settings')
-        
-        # ラベル削除
-        elif 'delete_label' in request.POST:
-            label_id = request.POST.get('label_id')
-            label = get_object_or_404(TaskLabel, id=label_id, user=request.user)
-            label.delete()
-            messages.success(request, 'ラベルを削除しました。')
-            return redirect('task_settings')
-    
-    return render(request, 'app/task/settings.html', {
-        'labels': labels,
-    })
-
-
-# メモ管理関連のビュー
-@login_required
-def memo_list(request):
-    """メモ一覧表示（ページネーション付き）"""
-    memo_type_filter = request.GET.get('memo_type', '')
-    search_query = request.GET.get('search', '')
-    favorite_filter = request.GET.get('favorite', '')
-    
-    memos = Memo.objects.filter(user=request.user)
-    
-    if memo_type_filter:
-        memos = memos.filter(memo_type=memo_type_filter)
-    if search_query:
-        memos = memos.filter(
-            Q(title__icontains=search_query) | 
-            Q(content__icontains=search_query)
-        )
-    if favorite_filter == 'true':
-        memos = memos.filter(is_favorite=True)
-    
-    # ページネーション
-    paginator = Paginator(memos, 100)  # 100件ずつ表示
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
-    return render(request, 'app/memo/list.html', {
-        'page_obj': page_obj,
-        'memo_type_filter': memo_type_filter,
-        'search_query': search_query,
-        'favorite_filter': favorite_filter,
-        'memo_type_choices': Memo.MEMO_TYPE_CHOICES,
-    })
-
-
-@login_required
-def create_memo(request):
-    """メモ新規作成"""
-    if request.method == 'POST':
-        form = MemoForm(request.POST)
-        if form.is_valid():
-            memo = form.save(commit=False)
-            memo.user = request.user
-            memo.save()
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': True})
-            return redirect('memo_list')
-        else:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'errors': form.errors})
-    else:
-        form = MemoForm()
-    
-    return render(request, 'app/memo/create_modal.html', {'form': form})
-
-
-@login_required
-def edit_memo(request, memo_id):
-    """メモ編集"""
-    memo = get_object_or_404(Memo, id=memo_id, user=request.user)
-    
-    if request.method == 'POST':
-        form = MemoForm(request.POST, instance=memo)
-        if form.is_valid():
-            form.save()
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': True})
-            return redirect('memo_list')
-        else:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'errors': form.errors})
-    else:
-        form = MemoForm(instance=memo)
-    
-    return render(request, 'app/memo/edit_modal.html', {'form': form, 'memo': memo})
-
-
-@login_required
-def delete_memo(request, memo_id):
-    """メモ削除"""
-    memo = get_object_or_404(Memo, id=memo_id, user=request.user)
-    
-    if request.method == 'POST':
-        memo.delete()
-        return redirect('memo_list')
-    
-    return redirect('memo_list')
-
-
-@login_required
-def toggle_memo_favorite(request, memo_id):
-    """メモのお気に入り状態を切り替え（Ajax用）"""
-    if request.method == 'POST':
-        memo = get_object_or_404(Memo, id=memo_id, user=request.user)
-        memo.is_favorite = not memo.is_favorite
-        memo.save()
-        return JsonResponse({
-            'success': True, 
-            'is_favorite': memo.is_favorite
-        })
-    return JsonResponse({'success': False})
-
-
-# 買うものリスト関連のビュー
-@login_required
-def shopping_list(request):
-    """買うものリスト一覧表示"""
-    search_query = request.GET.get('search', '')
-    
-    shopping_items = ShoppingItem.objects.filter(user=request.user)
-    
-    if search_query:
-        shopping_items = shopping_items.filter(
-            Q(title__icontains=search_query) | 
-            Q(memo__icontains=search_query)
-        )
-    
-    # 頻度別に分けて取得（不足を上位に、その後残数が少ない順）
-    one_time_items = shopping_items.filter(frequency='one_time').order_by('status', 'remaining_count', '-updated_date')
-    recurring_items = shopping_items.filter(frequency='recurring').order_by('status', 'remaining_count', '-updated_date')
-    
-    return render(request, 'app/shopping/list.html', {
-        'one_time_items': one_time_items,
-        'recurring_items': recurring_items,
-        'search_query': search_query,
-        'total_count': shopping_items.count(),
-    })
-
-
-@login_required
-def create_shopping_item(request):
-    """買うものリスト新規作成"""
-    if request.method == 'POST':
-        form = ShoppingItemForm(request.POST)
-        if form.is_valid():
-            shopping_item = form.save(commit=False)
-            shopping_item.user = request.user
-            shopping_item.save()
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': True})
-            return redirect('shopping_list')
-        else:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'errors': form.errors})
-    else:
-        form = ShoppingItemForm()
-    
-    return render(request, 'app/shopping/create_modal.html', {'form': form})
-
-
-@login_required
-def edit_shopping_item(request, item_id):
-    """買うものリスト編集"""
-    shopping_item = get_object_or_404(ShoppingItem, id=item_id, user=request.user)
-    
-    if request.method == 'POST':
-        form = ShoppingItemForm(request.POST, instance=shopping_item)
-        if form.is_valid():
-            form.save()
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': True})
-            return redirect('shopping_list')
-        else:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'errors': form.errors})
-    else:
-        form = ShoppingItemForm(instance=shopping_item)
-    
-    return render(request, 'app/shopping/edit_modal.html', {'form': form, 'shopping_item': shopping_item})
-
-
-@login_required
-def delete_shopping_item(request, item_id):
-    """買うものリスト削除"""
-    shopping_item = get_object_or_404(ShoppingItem, id=item_id, user=request.user)
-    
-    if request.method == 'POST':
-        shopping_item.delete()
-        return redirect('shopping_list')
-    
-    return redirect('shopping_list')
-
-
-@login_required
-def update_shopping_count(request, item_id):
-    """残数・不足数の更新（Ajax用）"""
-    if request.method == 'POST':
-        shopping_item = get_object_or_404(ShoppingItem, id=item_id, user=request.user)
-        field_type = request.POST.get('field_type')  # 'remaining' or 'threshold'
-        action = request.POST.get('action')
-        
-        # どのフィールドを更新するか判定
-        if field_type == 'remaining':
-            if action == 'increase':
-                shopping_item.remaining_count = min(999, shopping_item.remaining_count + 1)
-            elif action == 'increase10':
-                shopping_item.remaining_count = min(999, shopping_item.remaining_count + 10)
-            elif action == 'decrease':
-                # 0未満にならないように制限
-                if shopping_item.remaining_count > 0:
-                    shopping_item.remaining_count -= 1
-            elif action == 'decrease10':
-                # 0未満にならないように制限
-                shopping_item.remaining_count = max(0, shopping_item.remaining_count - 10)
-        elif field_type == 'threshold':
-            if action == 'increase':
-                shopping_item.threshold_count = min(999, shopping_item.threshold_count + 1)
-            elif action == 'increase10':
-                shopping_item.threshold_count = min(999, shopping_item.threshold_count + 10)
-            elif action == 'decrease':
-                # 0未満にならないように制限
-                if shopping_item.threshold_count > 0:
-                    shopping_item.threshold_count -= 1
-            elif action == 'decrease10':
-                # 0未満にならないように制限
-                shopping_item.threshold_count = max(0, shopping_item.threshold_count - 10)
-        
-        shopping_item.save()  # save()メソッドでステータスも自動更新される
-        
-        return JsonResponse({
-            'success': True,
-            'remaining_count': shopping_item.remaining_count,
-            'threshold_count': shopping_item.threshold_count,
-            'status': shopping_item.get_status_display(),
-            'status_code': shopping_item.status
-        })
-    
-    return JsonResponse({'success': False})
-
+        order_str = request.POST.get("order", "")
+        new_order_ids = order_str.split(",")
+        return redirect("reorder")
 
 @login_required
 def contact(request):
-    """お問い合わせフォーム表示・送信"""
-    if request.method == 'POST':
+    if request.method == "POST":
         form = ContactMessageForm(request.POST)
         if form.is_valid():
-            # フォームを保存（ユーザー情報を追加）
             contact_message = form.save(commit=False)
             contact_message.user = request.user
             contact_message.save()
             
-            # 管理者にメール送信
             try:
                 inquiry_type_display = contact_message.get_inquiry_type_display()
-                subject = f'【お問い合わせ】{inquiry_type_display}: {contact_message.subject}'
-                
-                message = f'''
+                subject = f"【お問い合わせ】{inquiry_type_display}: {contact_message.subject}"
+                message = f"""
 新しいお問い合わせが届きました。
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1236,37 +236,21 @@ def contact(request):
 
 このメールは自動送信されています。
 お問い合わせへの対応が完了したら、管理画面で「対応済み」にマークしてください。
-'''
-                
-                # 管理者メールアドレスを取得
-                admin_email = getattr(settings, 'SECURITY_ALERT_EMAIL', 'carbohydratepro@gmail.com')
-                
-                send_mail(
-                    subject=subject,
-                    message=message,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[admin_email],
-                    fail_silently=False,
-                )
-                
-                messages.success(request, 'お問い合わせを送信しました。ご連絡ありがとうございます。')
-                logger.info(f'お問い合わせメール送信成功: {request.user.email} - {inquiry_type_display}')
-                
+"""
+                admin_email = getattr(settings, "SECURITY_ALERT_EMAIL", "carbohydratepro@gmail.com")
+                send_mail(subject=subject, message=message, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[admin_email], fail_silently=False)
+                messages.success(request, "お問い合わせを送信しました。ご連絡ありがとうございます。")
+                logger.info(f"お問い合わせメール送信成功: {request.user.email} - {inquiry_type_display}")
             except Exception as e:
-                logger.error(f'お問い合わせメール送信エラー: {str(e)}')
-                messages.warning(request, 'お問い合わせは保存されましたが、メール送信に失敗しました。')
+                logger.error(f"お問い合わせメール送信エラー: {str(e)}")
+                messages.warning(request, "お問い合わせは保存されましたが、メール送信に失敗しました。")
             
-            return redirect('contact')
+            return redirect("contact")
         else:
-            messages.error(request, 'フォームに入力エラーがあります。')
+            messages.error(request, "フォームに入力エラーがあります。")
     else:
         form = ContactMessageForm()
     
-    # ユーザーの過去のお問い合わせ履歴を取得
     user_messages = ContactMessage.objects.filter(user=request.user)[:10]
-    
-    context = {
-        'form': form,
-        'user_messages': user_messages,
-    }
-    return render(request, 'app/contact.html', context)
+    context = {"form": form, "user_messages": user_messages}
+    return render(request, "app/contact.html", context)

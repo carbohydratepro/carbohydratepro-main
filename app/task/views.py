@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.db.models import Q
 from django.utils.timezone import make_aware
 from django.http import JsonResponse
+from django.core.paginator import Paginator
 from .forms import TaskForm, TaskLabelForm
 from .models import Task, TaskLabel
 from datetime import datetime, timedelta
@@ -17,6 +18,9 @@ def task_list(request):
     view_mode = request.GET.get('view_mode', 'month')  # 'month' or 'day'
     target_date_str = request.GET.get('target_date', None)
     week_start = request.session.get('task_week_start', 'sunday')  # 'sunday' or 'monday'
+    per_page_raw = request.GET.get('per_page', '20')
+    per_page_options = ['10', '20', '50', '100']
+    per_page = int(per_page_raw) if per_page_raw in per_page_options else 20
     
     # フィルターパラメータ取得
     status_filter = request.GET.get('status', '')
@@ -46,7 +50,7 @@ def task_list(request):
         day_start = make_aware(datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0))
         day_end = make_aware(datetime(target_date.year, target_date.month, target_date.day, 23, 59, 59))
         
-        tasks = Task.objects.filter(
+        tasks_queryset = Task.objects.filter(
             user=request.user,
             parent_task__isnull=True
         ).filter(
@@ -57,18 +61,22 @@ def task_list(request):
         
         # 検索・フィルター適用
         if status_filter:
-            tasks = tasks.filter(status=status_filter)
+            tasks_queryset = tasks_queryset.filter(status=status_filter)
         if priority_filter:
-            tasks = tasks.filter(priority=priority_filter)
+            tasks_queryset = tasks_queryset.filter(priority=priority_filter)
         if search_query:
-            tasks = tasks.filter(
+            tasks_queryset = tasks_queryset.filter(
                 Q(title__icontains=search_query) | 
                 Q(description__icontains=search_query)
             )
         
         # ガントチャート用のデータ生成
         gantt_data = []
-        for task in tasks:
+        tasks_count = tasks_queryset.count()
+        paginator = Paginator(tasks_queryset, per_page)
+        page_number = request.GET.get('page')
+        tasks_page = paginator.get_page(page_number)
+        for task in tasks_queryset:
             # 終日タスクの場合
             if task.all_day:
                 gantt_data.append({
@@ -108,7 +116,8 @@ def task_list(request):
         
         return render(request, 'app/task/list.html', {
             'view_mode': 'day',
-            'tasks': tasks,
+            'tasks_page': tasks_page,
+            'tasks_count': tasks_count,
             'gantt_data': gantt_data,
             'target_date': target_date.strftime('%Y-%m-%d'),
             'target_date_display': target_date.strftime('%Y年%m月%d日'),
@@ -118,6 +127,8 @@ def task_list(request):
             'status_choices': Task.STATUS_CHOICES,
             'priority_choices': Task.PRIORITY_CHOICES,
             'week_start': week_start,
+            'per_page': per_page,
+            'per_page_options': per_page_options,
         })
     
     # 月表示モード（既存のコード）
@@ -146,6 +157,10 @@ def task_list(request):
             Q(title__icontains=search_query) | 
             Q(description__icontains=search_query)
         )
+    tasks_count = filtered_tasks.count()
+    paginator = Paginator(filtered_tasks, per_page)
+    page_number = request.GET.get('page')
+    tasks_page = paginator.get_page(page_number)
     
     # カレンダー生成
     year = target_date.year
@@ -193,6 +208,10 @@ def task_list(request):
         'calendar_data': calendar_data,
         'weekday_labels': weekday_labels,
         'week_start': week_start,
+        'tasks_page': tasks_page,
+        'tasks_count': tasks_count,
+        'per_page': per_page,
+        'per_page_options': per_page_options,
     })
 
 

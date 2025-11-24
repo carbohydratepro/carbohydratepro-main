@@ -4,7 +4,12 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm, Pass
 
 '''ログイン用フォーム'''
 class LoginForm(AuthenticationForm):
-    username = forms.CharField(label="ユーザー名")
+    username = forms.CharField(label="メールアドレス")
+
+    error_messages = {
+        'invalid_login': "メールアドレスとパスワードが一致しません。",
+        'inactive': "このアカウントは無効です。",
+    }
 
     # bootstrap4対応
     def __init__(self, *args, **kwargs):
@@ -17,6 +22,10 @@ class LoginForm(AuthenticationForm):
 class SignupForm(UserCreationForm):
     username = forms.CharField(label="ユーザー名")
     email = forms.EmailField(label="メールアドレス")
+    error_messages = {
+        'duplicate_username': "このユーザー名は使われています。",
+        'duplicate_email': "このメールアドレスは使われています。",
+    }
 
     class Meta:
         model = get_user_model()
@@ -28,6 +37,18 @@ class SignupForm(UserCreationForm):
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'
             field.widget.attrs['required'] = '' # 全フィールドを入力必須      
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if get_user_model().objects.filter(username=username).exists():
+            raise forms.ValidationError(self.error_messages['duplicate_username'], code='duplicate_username')
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if get_user_model().objects.filter(email=email).exists():
+            raise forms.ValidationError(self.error_messages['duplicate_email'], code='duplicate_email')
+        return email
 
 '''ユーザー情報更新用フォーム'''
 class UserUpdateForm(forms.ModelForm):

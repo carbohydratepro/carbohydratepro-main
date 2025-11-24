@@ -3,16 +3,17 @@
 {% load app_filters %}
 {% block content %}
 <div class="container mt-5">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
         <h2 class="mb-0">タスク管理</h2>
-        <div class="d-flex flex-wrap">
-            <button onclick="openCreateTaskModal()" class="btn btn-primary btn-sm mr-2 mb-1">
-                <i class="fas fa-plus"></i> 新規タスク登録
-            </button>
-            <a href="{% url 'task_settings' %}" class="btn btn-outline-secondary btn-sm mb-1">
-                <i class="fas fa-cog"></i> 設定
-            </a>
-        </div>
+    </div>
+
+    <div class="d-flex flex-row-reverse mb-2">
+        <a href="{% url 'task_settings' %}" class="btn btn-outline-secondary btn-sm mb-1">
+            <i class="fas fa-cog"></i> 設定
+        </a>
+        <button onclick="openCreateTaskModal()" class="btn btn-primary btn-sm mr-2 mb-1">
+            <i class="fas fa-plus"></i> 新規タスク登録
+        </button>
     </div>
 
     <!-- 検索・絞り込み機能 -->
@@ -46,6 +47,14 @@
                                 <option value="">すべて</option>
                                 {% for priority_code, priority_name in priority_choices %}
                                 <option value="{{ priority_code }}" {% if priority_filter == priority_code %}selected{% endif %}>{{ priority_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label for="per_page" class="form-label small">表示件数</label>
+                            <select id="per_page" name="per_page" class="form-control form-control-sm" onchange="document.getElementById('filterForm').submit()">
+                                {% for size in per_page_options %}
+                                <option value="{{ size }}" {% if per_page|stringformat:"s" == size %}selected{% endif %}>{{ size }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -99,7 +108,7 @@
         <div class="card-body p-0">
             <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
                 <h5 class="mb-0">{{ target_date_display }}</h5>
-                <span class="text-muted small">{{ tasks|length }}件のタスク</span>
+                <span class="text-muted small">{{ tasks_count }}件のタスク</span>
             </div>
             
             <!-- ガントチャートコンテナ（横スクロール可能） -->
@@ -249,14 +258,14 @@
     <!-- 検索結果表示 -->
     {% if search_query or status_filter or priority_filter %}
     <div class="alert alert-info py-2">
-        <strong>検索結果:</strong> {{ tasks|length }}件のタスクが見つかりました
+        <strong>検索結果:</strong> {{ tasks_count }}件のタスクが見つかりました
         {% if search_query %}（検索キーワード: "{{ search_query }}"）{% endif %}
     </div>
     {% endif %}
 
     <!-- タスク一覧 -->
     <div class="row">
-        {% for task in tasks %}
+        {% for task in tasks_page %}
         <div class="col-lg-6 col-md-12 mb-3">
             <div class="card task-card h-100" {% if task.label %}style="border-left: 4px solid {{ task.label.color }};"{% endif %}>
                 <div class="card-body py-2 px-3">
@@ -350,11 +359,50 @@
         {% endfor %}
     </div>
 
-</div>
+    </div>
 
-<link rel="stylesheet" href="{% static 'app/modal.css' %}">
-<link rel="stylesheet" href="{% static 'app/task.css' %}">
-<script src="{% static 'app/task.js' %}"></script>
+    {% if tasks_page.paginator.num_pages > 1 %}
+    <nav aria-label="タスクページネーション">
+        <ul class="pagination justify-content-center">
+            {% if tasks_page.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}{% if view_mode %}&view_mode={{ view_mode }}{% endif %}{% if default_target_date %}&target_date={{ default_target_date }}{% endif %}{% if target_date %}&target_date={{ target_date }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">&laquo; 最初</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ tasks_page.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}{% if view_mode %}&view_mode={{ view_mode }}{% endif %}{% if default_target_date %}&target_date={{ default_target_date }}{% endif %}{% if target_date %}&target_date={{ target_date }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">前へ</a>
+            </li>
+            {% endif %}
+
+            {% for num in tasks_page.paginator.page_range %}
+                {% if tasks_page.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > tasks_page.number|add:'-3' and num < tasks_page.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}{% if view_mode %}&view_mode={{ view_mode }}{% endif %}{% if default_target_date %}&target_date={{ default_target_date }}{% endif %}{% if target_date %}&target_date={{ target_date }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if tasks_page.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ tasks_page.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}{% if view_mode %}&view_mode={{ view_mode }}{% endif %}{% if default_target_date %}&target_date={{ default_target_date }}{% endif %}{% if target_date %}&target_date={{ target_date }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">次へ</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ tasks_page.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}{% if view_mode %}&view_mode={{ view_mode }}{% endif %}{% if default_target_date %}&target_date={{ default_target_date }}{% endif %}{% if target_date %}&target_date={{ target_date }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">最後 &raquo;</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    <div class="text-center mt-2">
+        <small class="text-muted">
+            {{ tasks_page.start_index }} - {{ tasks_page.end_index }} / {{ tasks_page.paginator.count }}件
+        </small>
+    </div>
+    {% endif %}
+
+    <link rel="stylesheet" href="{% static 'app/modal.css' %}">
+    <link rel="stylesheet" href="{% static 'app/task.css' %}">
+    <script src="{% static 'app/task.js' %}"></script>
 
 <!-- 編集モーダル -->
 <div class="modal fade" id="editTaskModal" tabindex="-1" role="dialog" aria-labelledby="editTaskModalLabel" aria-hidden="true">

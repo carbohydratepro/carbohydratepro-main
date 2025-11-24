@@ -2,26 +2,107 @@
 {% load static %}
 {% load app_filters %}
 {% block content %}
-<div class="container mt-5">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+<div class="container mt-2">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
         <h2 class="mb-0">家計簿</h2>
-        <div class="btn-group">
-            <button onclick="openCreateModal()" class="btn btn-primary btn-sm">
-                <i class="fas fa-plus"></i> 新規登録
-            </button>
-            <a href="{% url 'expenses_settings' %}" class="btn btn-secondary btn-sm">
-                <i class="fas fa-cog"></i> 設定
-            </a>
-        </div>
+    </div>
+
+    <div class="d-flex flex-row-reverse mb-2">
+        <a href="{% url 'expenses_settings' %}" class="btn btn-secondary btn-sm mb-1">
+            <i class="fas fa-cog"></i> 設定
+        </a>
+        <button onclick="openCreateModal()" class="btn btn-primary btn-sm mr-2 mb-1">
+            <i class="fas fa-plus"></i> 新規登録
+        </button>
     </div>
 
     <!-- 月選択フォーム -->
     <div class="row mb-3">
         <div class="col-md-6">
             <form id="filterForm" class="form-inline">
-                <label for="target_date" class="mr-2">対象月:</label>
                 <input type="month" id="target_date" name="target_date" class="form-control" value="{{ default_target_date }}">
             </form>
+        </div>
+    </div>
+
+    <!-- 検索・絞り込み機能 -->
+    <div class="card mb-3">
+        <div class="card-header py-2">
+            <button class="btn btn-link btn-sm p-0" type="button" data-toggle="collapse" data-target="#searchFilterCollapse" aria-expanded="false">
+                <i class="fas fa-search"></i> 検索・絞り込み
+            </button>
+        </div>
+        <div class="collapse" id="searchFilterCollapse">
+            <div class="card-body py-2">
+                <form method="GET">
+                    <input type="hidden" name="target_date" value="{{ default_target_date }}">
+                    
+                    <!-- 検索 -->
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <div class="input-group input-group-sm">
+                                <input type="text" name="search" class="form-control" placeholder="用途、カテゴリ、支払方法で検索..." value="{{ search_query }}">
+                                <div class="input-group-append">
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 絞り込み -->
+                    <div class="row">
+                        <div class="col-6 col-md-3">
+                            <select name="transaction_type" class="form-control form-control-sm mb-1">
+                                <option value="">全ての取引タイプ</option>
+                                <option value="income" {% if filter_transaction_type == 'income' %}selected{% endif %}>収入</option>
+                                <option value="expense" {% if filter_transaction_type == 'expense' %}selected{% endif %}>支出</option>
+                                <option value="no_change" {% if filter_transaction_type == 'no_change' %}selected{% endif %}>変動なし</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <select name="major_category" class="form-control form-control-sm mb-1">
+                                <option value="">全ての費用タイプ</option>
+                                <option value="variable" {% if filter_major_category == 'variable' %}selected{% endif %}>変動費</option>
+                                <option value="fixed" {% if filter_major_category == 'fixed' %}selected{% endif %}>固定費</option>
+                                <option value="special" {% if filter_major_category == 'special' %}selected{% endif %}>特別費</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <select name="category" class="form-control form-control-sm mb-1">
+                                <option value="">全てのカテゴリ</option>
+                                {% for category in user_categories %}
+                                <option value="{{ category.id }}" {% if filter_category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <select name="payment_method" class="form-control form-control-sm mb-1">
+                                <option value="">全ての支払方法</option>
+                                {% for payment_method in user_payment_methods %}
+                                <option value="{{ payment_method.id }}" {% if filter_payment_method == payment_method.id|stringformat:"s" %}selected{% endif %}>{{ payment_method.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-1">
+                        <div class="col-md-6 col-12 mt-2 d-flex align-items-center">
+                            <label for="per_page" class="form-label small mb-0 mr-2">表示件数</label>
+                            <select name="per_page" id="per_page" class="form-control form-control-sm" onchange="this.form.submit()" style="max-width: 120px;">
+                                {% for size in per_page_options %}
+                                <option value="{{ size }}" {% if per_page|stringformat:"s" == size %}selected{% endif %}>{{ size }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-12 mt-2">
+                            <button type="submit" class="btn btn-primary btn-sm">絞り込み</button>
+                            <a href="?target_date={{ default_target_date }}" class="btn btn-outline-secondary btn-sm ml-1">クリア</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -48,7 +129,7 @@
                         </div>
                         <div class="col-6 col-md-3">
                             <small class="text-info">取引件数</small>
-                            <div class="h6 text-info mb-0">{{ transactions|length }}件</div>
+                            <div class="h6 text-info mb-0">{{ transactions_count }}件</div>
                         </div>
                     </div>
                 </div>
@@ -106,88 +187,15 @@
         </div>
     </div>
 
-    <!-- 検索・絞り込み機能 -->
-    <div class="card mb-3">
-        <div class="card-header py-2">
-            <button class="btn btn-link btn-sm p-0" type="button" data-toggle="collapse" data-target="#searchFilterCollapse" aria-expanded="false">
-                <i class="fas fa-search"></i> 検索・絞り込み
-            </button>
-        </div>
-        <div class="collapse" id="searchFilterCollapse">
-            <div class="card-body py-2">
-                <form method="GET">
-                    <input type="hidden" name="target_date" value="{{ default_target_date }}">
-                    
-                    <!-- 検索 -->
-                    <div class="row mb-2">
-                        <div class="col-12">
-                            <div class="input-group input-group-sm">
-                                <input type="text" name="search" class="form-control" placeholder="用途、カテゴリ、支払方法で検索..." value="{{ search_query }}">
-                                <div class="input-group-append">
-                                    <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                        <i class="fas fa-search"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 絞り込み -->
-                    <div class="row">
-                        <div class="col-6 col-md-3">
-                            <select name="transaction_type" class="form-control form-control-sm">
-                                <option value="">全ての取引タイプ</option>
-                                <option value="income" {% if filter_transaction_type == 'income' %}selected{% endif %}>収入</option>
-                                <option value="expense" {% if filter_transaction_type == 'expense' %}selected{% endif %}>支出</option>
-                                <option value="no_change" {% if filter_transaction_type == 'no_change' %}selected{% endif %}>変動なし</option>
-                            </select>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <select name="major_category" class="form-control form-control-sm">
-                                <option value="">全ての費用タイプ</option>
-                                <option value="variable" {% if filter_major_category == 'variable' %}selected{% endif %}>変動費</option>
-                                <option value="fixed" {% if filter_major_category == 'fixed' %}selected{% endif %}>固定費</option>
-                                <option value="special" {% if filter_major_category == 'special' %}selected{% endif %}>特別費</option>
-                            </select>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <select name="category" class="form-control form-control-sm">
-                                <option value="">全てのカテゴリ</option>
-                                {% for category in user_categories %}
-                                <option value="{{ category.id }}" {% if filter_category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <select name="payment_method" class="form-control form-control-sm">
-                                <option value="">全ての支払方法</option>
-                                {% for payment_method in user_payment_methods %}
-                                <option value="{{ payment_method.id }}" {% if filter_payment_method == payment_method.id|stringformat:"s" %}selected{% endif %}>{{ payment_method.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="row mt-2">
-                        <div class="col-12">
-                            <button type="submit" class="btn btn-primary btn-sm">絞り込み</button>
-                            <a href="?target_date={{ default_target_date }}" class="btn btn-outline-secondary btn-sm ml-1">クリア</a>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <!-- 取引一覧 -->
     {% if search_query or filter_transaction_type or filter_major_category or filter_category or filter_payment_method %}
     <div class="alert alert-info alert-sm py-2">
-        <i class="fas fa-filter"></i> 絞り込み結果: {{ transactions|length }}件
+        <i class="fas fa-filter"></i> 絞り込み結果: {{ transactions_count }}件
     </div>
     {% endif %}
     
     <div class="row">
-        {% for transaction in transactions %}
+        {% for transaction in transactions_page %}
         <div class="col-md-6 col-lg-4 mb-2">
             <div class="card card-sm">
                 <div class="card-body p-2">
@@ -259,6 +267,43 @@
         </div>
         {% endfor %}
     </div>
+
+    {% if transactions_page.paginator.num_pages > 1 %}
+    <nav aria-label="取引ページネーション">
+        <ul class="pagination justify-content-center">
+            {% if transactions_page.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1&target_date={{ default_target_date }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">&laquo; 最初</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ transactions_page.previous_page_number }}&target_date={{ default_target_date }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">前へ</a>
+            </li>
+            {% endif %}
+
+            {% for num in transactions_page.paginator.page_range %}
+                {% if transactions_page.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > transactions_page.number|add:'-3' and num < transactions_page.number|add:'3' %}
+                <li class="page-item"><a class="page-link" href="?page={{ num }}&target_date={{ default_target_date }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">{{ num }}</a></li>
+                {% endif %}
+            {% endfor %}
+
+            {% if transactions_page.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ transactions_page.next_page_number }}&target_date={{ default_target_date }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">次へ</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ transactions_page.paginator.num_pages }}&target_date={{ default_target_date }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">最後 &raquo;</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    <div class="text-center mt-2">
+        <small class="text-muted">
+            {{ transactions_page.start_index }} - {{ transactions_page.end_index }} / {{ transactions_page.paginator.count }}件
+        </small>
+    </div>
+    {% endif %}
 </div>
 
 <!-- カスタムCSS -->

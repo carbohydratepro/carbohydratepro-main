@@ -272,7 +272,7 @@ def verify_email(request, token):
             verification_token.save()
             
             logger.info(f"Email verified for user: {user.email}")
-            messages.success(request, 'メールアドレスの確認が完了しました。ログインしてください。')
+            messages.success(request, 'メールアドレスの確認が完了しました。')
             
             return redirect('login')
         else:

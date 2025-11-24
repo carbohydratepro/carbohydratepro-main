@@ -7,12 +7,16 @@ from .models import Transaction, PaymentMethod, Category
 from datetime import datetime, timedelta
 import json
 from django.http import JsonResponse
+from django.core.paginator import Paginator
 
 
 @login_required
 def expenses_list(request):
     target_date = request.GET.get('target_date', None)
     search_query = request.GET.get('search', '')
+    per_page_raw = request.GET.get('per_page', '20')
+    per_page_options = ['10', '20', '50', '100']
+    per_page = int(per_page_raw) if per_page_raw in per_page_options else 20
     
     # 絞り込みパラメータ
     filter_transaction_type = request.GET.get('transaction_type', '')
@@ -29,11 +33,11 @@ def expenses_list(request):
     start_date = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     end_date = (start_date + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0) - timedelta(microseconds=1)
 
-    transactions = Transaction.objects.filter(user=request.user, date__range=(start_date, end_date)).order_by('-date', '-id')
+    transactions_qs = Transaction.objects.filter(user=request.user, date__range=(start_date, end_date)).order_by('-date', '-id')
     
     # 検索機能
     if search_query:
-        transactions = transactions.filter(
+        transactions_qs = transactions_qs.filter(
             Q(purpose__icontains=search_query) |
             Q(purpose_description__icontains=search_query) |
             Q(category__name__icontains=search_query) |
@@ -42,28 +46,33 @@ def expenses_list(request):
     
     # 絞り込み機能
     if filter_transaction_type:
-        transactions = transactions.filter(transaction_type=filter_transaction_type)
+        transactions_qs = transactions_qs.filter(transaction_type=filter_transaction_type)
     if filter_major_category:
-        transactions = transactions.filter(major_category=filter_major_category)
+        transactions_qs = transactions_qs.filter(major_category=filter_major_category)
     if filter_category:
-        transactions = transactions.filter(category__id=filter_category)
+        transactions_qs = transactions_qs.filter(category__id=filter_category)
     if filter_payment_method:
-        transactions = transactions.filter(payment_method__id=filter_payment_method)
+        transactions_qs = transactions_qs.filter(payment_method__id=filter_payment_method)
+
+    transactions_count = transactions_qs.count()
+    paginator = Paginator(transactions_qs, per_page)
+    page_number = request.GET.get('page')
+    transactions_page = paginator.get_page(page_number)
     
     # 絞り込み用のオプション取得
     user_categories = Category.objects.filter(user=request.user)
     user_payment_methods = PaymentMethod.objects.filter(user=request.user)
 
     # 月合計の収入・支出を計算
-    total_income = transactions.filter(transaction_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
-    total_expense = transactions.filter(transaction_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
+    total_income = transactions_qs.filter(transaction_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
+    total_expense = transactions_qs.filter(transaction_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
     net_balance = float(total_income) - float(total_expense)
 
     # 日付範囲の作成（固定された月初から月末）
     date_range = [(start_date + timedelta(days=i)).strftime('%Y-%m-%d') for i in range((end_date - start_date).days + 1)]
 
     # カテゴリグラフ用データの作成（支出のみ、上位5つ + その他）
-    expense_transactions = transactions.filter(transaction_type='expense')
+    expense_transactions = transactions_qs.filter(transaction_type='expense')
     category_data = expense_transactions.values('category__name').annotate(total=Sum('amount')).order_by('-total')
     
     # カテゴリグラフ：上位5つとその他に分ける
@@ -132,8 +141,8 @@ def expenses_list(request):
     current_balance = 0
 
     for date in date_range:
-        daily_expense = transactions.filter(date__date=date, transaction_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
-        daily_income = transactions.filter(date__date=date, transaction_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
+        daily_expense = transactions_qs.filter(date__date=date, transaction_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
+        daily_income = transactions_qs.filter(date__date=date, transaction_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
         current_balance += float(daily_income) - float(daily_expense)  # Decimalをfloatに変換
         expense_data.append(float(daily_expense))  # Decimalをfloatに変換
         balance_data.append(float(current_balance))  # Decimalをfloatに変換
@@ -163,7 +172,8 @@ def expenses_list(request):
     net_balance_formatted = '{:,.0f}'.format(float(net_balance))
     
     return render(request, 'app/expenses/list.html', {
-        'transactions': transactions,
+        'transactions_page': transactions_page,
+        'transactions_count': transactions_count,
         'category_data_json': category_data_json,
         'major_category_data_json': major_category_data_json,
         'expense_data_json': expense_data_json,
@@ -182,7 +192,9 @@ def expenses_list(request):
         'filter_major_category': filter_major_category,
         'filter_category': filter_category,
         'filter_payment_method': filter_payment_method,
-        'default_target_date': target_date.strftime('%Y-%m')  # 今日の日付をテンプレートに渡す
+        'default_target_date': target_date.strftime('%Y-%m'),  # 今日の日付をテンプレートに渡す
+        'per_page': per_page,
+        'per_page_options': per_page_options,
     })
     
 

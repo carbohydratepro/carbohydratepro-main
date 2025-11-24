@@ -2,20 +2,30 @@
 {% load static %}
 {% load app_filters %}
 {% block content %}
-<div class="container mt-5">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">メモ管理</h2>
-        <div class="d-flex flex-wrap align-items-center">
+<div class="container mt-2">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+        <h2 class="mb-2">メモ</h2>
+        <div class="d-flex flex-row align-items-center">
             <div class="btn-group btn-group-sm mr-2 mb-1" role="group" aria-label="表示切替">
-                <button type="button" class="btn btn-primary" id="markdownToggleOn" onclick="setMarkdownMode(true)"><i class="fas fa-paragraph"></i> Markdown表示</button>
-                <button type="button" class="btn btn-outline-secondary" id="markdownToggleOff" onclick="setMarkdownMode(false)"><i class="fas fa-align-left"></i> テキスト表示</button>
+                <button type="button" class="btn btn-primary" id="markdownToggleOn" onclick="setMarkdownMode(true)">
+                    <i class="fas fa-paragraph"></i>
+                    <span class="d-none d-sm-inline"> Markdown表示</span>
+                    <span class="d-sm-none"> MD</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="markdownToggleOff" onclick="setMarkdownMode(false)">
+                    <i class="fas fa-align-left"></i>
+                    <span class="d-none d-sm-inline"> テキスト表示</span>
+                    <span class="d-sm-none"> TXT</span>
+                </button>
             </div>
-            <button onclick="openCreateMemoModal()" class="btn btn-primary btn-sm mb-1 mr-2">
-                <i class="fas fa-plus"></i> 新規メモ作成
-            </button>
-            <a href="{% url 'memo_settings' %}" class="btn btn-outline-secondary btn-sm mb-1">
-                <i class="fas fa-cog"></i> 種別設定
-            </a>
+            <div class="d-flex flex-row-reverse">
+                <a href="{% url 'memo_settings' %}" class="btn btn-outline-secondary btn-sm mb-1">
+                    <i class="fas fa-cog"></i> 種別設定
+                </a>
+                <button onclick="openCreateMemoModal()" class="btn btn-primary btn-sm mb-1 mr-2">
+                    <i class="fas fa-plus"></i> 新規メモ作成
+                </button>
+            </div>
         </div>
     </div>
 
@@ -55,6 +65,14 @@
                         <div class="col-md-2 mb-2 d-flex align-items-end">
                             <button type="submit" class="btn btn-primary btn-sm mr-2">検索</button>
                             <a href="{% url 'memo_list' %}" class="btn btn-secondary btn-sm">クリア</a>
+                        </div>
+                        <div class="col-md-2 mb-2 d-flex align-items-end">
+                            <label for="per_page" class="form-label small mr-2 mb-0">表示件数</label>
+                            <select name="per_page" id="per_page" class="form-control form-control-sm" onchange="document.getElementById('filterForm').submit()">
+                                {% for size in per_page_options %}
+                                <option value="{{ size }}" {% if per_page|stringformat:"s" == size %}selected{% endif %}>{{ size }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
                 </form>
@@ -138,17 +156,17 @@
     </div>
 
     <!-- ページネーション -->
-    {% if page_obj.has_other_pages %}
-    <nav aria-label="メモページネーション">
-        <ul class="pagination justify-content-center">
-            {% if page_obj.has_previous %}
-                <li class="page-item">
-                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}">&laquo; 最初</a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}">前へ</a>
-                </li>
-            {% endif %}
+            {% if page_obj.has_other_pages %}
+            <nav aria-label="メモページネーション">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">&laquo; 最初</a>
+                        </li>
+                        <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">前へ</a>
+                        </li>
+                    {% endif %}
 
             {% for num in page_obj.paginator.page_range %}
                 {% if page_obj.number == num %}
@@ -157,17 +175,17 @@
                     </li>
                 {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}">{{ num }}</a>
+                    <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">{{ num }}</a>
                     </li>
                 {% endif %}
             {% endfor %}
 
             {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}">次へ</a>
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">次へ</a>
                 </li>
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}">最後 &raquo;</a>
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if memo_type_filter %}&memo_type={{ memo_type_filter }}{% endif %}{% if favorite_filter %}&favorite={{ favorite_filter }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">最後 &raquo;</a>
                 </li>
             {% endif %}
         </ul>

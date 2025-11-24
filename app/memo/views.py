@@ -16,6 +16,9 @@ def memo_list(request):
     memo_type_filter = request.GET.get('memo_type', '')
     search_query = request.GET.get('search', '')
     favorite_filter = request.GET.get('favorite', '')
+    per_page_raw = request.GET.get('per_page', '20')
+    per_page_options = ['10', '20', '50', '100']
+    per_page = int(per_page_raw) if per_page_raw in per_page_options else 20
     
     memo_types = MemoType.objects.filter(models.Q(user=request.user) | models.Q(user__isnull=True)).order_by('name')
     memos = Memo.objects.filter(user=request.user).select_related('memo_type')
@@ -31,7 +34,7 @@ def memo_list(request):
         memos = memos.filter(is_favorite=True)
     
     # ページネーション
-    paginator = Paginator(memos, 100)  # 100件ずつ表示
+    paginator = Paginator(memos, per_page)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -41,6 +44,8 @@ def memo_list(request):
         'search_query': search_query,
         'favorite_filter': favorite_filter,
         'memo_type_choices': memo_types,
+        'per_page': per_page,
+        'per_page_options': per_page_options,
     })
 
 

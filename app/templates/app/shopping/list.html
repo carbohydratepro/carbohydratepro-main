@@ -2,14 +2,16 @@
 {% load static %}
 {% load app_filters %}
 {% block content %}
-<div class="container mt-5">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">買うものリスト</h2>
-        <button onclick="openCreateShoppingModal()" class="btn btn-primary btn-sm mb-1">
+<div class="container mt-2">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+        <h2 class="mb-0">買いものリスト</h2>
+    </div>
+
+    <div class="d-flex flex-wrap-reverse mb-2">
+        <button onclick="openCreateShoppingModal()" class="btn btn-primary btn-sm">
             <i class="fas fa-plus"></i> 新規商品追加
         </button>
     </div>
-
     <!-- 検索・絞り込み機能 -->
     <div class="card mb-3">
         <div class="card-header py-2">

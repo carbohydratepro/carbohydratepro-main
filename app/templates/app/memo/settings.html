@@ -1,0 +1,224 @@
+{% extends 'app/base.html' %}
+{% load static %}
+
+{% block title %}メモ種別設定{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app/label-settings.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4><i class="fas fa-cog"></i> メモ種別設定</h4>
+        <a href="{% url 'memo_list' %}" class="btn btn-secondary btn-sm">
+            <i class="fas fa-arrow-left"></i> メモ一覧に戻る
+        </a>
+    </div>
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="閉じる">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-stream"></i> 種別一覧</h5>
+            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createMemoTypeModal">
+                <i class="fas fa-plus"></i> 新規作成
+            </button>
+        </div>
+        <div class="card-body">
+            {% if memo_types %}
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th style="width: 120px;">表示色</th>
+                        <th>名称</th>
+                        <th style="width: 200px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for memo_type in memo_types %}
+                    <tr>
+                        <td>
+                            <span class="badge p-2" style="background-color: {{ memo_type.color }}; color: #fff;">{{ memo_type.color }}</span>
+                        </td>
+                        <td>
+                            {{ memo_type.name }}
+                            {% if memo_type.user %}
+                            <small class="text-muted d-block">あなたの種別</small>
+                            {% else %}
+                            <small class="text-muted d-block">デフォルト</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if memo_type.name == 'その他' %}
+                                <span class="text-muted small">変更不可</span>
+                            {% else %}
+                                <button class="btn btn-sm btn-outline-warning py-0 px-2 mr-1" data-toggle="modal" data-target="#editMemoTypeModal{{ memo_type.id }}">編集</button>
+                                <button class="btn btn-sm btn-outline-danger py-0 px-2" data-toggle="modal" data-target="#deleteMemoTypeModal{{ memo_type.id }}">削除</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    {% if memo_type.name != 'その他' %}
+                    <!-- 編集モーダル -->
+                    <div class="modal fade" id="editMemoTypeModal{{ memo_type.id }}" tabindex="-1" role="dialog" aria-labelledby="editMemoTypeModalLabel{{ memo_type.id }}" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered" role="document">
+                            <div class="modal-content" id="editMemoTypeModal{{ memo_type.id }}">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="editMemoTypeModalLabel{{ memo_type.id }}">種別を編集</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="閉じる">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <div class="modal-body">
+                                        <div class="form-group">
+                                            <label for="memo-type-name-{{ memo_type.id }}">名称</label>
+                                            <input type="text" class="form-control" id="memo-type-name-{{ memo_type.id }}" name="name" value="{{ memo_type.name }}" maxlength="50" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>色の選択</label>
+                                            <div class="color-picker-tabs">
+                                                <button type="button" class="color-picker-tab active" data-tab="template" onclick="switchColorTab('template', 'editMemoTypeModal{{ memo_type.id }}')">
+                                                    <i class="fas fa-palette"></i> テンプレート
+                                                </button>
+                                                <button type="button" class="color-picker-tab" data-tab="custom" onclick="switchColorTab('custom', 'editMemoTypeModal{{ memo_type.id }}')">
+                                                    <i class="fas fa-eye-dropper"></i> カスタム
+                                                </button>
+                                            </div>
+
+                                            <div class="color-picker-content active" data-tab="template">
+                                                <div class="color-template-grid" id="colorTemplateGridMemoEdit{{ memo_type.id }}"></div>
+                                            </div>
+                                            <div class="color-picker-content" data-tab="custom">
+                                                <div class="custom-color-picker-wrapper">
+                                                    <input type="color" name="color" class="form-control-color form-control" id="memo-type-color-{{ memo_type.id }}" value="{{ memo_type.color }}" onchange="updateCustomColor(this, 'editMemoTypeModal{{ memo_type.id }}')" required>
+                                                    <div class="color-preview" style="background-color: {{ memo_type.color }};">{{ memo_type.color }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <input type="hidden" name="memo_type_id" value="{{ memo_type.id }}">
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>
+                                        <button type="submit" name="edit_memo_type" class="btn btn-warning">更新</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 削除モーダル -->
+                    <div class="modal fade" id="deleteMemoTypeModal{{ memo_type.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteMemoTypeModalLabel{{ memo_type.id }}" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="deleteMemoTypeModalLabel{{ memo_type.id }}">種別を削除</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="閉じる">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <div class="modal-body">
+                                        <p>「{{ memo_type.name }}」を削除してもよろしいですか？</p>
+                                        <p class="text-danger"><small>この種別が設定されたメモがある場合は削除できません。</small></p>
+                                        <input type="hidden" name="memo_type_id" value="{{ memo_type.id }}">
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>
+                                        <button type="submit" name="delete_memo_type" class="btn btn-danger">削除</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted mb-0">登録された種別がありません。</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 新規作成モーダル -->
+<div class="modal fade" id="createMemoTypeModal" tabindex="-1" role="dialog" aria-labelledby="createMemoTypeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content" id="createMemoTypeModal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createMemoTypeModalLabel">新しい種別を作成</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="閉じる">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="memo-type-name">名称</label>
+                        <input type="text" class="form-control" id="memo-type-name" name="name" maxlength="50" required>
+                    </div>
+                    <div class="form-group">
+                        <label>色の選択</label>
+                        <div class="color-picker-tabs">
+                            <button type="button" class="color-picker-tab active" data-tab="template" onclick="switchColorTab('template', 'createMemoTypeModal')">
+                                <i class="fas fa-palette"></i> テンプレート
+                            </button>
+                            <button type="button" class="color-picker-tab" data-tab="custom" onclick="switchColorTab('custom', 'createMemoTypeModal')">
+                                <i class="fas fa-eye-dropper"></i> カスタム
+                            </button>
+                        </div>
+
+                        <div class="color-picker-content active" data-tab="template">
+                            <div class="color-template-grid" id="colorTemplateGridMemoCreate"></div>
+                        </div>
+                        <div class="color-picker-content" data-tab="custom">
+                            <div class="custom-color-picker-wrapper">
+                                <input type="color" name="color" class="form-control-color form-control" id="memo-type-color" value="#6c757d" onchange="updateCustomColor(this, 'createMemoTypeModal')" required>
+                                <div class="color-preview" style="background-color: #6c757d;">#6c757d</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>
+                    <button type="submit" name="create_memo_type" class="btn btn-primary">作成</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'app/label-settings.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 新規作成モーダルのカラーテンプレート生成
+    generateColorTemplateGrid('colorTemplateGridMemoCreate', 'createMemoTypeModal');
+
+    // 編集モーダルのカラーテンプレート生成
+    {% for memo_type in memo_types %}
+        {% if memo_type.name != 'その他' %}
+            generateColorTemplateGrid('colorTemplateGridMemoEdit{{ memo_type.id }}', 'editMemoTypeModal{{ memo_type.id }}');
+        {% endif %}
+    {% endfor %}
+});
+</script>
+{% endblock %}

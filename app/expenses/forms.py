@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django import forms
 from django.utils import timezone
 from .models import Transaction, PaymentMethod, Category
@@ -6,11 +7,11 @@ from .models import Transaction, PaymentMethod, Category
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
-        fields = ['date', 'amount', 'purpose', 'transaction_type', 'category', 'major_category', 'payment_method']
+        fields = ['date', 'amount', 'purpose', 'transaction_type', 'major_category', 'category', 'payment_method']
         labels = {
             'date': '日付',
-            'amount': '金額',
             'purpose': '用途',
+            'amount': '金額',
             'transaction_type': '取引タイプ',
             'category': 'カテゴリ',
             'major_category': '費用タイプ',
@@ -31,6 +32,8 @@ class TransactionForm(forms.ModelForm):
         # 新規作成時はデフォルトで今日の日付を設定
         if not self.instance.pk and not self.data:
             self.fields['date'].initial = timezone.now().date()
+            self.fields['transaction_type'].initial = 'expense'
+            self.fields['major_category'].initial = 'variable'
         
         # ユーザーに基づいてクエリセットをフィルタリング
         if user is not None:
@@ -47,6 +50,15 @@ class TransactionForm(forms.ModelForm):
                 field.widget.attrs['class'] += ' form-control'
             else:
                 field.widget.attrs['class'] = 'form-control'
+
+        # 編集時に金額の小数点末尾を表示しないよう整形
+        if self.instance.pk and self.instance.amount is not None:
+            amount = Decimal(self.instance.amount)
+            if amount == amount.to_integral_value():
+                normalized = amount.quantize(Decimal('1'))
+            else:
+                normalized = amount.quantize(Decimal('0.01')).normalize()
+            self.initial['amount'] = normalized
     
     def clean_amount(self):
         amount = self.cleaned_data.get('amount')

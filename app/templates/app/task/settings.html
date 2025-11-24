@@ -31,6 +31,28 @@
     </div>
     {% endif %}
 
+    <!-- 週の開始曜日設定 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-calendar-week"></i> 週の開始曜日</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" class="form-inline">
+                {% csrf_token %}
+                <div class="btn-group btn-group-toggle mr-3" data-toggle="buttons">
+                    <label class="btn btn-sm btn-{% if current_week_start == 'sunday' %}primary active{% else %}outline-primary{% endif %}">
+                        <input type="radio" name="week_start" value="sunday" autocomplete="off" {% if current_week_start == 'sunday' %}checked{% endif %}> 日曜開始
+                    </label>
+                    <label class="btn btn-sm btn-{% if current_week_start == 'monday' %}primary active{% else %}outline-primary{% endif %}">
+                        <input type="radio" name="week_start" value="monday" autocomplete="off" {% if current_week_start == 'monday' %}checked{% endif %}> 月曜開始
+                    </label>
+                </div>
+                <button type="submit" name="update_week_start" class="btn btn-primary btn-sm">保存</button>
+            </form>
+            <small class="text-muted d-block mt-2">月表示カレンダーの並び順に適用されます。</small>
+        </div>
+    </div>
+
     <!-- ラベル管理 -->
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">

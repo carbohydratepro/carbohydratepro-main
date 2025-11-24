@@ -7,6 +7,7 @@ function toggleMemoExpand(memoId) {
     const icon = document.getElementById(`icon-${memoId}`);
     
     if (fullContent.style.display === 'none') {
+        renderMemoContent(fullContent);
         preview.style.display = 'none';
         fullContent.style.display = 'block';
         icon.classList.add('expanded');
@@ -15,6 +16,59 @@ function toggleMemoExpand(memoId) {
         fullContent.style.display = 'none';
         icon.classList.remove('expanded');
     }
+}
+
+let markdownEnabled = false;
+let memoMdRenderer = null;
+
+function renderMemoContent(fullContentEl) {
+    if (!fullContentEl) return;
+    let raw = '';
+    if (fullContentEl.dataset.rawId) {
+        const source = document.getElementById(fullContentEl.dataset.rawId);
+        raw = source ? source.value : '';
+    } else if (fullContentEl.dataset.raw) {
+        raw = decodeURIComponent(fullContentEl.dataset.raw);
+    }
+    if (markdownEnabled) {
+        if (!memoMdRenderer) {
+            if (window.markdownit) {
+                memoMdRenderer = window.markdownit({ html: false, linkify: true, breaks: true });
+            } else if (window.memoMarkdownRender) {
+                memoMdRenderer = { render: window.memoMarkdownRender };
+            }
+        }
+        const rendered = memoMdRenderer ? memoMdRenderer.render(raw) : raw;
+        fullContentEl.innerHTML = rendered;
+    } else {
+        fullContentEl.textContent = raw;
+        fullContentEl.innerHTML = fullContentEl.textContent.replace(/\n/g, '<br>');
+    }
+}
+
+function setMarkdownMode(enabled) {
+    markdownEnabled = enabled;
+    localStorage.setItem('memoMarkdownEnabled', enabled ? '1' : '0');
+    const onBtn = document.getElementById('markdownToggleOn');
+    const offBtn = document.getElementById('markdownToggleOff');
+    if (onBtn && offBtn) {
+        if (enabled) {
+            onBtn.classList.add('btn-primary');
+            onBtn.classList.remove('btn-outline-secondary');
+            offBtn.classList.add('btn-outline-secondary');
+            offBtn.classList.remove('btn-primary');
+        } else {
+            offBtn.classList.add('btn-primary');
+            offBtn.classList.remove('btn-outline-secondary');
+            onBtn.classList.add('btn-outline-secondary');
+            onBtn.classList.remove('btn-primary');
+        }
+    }
+    document.querySelectorAll('.memo-full-content').forEach(el => {
+        if (el.style.display !== 'none') {
+            renderMemoContent(el);
+        }
+    });
 }
 
 // お気に入りの切り替え
@@ -169,4 +223,6 @@ function initializeMemoFilters() {
 // ページ読み込み時にフィルターを初期化
 document.addEventListener('DOMContentLoaded', function() {
     initializeMemoFilters();
+    const saved = localStorage.getItem('memoMarkdownEnabled');
+    setMarkdownMode(saved === '1');
 });

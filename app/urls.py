@@ -35,6 +35,7 @@ urlpatterns = [
     path('memos/edit/<int:memo_id>/', views.edit_memo, name='edit_memo'),
     path('memos/delete/<int:memo_id>/', views.delete_memo, name='delete_memo'),
     path('memos/toggle-favorite/<int:memo_id>/', views.toggle_memo_favorite, name='toggle_memo_favorite'),
+    path('memos/settings/', views.memo_settings, name='memo_settings'),
     # 買うものリスト
     path('shopping/', views.shopping_list, name='shopping_list'),
     path('shopping/create/', views.create_shopping_item, name='create_shopping_item'),

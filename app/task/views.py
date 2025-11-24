@@ -16,6 +16,7 @@ def task_list(request):
     # 表示モードと日付選択
     view_mode = request.GET.get('view_mode', 'month')  # 'month' or 'day'
     target_date_str = request.GET.get('target_date', None)
+    week_start = request.session.get('task_week_start', 'sunday')  # 'sunday' or 'monday'
     
     # フィルターパラメータ取得
     status_filter = request.GET.get('status', '')
@@ -116,6 +117,7 @@ def task_list(request):
             'search_query': search_query,
             'status_choices': Task.STATUS_CHOICES,
             'priority_choices': Task.PRIORITY_CHOICES,
+            'week_start': week_start,
         })
     
     # 月表示モード（既存のコード）
@@ -148,7 +150,9 @@ def task_list(request):
     # カレンダー生成
     year = target_date.year
     month = target_date.month
-    cal = calendar.monthcalendar(year, month)
+    firstweekday = 6 if week_start == 'sunday' else 0  # Sunday=6, Monday=0
+    cal = calendar.Calendar(firstweekday=firstweekday).monthdayscalendar(year, month)
+    weekday_labels = ['日', '月', '火', '水', '木', '金', '土'] if week_start == 'sunday' else ['月', '火', '水', '木', '金', '土', '日']
     
     # 各日のタスクを辞書形式で取得（最大5個まで）
     # 複数日にまたがるタスクも各日に表示
@@ -187,7 +191,8 @@ def task_list(request):
         'target_month': target_date.strftime('%Y年%m月'),
         'default_target_date': target_date.strftime('%Y-%m'),
         'calendar_data': calendar_data,
-        'weekday_labels': ['月', '火', '水', '木', '金', '土', '日'],
+        'weekday_labels': weekday_labels,
+        'week_start': week_start,
     })
 
 
@@ -371,8 +376,9 @@ def get_day_tasks(request, date):
 
 @login_required
 def task_settings(request):
-    """タスク設定画面（ラベル管理）"""
+    """タスク設定画面（ラベル管理・週の開始曜日設定）"""
     labels = TaskLabel.objects.filter(user=request.user)
+    current_week_start = request.session.get('task_week_start', 'sunday')
     
     # ラベル作成
     if request.method == 'POST':
@@ -402,7 +408,18 @@ def task_settings(request):
             label.delete()
             messages.success(request, 'ラベルを削除しました。')
             return redirect('task_settings')
+        
+        # 週の開始曜日設定
+        elif 'update_week_start' in request.POST:
+            selected = request.POST.get('week_start', 'sunday')
+            if selected in ['sunday', 'monday']:
+                request.session['task_week_start'] = selected
+                messages.success(request, '週の開始曜日を更新しました。')
+            else:
+                messages.error(request, '不正な入力です。')
+            return redirect('task_settings')
     
     return render(request, 'app/task/settings.html', {
         'labels': labels,
+        'current_week_start': current_week_start,
     })

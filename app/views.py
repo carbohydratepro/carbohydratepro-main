@@ -20,7 +20,7 @@ from django.views import View
 logger = logging.getLogger(__name__)
 
 from .expenses.views import expenses_list, create_expenses, expenses_settings, edit_expenses, delete_expenses
-from .memo.views import memo_list, create_memo, edit_memo, delete_memo, toggle_memo_favorite
+from .memo.views import memo_list, create_memo, edit_memo, delete_memo, toggle_memo_favorite, memo_settings
 from .shopping.views import shopping_list, create_shopping_item, edit_shopping_item, delete_shopping_item, update_shopping_count
 from .task.views import task_list, create_task, edit_task, delete_task, get_day_tasks, task_settings
 

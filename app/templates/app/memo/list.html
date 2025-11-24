@@ -3,7 +3,21 @@
 {% load app_filters %}
 {% block content %}
 <div class="container mt-5">
-    <h2 class="mb-4">メモ管理</h2>
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">メモ管理</h2>
+        <div class="d-flex flex-wrap align-items-center">
+            <div class="btn-group btn-group-sm mr-2 mb-1" role="group" aria-label="表示切替">
+                <button type="button" class="btn btn-primary" id="markdownToggleOn" onclick="setMarkdownMode(true)"><i class="fas fa-paragraph"></i> Markdown表示</button>
+                <button type="button" class="btn btn-outline-secondary" id="markdownToggleOff" onclick="setMarkdownMode(false)"><i class="fas fa-align-left"></i> テキスト表示</button>
+            </div>
+            <button onclick="openCreateMemoModal()" class="btn btn-primary btn-sm mb-1 mr-2">
+                <i class="fas fa-plus"></i> 新規メモ作成
+            </button>
+            <a href="{% url 'memo_settings' %}" class="btn btn-outline-secondary btn-sm mb-1">
+                <i class="fas fa-cog"></i> 種別設定
+            </a>
+        </div>
+    </div>
 
     <!-- 検索・絞り込み機能 -->
     <div class="card mb-3">
@@ -26,8 +40,8 @@
                             <label for="memo_type_filter" class="form-label small">種別</label>
                             <select id="memo_type_filter" name="memo_type" class="form-control form-control-sm">
                                 <option value="">すべて</option>
-                                {% for type_code, type_name in memo_type_choices %}
-                                <option value="{{ type_code }}" {% if memo_type_filter == type_code %}selected{% endif %}>{{ type_name }}</option>
+                                {% for type in memo_type_choices %}
+                                <option value="{{ type.id }}" {% if memo_type_filter == type.id|stringformat:"s" %}selected{% endif %}>{{ type.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -73,7 +87,7 @@
                     <!-- 2行目: ラベル（左寄せ）とお気に入り・編集・削除ボタン（右寄せ） -->
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div>
-                            <span class="badge badge-primary">{{ memo.get_memo_type_display }}</span>
+                            <span class="badge" style="background-color: {{ memo.memo_type.color }}; color: #fff;">{{ memo.memo_type.name }}</span>
                         </div>
                         <div class="d-flex" style="white-space: nowrap;">
                             <button class="btn btn-sm btn-outline-warning py-0 px-1 mr-1" 
@@ -101,11 +115,8 @@
                         <p class="card-text text-muted small mb-2" id="preview-{{ memo.id }}">
                             {{ memo.content|highlight:search_query|truncatechars:100 }}
                         </p>
-                        <div class="memo-full-content" id="full-content-{{ memo.id }}" style="display: none;">
-                            <p class="card-text text-muted small mb-2">
-                                {{ memo.content|highlight:search_query|linebreaks }}
-                            </p>
-                        </div>
+                        <div class="memo-full-content card-text text-muted small mb-2" id="full-content-{{ memo.id }}" data-raw-id="memo-raw-{{ memo.id }}" style="display: none;"></div>
+                        <textarea id="memo-raw-{{ memo.id }}" class="d-none memo-raw-src">{{ memo.content }}</textarea>
                         <div class="text-center">
                             <i class="fas fa-chevron-down expand-icon" id="icon-{{ memo.id }}"></i>
                         </div>
@@ -169,13 +180,11 @@
     </div>
     {% endif %}
 
-    <button onclick="openCreateMemoModal()" class="btn btn-primary mt-3">
-        <i class="fas fa-plus"></i> 新規メモ作成
-    </button>
 </div>
 
 <link rel="stylesheet" href="{% static 'app/modal.css' %}">
 <link rel="stylesheet" href="{% static 'app/memo.css' %}">
+<script src="{% static 'app/markdown-lite.js' %}"></script>
 <script src="{% static 'app/memo.js' %}"></script>
 
 <!-- 編集モーダル -->

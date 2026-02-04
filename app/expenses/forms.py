@@ -29,9 +29,9 @@ class TransactionForm(forms.ModelForm):
         user = kwargs.pop('user', None)  # 'user' キーワード引数を取得
         super(TransactionForm, self).__init__(*args, **kwargs)
         
-        # 新規作成時はデフォルトで今日の日付を設定
+        # 新規作成時はデフォルトで今日の日付を設定（日本時間）
         if not self.instance.pk and not self.data:
-            self.fields['date'].initial = timezone.now().date()
+            self.fields['date'].initial = timezone.localtime(timezone.now()).date()
             self.fields['transaction_type'].initial = 'expense'
             self.fields['major_category'].initial = 'variable'
         

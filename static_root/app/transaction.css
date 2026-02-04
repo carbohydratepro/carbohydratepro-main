@@ -53,6 +53,13 @@
 
 /* グラフ用 */
 @media (max-width: 768px) {
+    #expenseBarChartMobile,
+    #balanceLineChartMobile {
+        height: 250px !important;
+        max-height: 250px !important;
+    }
+    
+    /* その他のグラフは200pxのまま */
     .chart-canvas {
         height: 200px !important;
     }

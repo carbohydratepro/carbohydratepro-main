@@ -1,0 +1,8 @@
+# CLAUDE.md
+
+## ルール
+
+### ロックファイルの取り扱い
+
+- ロックファイル（`package-lock.json`, `poetry.lock`, `Pipfile.lock` 等）は直接編集しないこと
+- 依存関係の更新はパッケージマネージャーのコマンド（`npm install`, `poetry lock`, `pip freeze` 等）を通して行うこと

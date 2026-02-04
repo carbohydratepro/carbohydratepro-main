@@ -242,6 +242,11 @@ function initializeExpenseCharts() {
     // モバイル用支出を表す棒グラフ
     var ctxBarMobile = document.getElementById('expenseBarChartMobile');
     if (ctxBarMobile) {
+        // 親要素とcanvasの高さを確実に設定
+        ctxBarMobile.parentElement.style.height = '250px';
+        ctxBarMobile.style.height = '250px';
+        ctxBarMobile.height = 250;
+        
         // Y軸の最大値を計算（データの最大値と1000の大きい方）
         var maxExpenseMobile = Math.max(...expenseData.datasets[0].data, 1000);
         
@@ -340,8 +345,8 @@ function initializeExpenseCharts() {
                         borderColor: balanceData.datasets[0].borderColor,
                         backgroundColor: balanceData.datasets[0].backgroundColor || 'rgba(54, 162, 235, 0.2)',
                         tension: 0.1,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
+                        pointRadius: 0,  // 通常は非表示
+                        pointHoverRadius: 6,  // ホバー時に表示
                         order: 1
                     },
                     {
@@ -465,6 +470,11 @@ function initializeExpenseCharts() {
     // モバイル用所持金の遷移を表す折れ線グラフ
     var ctxLineMobile = document.getElementById('balanceLineChartMobile');
     if (ctxLineMobile) {
+        // 親要素とcanvasの高さを確実に設定
+        ctxLineMobile.parentElement.style.height = '300px';
+        ctxLineMobile.style.height = '300px';
+        ctxLineMobile.height = 300;
+        
         var balanceLineChartMobile = new Chart(ctxLineMobile.getContext('2d'), {
             type: 'line',
             data: {
@@ -477,8 +487,8 @@ function initializeExpenseCharts() {
                         borderColor: balanceData.datasets[0].borderColor,
                         backgroundColor: balanceData.datasets[0].backgroundColor || 'rgba(54, 162, 235, 0.2)',
                         tension: 0.1,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
+                        pointRadius: 0,  // 通常は非表示
+                        pointHoverRadius: 8,  // ホバー時に表示（モバイルでは少し大きめ）
                         order: 1
                     },
                     {

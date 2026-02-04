@@ -8,14 +8,6 @@ function getCookie(name) {
 
 const csrftoken = getCookie('csrftoken');
 
-// フォームエラーの表示
-document.addEventListener('DOMContentLoaded', () => {
-    const formErrorEl = document.getElementById('formErrorData');
-    if (formErrorEl) {
-        alert(formErrorEl.dataset.error);
-    }
-});
-
 // メッセージダイアログを自動表示
 document.addEventListener('DOMContentLoaded', () => {
     const dialog = document.getElementById('messageDialog');

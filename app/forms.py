@@ -1,5 +1,5 @@
 from django import forms
-from .models import VideoPost, Comment, ContactMessage
+from .models import ContactMessage
 
 from .expenses.forms import TransactionForm, PaymentMethodForm, CategoryForm
 from .memo.forms import MemoForm
@@ -26,22 +26,3 @@ class ContactMessageForm(forms.ModelForm):
         for field in self.fields.values():
             field.required = True
 
-class DateForm(forms.Form):
-    date = forms.DateField(widget=forms.TextInput(attrs={"type": "date", "class": "form-control"}))
-
-class VideoPostForm(forms.ModelForm):
-    class Meta:
-        model = VideoPost
-        fields = ["date", "title", "character", "result", "video_url", "notes"]
-        error_messages = {
-            "date": {"required": "日付を入力してください。"},
-            "title": {"required": "タイトルを入力してください。"},
-            "character": {"required": "使用キャラを入力してください。"},
-            "video_url": {"required": "動画URLを入力してください。"},
-        }
-
-class CommentForm(forms.ModelForm):
-    class Meta:
-        model = Comment
-        fields = ["content"]
-        widgets = {"content": forms.Textarea(attrs={"placeholder": "コメントを入力してください...", "rows": 2})}

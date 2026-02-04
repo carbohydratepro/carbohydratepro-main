@@ -30,10 +30,12 @@
                     {{ field.label }}
                   {% endif %}
                 </label>
-                <input type="{{ field.field.widget.input_type }}" class="form-control" id="{{ field.id_for_label }}" name="{{ field.name }}">
+                <input type="{{ field.field.widget.input_type }}" class="form-control {% if field.errors %}is-invalid{% endif %}" id="{{ field.id_for_label }}" name="{{ field.name }}">
                 {% if field.errors %}
                   <div class="invalid-feedback">
-                    {{ filters.errors }}
+                    {% for error in field.errors %}
+                      {{ error }}
+                    {% endfor %}
                   </div>
                 {% endif %}
               </div>

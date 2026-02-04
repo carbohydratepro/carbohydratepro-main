@@ -5,7 +5,7 @@ function toggleMemoExpand(memoId) {
     const preview = document.getElementById(`preview-${memoId}`);
     const fullContent = document.getElementById(`full-content-${memoId}`);
     const icon = document.getElementById(`icon-${memoId}`);
-    
+
     if (fullContent.style.display === 'none') {
         renderMemoContent(fullContent);
         preview.style.display = 'none';
@@ -83,7 +83,6 @@ function toggleFavorite(memoId, button) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // アイコンの更新
             const icon = button.querySelector('i');
             if (data.is_favorite) {
                 icon.className = 'fas fa-star';
@@ -94,134 +93,128 @@ function toggleFavorite(memoId, button) {
                 button.setAttribute('data-favorite', 'false');
                 button.setAttribute('title', 'お気に入り');
             }
-            // ページをリロードしてソート順を更新
             setTimeout(() => location.reload(), 500);
         }
     })
     .catch(error => console.error('Error:', error));
 }
 
+// フォームデータをURLSearchParams形式に変換
+function serializeMemoForm(form) {
+    return new URLSearchParams(new FormData(form)).toString();
+}
+
 // 編集モーダル関連
-function openEditMemoModal(memoId) {
-    $.ajax({
-        url: '/carbohydratepro/memos/edit/' + memoId + '/',
-        type: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        success: function(response) {
-            $('#editMemoModal .modal-dialog').html(response);
-            $('#editMemoModal').modal('show');
-            
-            // フォーム送信時の処理
-            $('#editMemoForm').on('submit', function(e) {
-                e.preventDefault();
-                $.ajax({
-                    url: $(this).attr('action'),
-                    type: 'POST',
-                    data: $(this).serialize(),
+async function openEditMemoModal(memoId) {
+    try {
+        const response = await fetch(`/carbohydratepro/memos/edit/${memoId}/`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        if (!response.ok) throw new Error(`ステータス: ${response.status}`);
+        const html = await response.text();
+
+        document.querySelector('#editMemoModal .modal-dialog').innerHTML = html;
+        $('#editMemoModal').modal('show');
+
+        const form = document.getElementById('editMemoForm');
+        form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const res = await fetch(form.action, {
+                    method: 'POST',
                     headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    success: function(response) {
-                        if (response.success) {
-                            $('#editMemoModal').modal('hide');
-                            location.reload();
-                        } else {
-                            alert('エラーが発生しました。入力内容を確認してください。');
-                        }
-                    },
-                    error: function() {
-                        alert('保存に失敗しました。');
-                    }
+                    body: serializeMemoForm(form),
                 });
-            });
-        },
-        error: function() {
-            alert('データの読み込みに失敗しました。');
-        }
-    });
+                const data = await res.json();
+                if (data.success) {
+                    $('#editMemoModal').modal('hide');
+                    location.reload();
+                } else {
+                    alert('エラーが発生しました。入力内容を確認してください。');
+                }
+            } catch {
+                alert('保存に失敗しました。');
+            }
+        });
+    } catch {
+        alert('データの読み込みに失敗しました。');
+    }
 }
 
 // 新規作成モーダル関連
-function openCreateMemoModal() {
-    $.ajax({
-        url: '/carbohydratepro/memos/create/',
-        type: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        success: function(response) {
-            $('#createMemoModal .modal-dialog').html(response);
-            $('#createMemoModal').modal('show');
-            
-            // フォーム送信時の処理
-            $('#createMemoForm').on('submit', function(e) {
-                e.preventDefault();
-                $.ajax({
-                    url: $(this).attr('action'),
-                    type: 'POST',
-                    data: $(this).serialize(),
+async function openCreateMemoModal() {
+    try {
+        const response = await fetch('/carbohydratepro/memos/create/', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        if (!response.ok) throw new Error(`ステータス: ${response.status}`);
+        const html = await response.text();
+
+        document.querySelector('#createMemoModal .modal-dialog').innerHTML = html;
+        $('#createMemoModal').modal('show');
+
+        const form = document.getElementById('createMemoForm');
+        form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const res = await fetch(form.action, {
+                    method: 'POST',
                     headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    success: function(response) {
-                        if (response.success) {
-                            $('#createMemoModal').modal('hide');
-                            location.reload();
-                        } else {
-                            alert('エラーが発生しました。入力内容を確認してください。');
-                        }
-                    },
-                    error: function() {
-                        alert('保存に失敗しました。');
-                    }
+                    body: serializeMemoForm(form),
                 });
-            });
-        },
-        error: function() {
-            alert('データの読み込みに失敗しました。');
-        }
-    });
+                const data = await res.json();
+                if (data.success) {
+                    $('#createMemoModal').modal('hide');
+                    location.reload();
+                } else {
+                    alert('エラーが発生しました。入力内容を確認してください。');
+                }
+            } catch {
+                alert('保存に失敗しました。');
+            }
+        });
+    } catch {
+        alert('データの読み込みに失敗しました。');
+    }
 }
 
 // フィルター関連のイベント処理
 function initializeMemoFilters() {
-    var filterForm = document.getElementById('filterForm');
+    const filterForm = document.getElementById('filterForm');
     if (filterForm) {
-        filterForm.addEventListener('submit', function(e) {
+        filterForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            this.submit();
+            filterForm.submit();
         });
     }
 
-    var memoTypeFilter = document.getElementById('memo_type_filter');
-    if (memoTypeFilter) {
-        memoTypeFilter.addEventListener('change', function() {
-            document.getElementById('filterForm').submit();
-        });
-    }
-    
-    var favoriteFilter = document.getElementById('favorite_filter');
-    if (favoriteFilter) {
-        favoriteFilter.addEventListener('change', function() {
-            document.getElementById('filterForm').submit();
-        });
-    }
+    const memoTypeFilter = document.getElementById('memo_type_filter');
+    memoTypeFilter?.addEventListener('change', () => {
+        document.getElementById('filterForm').submit();
+    });
 
-    var searchInput = document.getElementById('search');
-    if (searchInput) {
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                document.getElementById('filterForm').submit();
-            }
-        });
-    }
+    const favoriteFilter = document.getElementById('favorite_filter');
+    favoriteFilter?.addEventListener('change', () => {
+        document.getElementById('filterForm').submit();
+    });
+
+    const searchInput = document.getElementById('search');
+    searchInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('filterForm').submit();
+        }
+    });
 }
 
 // ページ読み込み時にフィルターを初期化
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
     initializeMemoFilters();
     const saved = localStorage.getItem('memoMarkdownEnabled');
     setMarkdownMode(saved === '1');

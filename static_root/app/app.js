@@ -1,35 +1,28 @@
 function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
+    if (!document.cookie || document.cookie === '') return null;
+    const found = document.cookie.split(';')
+        .map(c => c.trim())
+        .find(c => c.startsWith(`${name}=`));
+    return found ? decodeURIComponent(found.substring(name.length + 1)) : null;
 }
 
 const csrftoken = getCookie('csrftoken');
 
+// フォームエラーの表示
+document.addEventListener('DOMContentLoaded', () => {
+    const formErrorEl = document.getElementById('formErrorData');
+    if (formErrorEl) {
+        alert(formErrorEl.dataset.error);
+    }
+});
 
 // メッセージダイアログを自動表示
-window.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
     const dialog = document.getElementById('messageDialog');
     if (dialog) {
-        // まず表示してから、少し遅延させてクラスを追加（アニメーション用）
         dialog.style.display = 'flex';
-        setTimeout(function() {
-            dialog.classList.add('show');
-        }, 10);
-        
-        // 5秒後に自動的に閉じる
-        setTimeout(function() {
-            closeMessageDialog();
-        }, 5000);
+        setTimeout(() => dialog.classList.add('show'), 10);
+        setTimeout(() => closeMessageDialog(), 5000);
     }
 });
 
@@ -38,14 +31,12 @@ function closeMessageDialog() {
     const dialog = document.getElementById('messageDialog');
     if (dialog) {
         dialog.classList.remove('show');
-        setTimeout(function() {
-            dialog.style.display = 'none';
-        }, 300);
+        setTimeout(() => { dialog.style.display = 'none'; }, 300);
     }
 }
 
 // 背景クリックでダイアログを閉じる
-document.addEventListener('click', function(e) {
+document.addEventListener('click', (e) => {
     const dialog = document.getElementById('messageDialog');
     if (dialog && e.target === dialog) {
         closeMessageDialog();
@@ -53,7 +44,7 @@ document.addEventListener('click', function(e) {
 });
 
 // ESCキーでダイアログを閉じる
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeMessageDialog();
     }

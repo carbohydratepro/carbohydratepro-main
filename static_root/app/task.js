@@ -4,67 +4,47 @@
 function switchViewMode(mode) {
     const currentUrl = new URL(window.location.href);
     const targetDate = currentUrl.searchParams.get('target_date');
-    
-    // 新しいURLを構築
+
     const newUrl = new URL(window.location.href);
     newUrl.searchParams.set('view_mode', mode);
-    
+
     if (mode === 'day') {
-        // 日表示に切り替え: 今日の日付を設定
-        const today = new Date();
-        const dateStr = today.toISOString().split('T')[0];
+        const dateStr = new Date().toISOString().split('T')[0];
         newUrl.searchParams.set('target_date', dateStr);
     } else {
-        // 日表示から月表示に切り替え: 日付を月に変換
-        if (targetDate && targetDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        if (targetDate?.match(/^\d{4}-\d{2}-\d{2}$/)) {
             newUrl.searchParams.set('target_date', targetDate.substring(0, 7));
-        } else if (targetDate && targetDate.match(/^\d{4}-\d{2}$/)) {
-            // すでに月形式の場合はそのまま
+        } else if (targetDate?.match(/^\d{4}-\d{2}$/)) {
             newUrl.searchParams.set('target_date', targetDate);
         } else {
-            // 今月を設定
-            const today = new Date();
-            const monthStr = today.toISOString().substring(0, 7);
-            newUrl.searchParams.set('target_date', monthStr);
+            newUrl.searchParams.set('target_date', new Date().toISOString().substring(0, 7));
         }
     }
-    
+
     window.location.href = newUrl.toString();
 }
 
 // テキストを指定文字数で切り詰める関数
 function truncateText(text, maxLength) {
     if (!text) return '';
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
+    return text.length <= maxLength ? text : text.substring(0, maxLength) + '...';
 }
 
 // カレンダーセルのクリックイベント処理
 function setupCalendarClickEvents() {
-    // カレンダーセル全体のクリックイベント
-    document.querySelectorAll('.task-calendar-cell[data-day]').forEach(function(cell) {
-        cell.addEventListener('click', function(e) {
-            const day = this.dataset.day;
-            const month = this.dataset.month;
-            const taskCount = parseInt(this.dataset.taskCount);
-            const year = this.dataset.year;
-            const monthNum = this.dataset.monthNum;
-            
-            // タスクアイテムをクリックした場合もタスク一覧を表示
+    document.querySelectorAll('.task-calendar-cell[data-day]').forEach(cell => {
+        cell.addEventListener('click', (e) => {
+            const { day, month, taskCount, year, monthNum } = cell.dataset;
+            const count = parseInt(taskCount);
+
             if (e.target.closest('.task-item')) {
-                // タスクがある場合は必ず一覧表示
-                if (taskCount > 0) {
-                    showDayTasksModal(year, monthNum, day, month);
-                }
+                if (count > 0) showDayTasksModal(year, monthNum, day, month);
                 return;
             }
-            
-            // タスク以外の空白部分をクリックした場合
-            if (taskCount > 0) {
-                // タスクがある場合は一覧表示
+
+            if (count > 0) {
                 showDayTasksModal(year, monthNum, day, month);
             } else {
-                // タスクがない場合は新規作成
                 openCreateTaskModalWithDate(year, monthNum, day);
             }
         });
@@ -73,70 +53,56 @@ function setupCalendarClickEvents() {
 
 // 日付のタスク一覧を表示するモーダル
 function showDayTasksModal(year, month, day, monthLabel) {
-    // タイトルをyyyy/mm/dd形式に変更
     const paddedMonth = String(month).padStart(2, '0');
     const paddedDay = String(day).padStart(2, '0');
     const modalTitle = `${year}/${paddedMonth}/${paddedDay}`;
     document.getElementById('dayTasksModalLabel').textContent = modalTitle;
-    
-    // 日付をモーダルのデータ属性に保存（ガントチャート表示用）
+
     const modal = document.getElementById('dayTasksModal');
     modal.dataset.year = year;
     modal.dataset.month = paddedMonth;
     modal.dataset.day = paddedDay;
-    
+
     // 「この日にタスクを追加」ボタンのイベント設定
     const addTaskBtn = document.getElementById('addTaskForDayBtn');
     if (addTaskBtn) {
-        // 既存のイベントリスナーを削除
         const newBtn = addTaskBtn.cloneNode(true);
         addTaskBtn.parentNode.replaceChild(newBtn, addTaskBtn);
-        
-        // 新しいイベントリスナーを追加
-        newBtn.addEventListener('click', function() {
+        newBtn.addEventListener('click', () => {
             $('#dayTasksModal').modal('hide');
-            setTimeout(function() {
-                openCreateTaskModalWithDate(year, month, day);
-            }, 300);
+            setTimeout(() => openCreateTaskModalWithDate(year, month, day), 300);
         });
     }
-    
+
     // 「ガントチャートで表示」ボタンのイベント設定
     const ganttViewBtn = document.getElementById('viewGanttForDayBtn');
     if (ganttViewBtn) {
-        // 既存のイベントリスナーを削除
         const newGanttBtn = ganttViewBtn.cloneNode(true);
         ganttViewBtn.parentNode.replaceChild(newGanttBtn, ganttViewBtn);
-        
-        // 新しいイベントリスナーを追加
-        newGanttBtn.addEventListener('click', function() {
-            const targetDate = `${year}-${paddedMonth}-${paddedDay}`;
-            window.location.href = `?view_mode=day&target_date=${targetDate}`;
+        newGanttBtn.addEventListener('click', () => {
+            window.location.href = `?view_mode=day&target_date=${year}-${paddedMonth}-${paddedDay}`;
         });
     }
-    
-    // その日のタスクを取得してAjaxで取得
+
+    // その日のタスクをfetchで取得
     fetch(`/carbohydratepro/tasks/day/${year}-${month}-${day}/`)
         .then(response => response.json())
         .then(data => {
             const modalBody = document.getElementById('dayTasksModalBody');
-            
-            if (data.tasks && data.tasks.length > 0) {
-                let html = '';
-                data.tasks.forEach(task => {
-                    const statusBadge = task.status === 'completed' ? 'badge-success' : 
+
+            if (data.tasks?.length > 0) {
+                modalBody.innerHTML = data.tasks.map(task => {
+                    const statusBadge = task.status === 'completed' ? 'badge-success' :
                                        task.status === 'in_progress' ? 'badge-info' : 'badge-secondary';
                     const priorityBadge = task.priority === 'high' ? 'badge-danger' :
                                          task.priority === 'medium' ? 'badge-warning' : 'badge-secondary';
-                    
-                    // ラベルの色を適用
                     const borderStyle = task.label ? `style="border-left: 4px solid ${task.label.color};"` : '';
-                    const labelHtml = task.label ? 
+                    const labelHtml = task.label ?
                         `<span class="badge mr-1" style="background-color: ${task.label.color}; color: white;">
                             <i class="fas fa-tag"></i> ${task.label.name}
                         </span>` : '';
-                    
-                    html += `
+
+                    return `
                         <div class="card task-card-mini mb-2" ${borderStyle}>
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -160,12 +126,11 @@ function showDayTasksModal(year, month, day, monthLabel) {
                             </div>
                         </div>
                     `;
-                });
-                modalBody.innerHTML = html;
+                }).join('');
             } else {
                 modalBody.innerHTML = '<p class="text-center text-muted">この日のタスクはありません</p>';
             }
-            
+
             $('#dayTasksModal').modal('show');
         })
         .catch(error => {
@@ -176,24 +141,16 @@ function showDayTasksModal(year, month, day, monthLabel) {
 
 // 一覧モーダルから編集モーダルを開く
 function openEditTaskModalFromList(taskId) {
-    // 一覧モーダルを閉じる
     $('#dayTasksModal').modal('hide');
-    
-    // 編集モーダルを開く
-    setTimeout(function() {
-        openEditTaskModal(taskId);
-    }, 300); // モーダルのアニメーション完了を待つ
+    setTimeout(() => openEditTaskModal(taskId), 300);
 }
 
 // 一覧モーダルからタスクを削除
 function deleteTaskFromList(taskId) {
-    if (!confirm('このタスクを削除してもよろしいですか？')) {
-        return;
-    }
-    
-    // CSRFトークンを取得
+    if (!confirm('このタスクを削除してもよろしいですか？')) return;
+
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-    
+
     fetch(`/carbohydratepro/tasks/delete/${taskId}/`, {
         method: 'POST',
         headers: {
@@ -203,11 +160,8 @@ function deleteTaskFromList(taskId) {
     })
     .then(response => {
         if (response.ok) {
-            // モーダルを閉じてページをリロード
             $('#dayTasksModal').modal('hide');
-            setTimeout(function() {
-                location.reload();
-            }, 300);
+            setTimeout(() => location.reload(), 300);
         } else {
             alert('削除に失敗しました。');
         }
@@ -218,204 +172,150 @@ function deleteTaskFromList(taskId) {
     });
 }
 
-// 指定日付で新規タスク作成モーダルを開く
-function openCreateTaskModalWithDate(year, month, day) {
-    const selectedDate = `${year}-${month.padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-    
-    $.ajax({
-        url: '/carbohydratepro/tasks/create/',
-        type: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        success: function(response) {
-            $('#createTaskModal .modal-dialog').html(response);
-            
-            // 開始日と終了日フィールドに日付を設定
-            const startDateField = document.getElementById('id_start_date');
-            const endDateField = document.getElementById('id_end_date');
-            if (startDateField) {
-                startDateField.value = selectedDate;
-            }
-            if (endDateField) {
-                endDateField.value = selectedDate;
-            }
-            
-            $('#createTaskModal').modal('show');
-            
-            // フォーム制御を初期化
-            initializeTaskFormControls();
-            
-            // フォーム送信時の処理
-            $('#createTaskForm').on('submit', function(e) {
-                e.preventDefault();
-                $.ajax({
-                    url: $(this).attr('action'),
-                    type: 'POST',
-                    data: $(this).serialize(),
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            $('#createTaskModal').modal('hide');
-                            location.reload();
-                        } else {
-                            alert('エラーが発生しました。入力内容を確認してください。');
-                        }
-                    },
-                    error: function() {
-                        alert('保存に失敗しました。');
-                    }
-                });
-            });
-        },
-        error: function() {
-            alert('データの読み込みに失敗しました。');
+// フォームデータをURLSearchParams形式に変換
+function serializeTaskForm(form) {
+    return new URLSearchParams(new FormData(form)).toString();
+}
+
+// タスクモーダルフォーム送信の共通処理
+async function submitTaskModalForm(form, modalSelector) {
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: serializeTaskForm(form),
+        });
+        const data = await response.json();
+        if (data.success) {
+            $(modalSelector).modal('hide');
+            location.reload();
+        } else {
+            alert('エラーが発生しました。入力内容を確認してください。');
         }
-    });
+    } catch {
+        alert('保存に失敗しました。');
+    }
+}
+
+// 指定日付で新規タスク作成モーダルを開く
+async function openCreateTaskModalWithDate(year, month, day) {
+    const selectedDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    try {
+        const response = await fetch('/carbohydratepro/tasks/create/', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        if (!response.ok) throw new Error(`ステータス: ${response.status}`);
+        const html = await response.text();
+
+        document.querySelector('#createTaskModal .modal-dialog').innerHTML = html;
+
+        const startDateField = document.getElementById('id_start_date');
+        const endDateField = document.getElementById('id_end_date');
+        if (startDateField) startDateField.value = selectedDate;
+        if (endDateField) endDateField.value = selectedDate;
+
+        $('#createTaskModal').modal('show');
+        initializeTaskFormControls();
+
+        const form = document.getElementById('createTaskForm');
+        form?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            submitTaskModalForm(form, '#createTaskModal');
+        });
+    } catch {
+        alert('データの読み込みに失敗しました。');
+    }
 }
 
 // 編集モーダル関連
-function openEditTaskModal(taskId) {
-    $.ajax({
-        url: '/carbohydratepro/tasks/edit/' + taskId + '/',
-        type: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        success: function(response) {
-            $('#editTaskModal .modal-dialog').html(response);
-            $('#editTaskModal').modal('show');
-            
-            // フォーム制御を初期化
-            initializeTaskFormControls();
-            
-            // フォーム送信時の処理
-            $('#editTaskForm').on('submit', function(e) {
-                e.preventDefault();
-                $.ajax({
-                    url: $(this).attr('action'),
-                    type: 'POST',
-                    data: $(this).serialize(),
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            $('#editTaskModal').modal('hide');
-                            location.reload();
-                        } else {
-                            alert('エラーが発生しました。入力内容を確認してください。');
-                        }
-                    },
-                    error: function() {
-                        alert('保存に失敗しました。');
-                    }
-                });
-            });
-        },
-        error: function() {
-            alert('データの読み込みに失敗しました。');
-        }
-    });
+async function openEditTaskModal(taskId) {
+    try {
+        const response = await fetch(`/carbohydratepro/tasks/edit/${taskId}/`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        if (!response.ok) throw new Error(`ステータス: ${response.status}`);
+        const html = await response.text();
+
+        document.querySelector('#editTaskModal .modal-dialog').innerHTML = html;
+        $('#editTaskModal').modal('show');
+        initializeTaskFormControls();
+
+        const form = document.getElementById('editTaskForm');
+        form?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            submitTaskModalForm(form, '#editTaskModal');
+        });
+    } catch {
+        alert('データの読み込みに失敗しました。');
+    }
 }
 
 // 新規作成モーダル関連
-function openCreateTaskModal() {
-    $.ajax({
-        url: '/carbohydratepro/tasks/create/',
-        type: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        success: function(response) {
-            $('#createTaskModal .modal-dialog').html(response);
-            $('#createTaskModal').modal('show');
-            
-            // フォーム制御を初期化
-            initializeTaskFormControls();
-            
-            // フォーム送信時の処理
-            $('#createTaskForm').on('submit', function(e) {
-                e.preventDefault();
-                $.ajax({
-                    url: $(this).attr('action'),
-                    type: 'POST',
-                    data: $(this).serialize(),
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            $('#createTaskModal').modal('hide');
-                            location.reload();
-                        } else {
-                            alert('エラーが発生しました。入力内容を確認してください。');
-                        }
-                    },
-                    error: function() {
-                        alert('保存に失敗しました。');
-                    }
-                });
-            });
-        },
-        error: function() {
-            alert('データの読み込みに失敗しました。');
-        }
-    });
+async function openCreateTaskModal() {
+    try {
+        const response = await fetch('/carbohydratepro/tasks/create/', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        if (!response.ok) throw new Error(`ステータス: ${response.status}`);
+        const html = await response.text();
+
+        document.querySelector('#createTaskModal .modal-dialog').innerHTML = html;
+        $('#createTaskModal').modal('show');
+        initializeTaskFormControls();
+
+        const form = document.getElementById('createTaskForm');
+        form?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            submitTaskModalForm(form, '#createTaskModal');
+        });
+    } catch {
+        alert('データの読み込みに失敗しました。');
+    }
 }
 
 // 月選択フォームのイベント処理
 function initializeMonthFilter() {
-    var monthInput = document.getElementById('target_date');
-    if (monthInput) {
-        monthInput.addEventListener('change', function() {
-            document.getElementById('monthFilterForm').submit();
-        });
-    }
+    const monthInput = document.getElementById('target_date');
+    monthInput?.addEventListener('change', () => {
+        document.getElementById('monthFilterForm').submit();
+    });
 }
 
 // フィルター関連のイベント処理
 function initializeTaskFilters() {
-    // フィルター変更時とEnterキー押下時の処理
-    var filterForm = document.getElementById('filterForm');
+    const filterForm = document.getElementById('filterForm');
     if (filterForm) {
-        filterForm.addEventListener('submit', function(e) {
+        filterForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            this.submit();
+            filterForm.submit();
         });
     }
 
-    // セレクトボックス変更時に自動検索
-    var statusFilter = document.getElementById('status_filter');
-    if (statusFilter) {
-        statusFilter.addEventListener('change', function() {
-            document.getElementById('filterForm').submit();
-        });
-    }
-    
-    var priorityFilter = document.getElementById('priority_filter');
-    if (priorityFilter) {
-        priorityFilter.addEventListener('change', function() {
-            document.getElementById('filterForm').submit();
-        });
-    }
+    const statusFilter = document.getElementById('status_filter');
+    statusFilter?.addEventListener('change', () => {
+        document.getElementById('filterForm').submit();
+    });
 
-    // 検索フィールドでEnterキー押下時の処理
-    var searchInput = document.getElementById('search');
-    if (searchInput) {
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                document.getElementById('filterForm').submit();
-            }
-        });
-    }
+    const priorityFilter = document.getElementById('priority_filter');
+    priorityFilter?.addEventListener('change', () => {
+        document.getElementById('filterForm').submit();
+    });
+
+    const searchInput = document.getElementById('search');
+    searchInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('filterForm').submit();
+        }
+    });
 }
 
 // ページ読み込み時にフィルターを初期化
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
     initializeMonthFilter();
     initializeTaskFilters();
     setupCalendarClickEvents();
@@ -427,42 +327,24 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeGanttScroll() {
     const ganttContainer = document.getElementById('ganttContainer');
     if (!ganttContainer) return;
-    
-    // 現在時刻を取得
+
     const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    
-    // 現在時刻の位置を計算（1時間 = 100px）
-    const scrollPosition = (currentHour * 100) + (currentMinute * 100 / 60);
-    
-    // コンテナの幅を考慮して中央に配置
+    const scrollPosition = (now.getHours() * 100) + (now.getMinutes() * 100 / 60);
     const containerWidth = ganttContainer.clientWidth;
-    const scrollLeft = Math.max(0, scrollPosition - (containerWidth / 2));
-    
-    // スクロール位置を設定
-    ganttContainer.scrollLeft = scrollLeft;
+    ganttContainer.scrollLeft = Math.max(0, scrollPosition - (containerWidth / 2));
 }
 
 // タスクフォーム制御の初期化
 function initializeTaskFormControls() {
-    // 終日チェックボックスの制御
     const allDayCheckbox = document.querySelector('#id_all_day');
     if (allDayCheckbox) {
-        // 初期状態の設定
         toggleTimeFields();
-        
-        // チェックボックスの変更イベント
         allDayCheckbox.addEventListener('change', toggleTimeFields);
     }
-    
-    // 頻度選択の制御
+
     const frequencySelect = document.querySelector('#id_frequency');
     if (frequencySelect) {
-        // 初期状態の設定
         toggleRepeatFields();
-        
-        // セレクトボックスの変更イベント
         frequencySelect.addEventListener('change', toggleRepeatFields);
     }
 }
@@ -471,17 +353,14 @@ function initializeTaskFormControls() {
 function toggleTimeFields() {
     const allDayCheckbox = document.querySelector('#id_all_day');
     const timeFields = document.querySelectorAll('.time-field');
-    
+
     if (allDayCheckbox && timeFields.length > 0) {
         const isAllDay = allDayCheckbox.checked;
         timeFields.forEach(field => {
+            field.style.display = isAllDay ? 'none' : 'block';
             if (isAllDay) {
-                field.style.display = 'none';
-                // 時間フィールドをクリア
                 const input = field.querySelector('input[type="time"]');
                 if (input) input.value = '';
-            } else {
-                field.style.display = 'block';
             }
         });
     }
@@ -491,15 +370,11 @@ function toggleTimeFields() {
 function toggleRepeatFields() {
     const frequencySelect = document.querySelector('#id_frequency');
     const repeatFields = document.querySelectorAll('.repeat-field');
-    
+
     if (frequencySelect && repeatFields.length > 0) {
         const hasFrequency = frequencySelect.value && frequencySelect.value !== '';
         repeatFields.forEach(field => {
-            if (hasFrequency) {
-                field.style.display = 'block';
-            } else {
-                field.style.display = 'none';
-            }
+            field.style.display = hasFrequency ? 'block' : 'none';
         });
     }
 }

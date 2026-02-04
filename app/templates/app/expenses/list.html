@@ -311,20 +311,14 @@
 <link rel="stylesheet" href="{% static 'app/transaction.css' %}">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{% static 'app/transaction.js' %}"></script>
 <script>
-    // データをグローバル変数として設定
-    var categoryData = JSON.parse('{{ category_data_json|escapejs }}');
-    var expenseData = JSON.parse('{{ expense_data_json|escapejs }}');
-    var balanceData = JSON.parse('{{ balance_data_json|escapejs }}');
-    var majorCategoryData = JSON.parse('{{ major_category_data_json|escapejs }}');
-
-    // ページ読み込み後にグラフとフィルターを初期化
-    document.addEventListener('DOMContentLoaded', function() {
-        initializeExpenseCharts();
-        initializeExpenseFilters();
-    });
+    // データをグローバル変数として設定（Djangoテンプレート変数のためインラインで定義）
+    const categoryData = JSON.parse('{{ category_data_json|escapejs }}');
+    const expenseData = JSON.parse('{{ expense_data_json|escapejs }}');
+    const balanceData = JSON.parse('{{ balance_data_json|escapejs }}');
+    const majorCategoryData = JSON.parse('{{ major_category_data_json|escapejs }}');
 </script>
+<script src="{% static 'app/transaction.js' %}"></script>
 
 <!-- 編集モーダル -->
 <div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel" aria-hidden="true">

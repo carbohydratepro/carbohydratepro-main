@@ -208,17 +208,4 @@
 
 {% block extra_js %}
 <script src="{% static 'app/label-settings.js' %}"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // 新規作成モーダルのカラーテンプレート生成
-    generateColorTemplateGrid('colorTemplateGridMemoCreate', 'createMemoTypeModal');
-
-    // 編集モーダルのカラーテンプレート生成
-    {% for memo_type in memo_types %}
-        {% if memo_type.name != 'その他' %}
-            generateColorTemplateGrid('colorTemplateGridMemoEdit{{ memo_type.id }}', 'editMemoTypeModal{{ memo_type.id }}');
-        {% endif %}
-    {% endfor %}
-});
-</script>
 {% endblock %}

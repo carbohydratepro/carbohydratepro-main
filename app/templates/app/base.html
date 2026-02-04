@@ -35,9 +35,7 @@
   </head>
   <body>
     {% if form_error %}
-      <script type="text/javascript">
-          alert("{{ form_error|escapejs }}");
-      </script>
+      <div id="formErrorData" data-error="{{ form_error|escapejs }}" style="display:none;"></div>
     {% endif %}
     
     <!-- ナビバー -->

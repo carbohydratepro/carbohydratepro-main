@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, F, Q
+from django.db.models import Sum, Q
 from django.utils.timezone import make_aware
 from .forms import TransactionForm, PaymentMethodForm, CategoryForm
 from .models import Transaction, PaymentMethod, Category
@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 import json
 from django.http import JsonResponse
 from django.core.paginator import Paginator
+
+from project.utils import CHART_COLORS, MAJOR_CATEGORY_LABELS
 
 
 @login_required
@@ -33,7 +35,9 @@ def expenses_list(request):
     start_date = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     end_date = (start_date + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0) - timedelta(microseconds=1)
 
-    transactions_qs = Transaction.objects.filter(user=request.user, date__range=(start_date, end_date)).order_by('-date', '-id')
+    transactions_qs = Transaction.objects.filter(
+        user=request.user, date__range=(start_date, end_date)
+    ).select_related('payment_method', 'category').order_by('-date', '-id')
     
     # 検索機能
     if search_query:
@@ -83,36 +87,29 @@ def expenses_list(request):
         # ラベルを10文字で切り詰める
         category_labels = [entry['category__name'][:10] + ('...' if len(entry['category__name']) > 10 else '') for entry in top_categories]
         category_amounts = [float(entry['total']) for entry in top_categories]
-        
+
         # 実際のデータ数に応じて色を設定
-        base_colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7']
-        category_colors = base_colors[:len(category_labels)]
-        
+        category_colors = CHART_COLORS['category'][:len(category_labels)]
+
         if other_total > 0:
             category_labels.append('その他')
             category_amounts.append(other_total)
-            category_colors.append('#BDC3C7')
+            category_colors.append(CHART_COLORS['no_data'])
     else:
         # データがない場合は灰色で表示
         category_labels = ['データなし']
         category_amounts = [1]
-        category_colors = ['#BDC3C7']
+        category_colors = [CHART_COLORS['no_data']]
     
     # メインカテゴリを日本語表記で取得（支出のみ、固定3色）
     major_category_data = expense_transactions.values('major_category').annotate(total=Sum('amount')).order_by('-total')
-    major_category_labels = {
-        'variable': '変動費',
-        'fixed': '固定費',
-        'special': '特別費'
-    }
-    
+
     if major_category_data.exists():
         # 実際のデータ数に応じて色を設定
-        major_colors = {'variable': '#E74C3C', 'fixed': '#3498DB', 'special': '#9B59B6'}
-        major_bg_colors = [major_colors[entry['major_category']] for entry in major_category_data]
-        
+        major_bg_colors = [CHART_COLORS['major_category'][entry['major_category']] for entry in major_category_data]
+
         major_category_data_json = json.dumps({
-            'labels': [major_category_labels[entry['major_category']] for entry in major_category_data],
+            'labels': [MAJOR_CATEGORY_LABELS[entry['major_category']] for entry in major_category_data],
             'datasets': [{
                 'data': [float(entry['total']) for entry in major_category_data],
                 'backgroundColor': major_bg_colors,
@@ -124,7 +121,7 @@ def expenses_list(request):
             'labels': ['データなし'],
             'datasets': [{
                 'data': [1],
-                'backgroundColor': ['#BDC3C7'],
+                'backgroundColor': [CHART_COLORS['no_data']],
             }]
         })
 
@@ -152,7 +149,7 @@ def expenses_list(request):
         'datasets': [{
             'label': '支出',
             'data': expense_data,
-            'backgroundColor': '#FF6384',
+            'backgroundColor': CHART_COLORS['expense_bar'],
         }]
     })
 
@@ -162,7 +159,7 @@ def expenses_list(request):
             'label': '所持金',
             'data': balance_data,
             'fill': False,
-            'borderColor': '#36A2EB',
+            'borderColor': CHART_COLORS['balance_line'],
         }]
     })
 

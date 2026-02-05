@@ -1,19 +1,25 @@
+import logging
+
 from django.contrib.auth.views import (
     LoginView, LogoutView, PasswordChangeView, PasswordChangeDoneView,
     PasswordResetView, PasswordResetDoneView, PasswordResetConfirmView, PasswordResetCompleteView
 )
 from django.shortcuts import render, redirect, resolve_url
-from django.contrib.auth.decorators import login_required
 from django.views import generic
-from django.contrib.auth import get_user_model, login
+from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import UserPassesTestMixin
 from .forms import LoginForm, SignupForm, UserUpdateForm, MyPasswordChangeForm, MyPasswordResetForm, MySetPasswordForm
 from django.urls import reverse_lazy
-from django.core.mail import EmailMultiAlternatives
+from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_encode
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
+from django.contrib import messages
+
+from project.utils import send_html_email, strip_html_tags
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -48,54 +54,32 @@ class Signup(generic.CreateView):
     form_class = SignupForm
 
     def form_valid(self, form):
-        from django.conf import settings
         from .models import EmailVerificationToken
-        import logging
-        
-        logger = logging.getLogger(__name__)
-        
+
         user = form.save(commit=False)
         user.is_staff = False
         user.is_superuser = False
         user.is_active = True  # アカウント自体はアクティブだが、メール未認証
         user.is_email_verified = False  # メールアドレスは未認証
         user.save()
-        
+
         # メール認証トークンを生成
         token = EmailVerificationToken.objects.create(user=user)
-        
+
         # 認証メールを送信
-        try:
-            verification_url = f"{settings.SITE_PROTOCOL}://{settings.SITE_DOMAIN}/verify-email/{token.token}/"
-            
-            context = {
-                'user': user,
-                'verification_url': verification_url,
-                'site_name': settings.SITE_NAME,
-            }
-            
-            subject = f'{settings.SITE_NAME} - メールアドレスの確認'
-            html_message = render_to_string('registration/email_verification.html', context)
-            
-            # テキスト版（HTMLタグを除去）
-            import re
-            text_message = re.sub('<[^<]+?>', '', html_message)
-            text_message = re.sub(r'\s+', ' ', text_message).strip()
-            
-            email_message = EmailMultiAlternatives(
-                subject=subject,
-                body=text_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[user.email]
-            )
-            email_message.attach_alternative(html_message, "text/html")
-            email_message.send()
-            
-            logger.info(f"Verification email sent to: {user.email}")
-            
-        except Exception as e:
-            logger.error(f"Failed to send verification email to {user.email}: {str(e)}")
-        
+        verification_url = f"{settings.SITE_PROTOCOL}://{settings.SITE_DOMAIN}/verify-email/{token.token}/"
+        context = {
+            'user': user,
+            'verification_url': verification_url,
+            'site_name': settings.SITE_NAME,
+        }
+        send_html_email(
+            subject=f'{settings.SITE_NAME} - メールアドレスの確認',
+            template_name='registration/email_verification.html',
+            context=context,
+            recipient_list=[user.email],
+        )
+
         # サインアップ後に自動的にログインせず、メール確認ページにリダイレクト
         return redirect('signup_done')
     
@@ -163,66 +147,40 @@ class PasswordReset(PasswordResetView):
     
     def form_valid(self, form):
         """カスタムHTMLメール送信処理"""
-        import logging
-        from django.conf import settings
-        
-        logger = logging.getLogger(__name__)
         email = form.cleaned_data['email']
         logger.info(f"Password reset requested for email: {email}")
-        
+
         # ユーザーを取得
         User = get_user_model()
         users = User.objects.filter(email__iexact=email, is_active=True)
-        
+
         for user in users:
             # トークン生成
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
-            
-            # サイト情報をsettings.pyから取得
-            domain = settings.SITE_DOMAIN
-            site_name = settings.SITE_NAME
-            protocol = settings.SITE_PROTOCOL
-            
+
             # メールコンテキスト
             context = {
                 'email': user.email,
-                'domain': domain,
-                'site_name': site_name,
+                'domain': settings.SITE_DOMAIN,
+                'site_name': settings.SITE_NAME,
                 'uid': uid,
                 'user': user,
                 'token': token,
-                'protocol': protocol,
+                'protocol': settings.SITE_PROTOCOL,
             }
-            
+
             # メール件名
             subject = render_to_string(self.subject_template_name, context)
             subject = ''.join(subject.splitlines())  # 改行を削除
-            
-            # HTMLメール本文
-            html_message = render_to_string(self.email_template_name, context)
-            
-            # テキストメール本文（HTMLタグを除去）
-            import re
-            text_message = re.sub('<[^<]+?>', '', html_message)
-            text_message = re.sub(r'\s+', ' ', text_message).strip()
-            
-            # HTMLメール送信
-            try:
-                email_message = EmailMultiAlternatives(
-                    subject=subject,
-                    body=text_message,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    to=[user.email]
-                )
-                email_message.attach_alternative(html_message, "text/html")
-                email_message.send()
-                
-                logger.info(f"HTML email sent successfully to: {email}")
-                
-            except Exception as e:
-                logger.error(f"Email sending failed for {email}: {str(e)}")
-        
+
+            send_html_email(
+                subject=subject,
+                template_name=self.email_template_name,
+                context=context,
+                recipient_list=[user.email],
+            )
+
         return redirect(self.success_url)
 
 
@@ -253,11 +211,7 @@ class PasswordResetComplete(PasswordResetCompleteView):
 def verify_email(request, token):
     """メール認証トークンを検証するビュー"""
     from .models import EmailVerificationToken
-    from django.contrib import messages
-    import logging
-    
-    logger = logging.getLogger(__name__)
-    
+
     try:
         verification_token = EmailVerificationToken.objects.get(token=token)
         
@@ -290,72 +244,51 @@ def verify_email(request, token):
 '''メール認証再送信'''
 def resend_verification_email(request):
     """メール認証メールを再送信するビュー"""
-    from django.conf import settings
     from .models import EmailVerificationToken
-    from django.contrib import messages
-    import logging
-    
-    logger = logging.getLogger(__name__)
-    
+
     if request.method == 'POST':
         email = request.POST.get('email')
-        
+
         if not email:
             messages.error(request, 'メールアドレスを入力してください。')
             return redirect('resend_verification')
-        
+
         try:
             User = get_user_model()
             user = User.objects.get(email=email, is_email_verified=False)
-            
+
             # 既存の未使用トークンを無効化
             EmailVerificationToken.objects.filter(
                 user=user,
                 is_verified=False
             ).update(is_verified=True)
-            
+
             # 新しいトークンを生成
             token = EmailVerificationToken.objects.create(user=user)
-            
+
             # 認証メールを送信
-            try:
-                verification_url = f"{settings.SITE_PROTOCOL}://{settings.SITE_DOMAIN}/verify-email/{token.token}/"
-                
-                context = {
-                    'user': user,
-                    'verification_url': verification_url,
-                    'site_name': settings.SITE_NAME,
-                }
-                
-                subject = f'{settings.SITE_NAME} - メールアドレスの確認'
-                html_message = render_to_string('registration/email_verification.html', context)
-                
-                # テキスト版
-                import re
-                text_message = re.sub('<[^<]+?>', '', html_message)
-                text_message = re.sub(r'\s+', ' ', text_message).strip()
-                
-                email_message = EmailMultiAlternatives(
-                    subject=subject,
-                    body=text_message,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    to=[user.email]
-                )
-                email_message.attach_alternative(html_message, "text/html")
-                email_message.send()
-                
-                logger.info(f"Verification email resent to: {user.email}")
+            verification_url = f"{settings.SITE_PROTOCOL}://{settings.SITE_DOMAIN}/verify-email/{token.token}/"
+            context = {
+                'user': user,
+                'verification_url': verification_url,
+                'site_name': settings.SITE_NAME,
+            }
+
+            if send_html_email(
+                subject=f'{settings.SITE_NAME} - メールアドレスの確認',
+                template_name='registration/email_verification.html',
+                context=context,
+                recipient_list=[user.email],
+            ):
                 messages.success(request, '確認メールを再送信しました。メールをご確認ください。')
-                
-            except Exception as e:
-                logger.error(f"Failed to resend verification email to {user.email}: {str(e)}")
+            else:
                 messages.error(request, 'メール送信に失敗しました。時間をおいて再度お試しください。')
-            
+
             return redirect('signup_done')
-            
+
         except User.DoesNotExist:
             # セキュリティのため、ユーザーが存在しない場合も同じメッセージを表示
             messages.info(request, 'メールアドレスが登録されていないか、既に認証済みです。')
             return redirect('resend_verification')
-    
+
     return render(request, 'registration/resend_verification.html')

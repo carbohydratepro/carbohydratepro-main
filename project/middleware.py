@@ -21,7 +21,7 @@ class AdminSecurityMiddleware:
                 if 'admin' in resolved.namespace or 'admin' in resolved.url_name:
                     logger.warning(f"Blocked admin access attempt from {request.META.get('REMOTE_ADDR', 'unknown')} to {request.path}")
                     raise Http404("Page not found")
-            except:
+            except (Http404, ValueError, AttributeError):
                 # resolve に失敗した場合は通常通り処理を続行
                 pass
         

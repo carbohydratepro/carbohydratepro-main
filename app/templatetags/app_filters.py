@@ -1,6 +1,7 @@
 from django import template
 import re
 from django.utils.safestring import mark_safe
+from django.utils.html import escape
 from decimal import Decimal
 
 register = template.Library()
@@ -14,13 +15,17 @@ def add_class(value, arg):
 def highlight(text, search):
     """検索キーワードをハイライト表示するフィルター"""
     if not search:
-        return text
-    
-    # HTMLエスケープを考慮してハイライト
+        return escape(text)
+
+    # まずテキストをエスケープしてXSSを防止
+    escaped_text = escape(str(text))
+    escaped_search = escape(str(search))
+
+    # エスケープ済みテキストに対してハイライト
     highlighted = re.sub(
-        f'({re.escape(search)})', 
-        r'<mark>\1</mark>', 
-        str(text), 
+        f'({re.escape(escaped_search)})',
+        r'<mark>\1</mark>',
+        escaped_text,
         flags=re.IGNORECASE
     )
     return mark_safe(highlighted)

@@ -57,7 +57,7 @@ def task_list(request):
             Q(start_date__lte=day_end, end_date__gte=day_start) |
             Q(start_date__lte=day_end, end_date__isnull=True) |
             Q(start_date__isnull=True, end_date__gte=day_start)
-        ).order_by('start_date', 'priority')
+        ).select_related('label').order_by('start_date', 'priority')
         
         # 検索・フィルター適用
         if status_filter:
@@ -137,8 +137,8 @@ def task_list(request):
     end_date = (start_date + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0) - timedelta(microseconds=1)
     
     # 選択された月のタスクを取得（開始日または終了日が選択月内のもの）
-    tasks = Task.objects.filter(user=request.user, parent_task__isnull=True)  # 親タスクのみ表示
-    
+    tasks = Task.objects.filter(user=request.user, parent_task__isnull=True).select_related('label')  # 親タスクのみ表示
+
     # 月フィルター（日付が設定されているタスクで、選択月と重なるもの）
     month_tasks = tasks.filter(
         Q(start_date__range=(start_date, end_date)) |
@@ -354,7 +354,7 @@ def get_day_tasks(request, date):
             Q(start_date__lte=day_end, end_date__gte=day_start) |
             Q(start_date__lte=day_end, end_date__isnull=True) |
             Q(start_date__isnull=True, end_date__gte=day_start)
-        ).order_by('start_date')
+        ).select_related('label').order_by('start_date')
         
         # JSON形式で返す
         tasks_data = []

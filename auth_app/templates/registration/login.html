@@ -32,11 +32,11 @@
                 </label>
                 <input type="{{ field.field.widget.input_type }}" class="form-control {% if field.errors %}is-invalid{% endif %}" id="{{ field.id_for_label }}" name="{{ field.name }}">
                 {% if field.errors %}
-                  <div class="invalid-feedback">
+                  <ul class="invalid-feedback list-unstyled mb-0">
                     {% for error in field.errors %}
-                      {{ error }}
+                      <li>{{ error }}</li>
                     {% endfor %}
-                  </div>
+                  </ul>
                 {% endif %}
               </div>
             {% endfor %}

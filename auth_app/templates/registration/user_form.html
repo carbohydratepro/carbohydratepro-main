@@ -22,12 +22,19 @@
             {% for field in form %}
               <div class="form-group">
                 <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                {{ field }}
-                {% for error in field.errors %}
-                  <div class="text-danger">
-                    {{ error|replace:"username,ユーザーネーム"|replace:"Username,ユーザーネーム"|replace:"Custom user,ユーザー" }}
-                  </div>
-                {% endfor %} 
+                <input type="{{ field.field.widget.input_type|default:'text' }}"
+                       class="form-control {% if field.errors %}is-invalid{% endif %}"
+                       id="{{ field.id_for_label }}"
+                       name="{{ field.name }}"
+                       value="{{ field.value|default:'' }}"
+                       {% if field.field.widget.attrs.placeholder %}placeholder="{{ field.field.widget.attrs.placeholder }}"{% endif %}>
+                {% if field.errors %}
+                  <ul class="invalid-feedback list-unstyled mb-0">
+                    {% for error in field.errors %}
+                      <li>{{ error|replace:"username,ユーザーネーム"|replace:"Username,ユーザーネーム"|replace:"Custom user,ユーザー" }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
               </div>
             {% endfor %}
             {% csrf_token %}

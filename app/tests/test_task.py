@@ -521,9 +521,9 @@ class TaskViewTest(TestCase):
         """ラベル追加のテスト"""
         initial_count = TaskLabel.objects.filter(user=self.user).count()
         response = self.client.post(reverse('task_settings'), {
-            'label': '',
-            'label-name': '新ラベル',
-            'label-color': '#FF0000'
+            'create_label': '',
+            'name': '新ラベル',
+            'color': '#FF0000'
         })
         self.assertEqual(response.status_code, 302)
         self.assertEqual(TaskLabel.objects.filter(user=self.user).count(), initial_count + 1)
@@ -533,8 +533,8 @@ class TaskViewTest(TestCase):
         response = self.client.post(reverse('task_settings'), {
             'label_id': self.label.id,
             'edit_label': '',
-            'label-name': '更新済みラベル',
-            'label-color': '#00FF00'
+            'name': '更新済みラベル',
+            'color': '#00FF00'
         })
         self.assertEqual(response.status_code, 302)
         self.label.refresh_from_db()

@@ -342,14 +342,15 @@ class MemoViewTest(TestCase):
             memo_type=self.memo_type,
             is_favorite=False
         )
-        # お気に入りに追加
+        # お気に入りに追加（JSONレスポンスを返す）
         response = self.client.post(reverse('toggle_memo_favorite', kwargs={'memo_id': memo.id}))
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 200)
         memo.refresh_from_db()
         self.assertTrue(memo.is_favorite)
 
         # お気に入りから削除
         response = self.client.post(reverse('toggle_memo_favorite', kwargs={'memo_id': memo.id}))
+        self.assertEqual(response.status_code, 200)
         memo.refresh_from_db()
         self.assertFalse(memo.is_favorite)
 
@@ -362,9 +363,9 @@ class MemoViewTest(TestCase):
         """メモ種別追加のテスト"""
         initial_count = MemoType.objects.filter(user=self.user).count()
         response = self.client.post(reverse('memo_settings'), {
-            'memo_type': '',
-            'memo_type-name': '新しい種別',
-            'memo_type-color': '#FF0000'
+            'create_memo_type': '',
+            'name': '新しい種別',
+            'color': '#FF0000'
         })
         self.assertEqual(response.status_code, 302)
         self.assertEqual(MemoType.objects.filter(user=self.user).count(), initial_count + 1)

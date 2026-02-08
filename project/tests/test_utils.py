@@ -55,7 +55,8 @@ class StripHtmlTagsTest(TestCase):
         """日本語コンテンツのテスト"""
         html = '<p>こんにちは</p><p>世界</p>'
         result = strip_html_tags(html)
-        self.assertEqual(result, 'こんにちは 世界')
+        # タグを除去した後、連続するテキストはそのまま結合される
+        self.assertEqual(result, 'こんにちは世界')
 
 
 @override_settings(

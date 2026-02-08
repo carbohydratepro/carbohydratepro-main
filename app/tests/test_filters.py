@@ -46,8 +46,11 @@ class HighlightFilterTest(TestCase):
     def test_highlight_xss_prevention(self) -> None:
         """XSS防止テスト（テキストのエスケープ）"""
         result = highlight('<script>alert("xss")</script>', 'script')
+        # 元のscriptタグがそのまま出力されていないことを確認
         self.assertNotIn('<script>', result)
-        self.assertIn('&lt;script&gt;', result)
+        # エスケープされた文字列が含まれている（検索語 'script' はハイライトされる）
+        self.assertIn('&lt;', result)
+        self.assertIn('&gt;', result)
 
     def test_highlight_xss_prevention_in_search(self) -> None:
         """XSS防止テスト（検索文字列のエスケープ）"""

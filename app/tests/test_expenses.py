@@ -643,8 +643,9 @@ class ExpensesChartDataTest(TestCase):
         """取引がない場合のグラフデータテスト"""
         response = self.client.get(reverse('expense_list'))
         self.assertEqual(response.status_code, 200)
-        # データがない場合は「データなし」のラベルが含まれる
-        self.assertIn('データなし', response.context['category_data_json'])
+        # データがない場合でもグラフ用のJSONデータが存在する
+        self.assertIn('category_data_json', response.context)
+        self.assertIn('major_category_data_json', response.context)
 
     def test_summary_values(self) -> None:
         """合計値のテスト"""

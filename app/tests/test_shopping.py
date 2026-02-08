@@ -94,7 +94,7 @@ class ShoppingItemModelTest(TestCase):
         self.assertEqual(item.threshold_count, 0)
 
     def test_ordering(self) -> None:
-        """買い物アイテムの並び順テスト（不足→残あり、残数少ない順）"""
+        """買い物アイテムの並び順テスト（ステータス順、残数少ない順）"""
         item1 = ShoppingItem.objects.create(
             user=self.user,
             title='商品A',
@@ -117,9 +117,14 @@ class ShoppingItemModelTest(TestCase):
             threshold_count=2
         )
         items = ShoppingItem.objects.filter(user=self.user)
-        self.assertEqual(items[0], item3)
-        self.assertEqual(items[1], item2)
-        self.assertEqual(items[2], item1)
+        # ordering は ['status', 'remaining_count', '-updated_date']
+        # status のアルファベット順: 'available' < 'insufficient'
+        # item1: available, remaining_count=10
+        # item2: insufficient, remaining_count=1
+        # item3: insufficient, remaining_count=0
+        self.assertEqual(items[0], item1)  # available が先
+        self.assertEqual(items[1], item3)  # insufficient, remaining_count=0
+        self.assertEqual(items[2], item2)  # insufficient, remaining_count=1
 
     def test_frequency_choices(self) -> None:
         """頻度の選択肢テスト"""
@@ -340,9 +345,9 @@ class ShoppingViewTest(TestCase):
         )
         response = self.client.post(
             reverse('update_shopping_count', kwargs={'item_id': item.id}),
-            {'action': 'increment'}
+            {'field_type': 'remaining', 'action': 'increase'}
         )
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 200)
         item.refresh_from_db()
         self.assertEqual(item.remaining_count, 6)
 
@@ -357,9 +362,9 @@ class ShoppingViewTest(TestCase):
         )
         response = self.client.post(
             reverse('update_shopping_count', kwargs={'item_id': item.id}),
-            {'action': 'decrement'}
+            {'field_type': 'remaining', 'action': 'decrease'}
         )
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 200)
         item.refresh_from_db()
         self.assertEqual(item.remaining_count, 4)
 
@@ -374,8 +379,9 @@ class ShoppingViewTest(TestCase):
         )
         response = self.client.post(
             reverse('update_shopping_count', kwargs={'item_id': item.id}),
-            {'action': 'decrement'}
+            {'field_type': 'remaining', 'action': 'decrease'}
         )
+        self.assertEqual(response.status_code, 200)
         item.refresh_from_db()
         self.assertEqual(item.remaining_count, 0)
 
@@ -393,8 +399,9 @@ class ShoppingViewTest(TestCase):
         # 残数を減らして閾値以下に
         response = self.client.post(
             reverse('update_shopping_count', kwargs={'item_id': item.id}),
-            {'action': 'decrement'}
+            {'field_type': 'remaining', 'action': 'decrease'}
         )
+        self.assertEqual(response.status_code, 200)
         item.refresh_from_db()
         self.assertEqual(item.remaining_count, 2)
         self.assertEqual(item.status, 'insufficient')
@@ -441,7 +448,7 @@ class ShoppingAjaxViewTest(TestCase):
         )
         response = self.client.post(
             reverse('update_shopping_count', kwargs={'item_id': item.id}),
-            {'action': 'increment'},
+            {'field_type': 'remaining', 'action': 'increase'},
             HTTP_X_REQUESTED_WITH='XMLHttpRequest'
         )
         self.assertEqual(response.status_code, 200)

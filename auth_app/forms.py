@@ -23,6 +23,7 @@ class SignupForm(UserCreationForm):
     username = forms.CharField(label="ユーザー名")
     email = forms.EmailField(label="メールアドレス")
     error_messages = {
+        **UserCreationForm.error_messages,
         'duplicate_username': "このユーザー名は使われています。",
         'duplicate_email': "このメールアドレスは使われています。",
     }

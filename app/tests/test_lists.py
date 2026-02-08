@@ -35,15 +35,18 @@ class ExpensesListViewTest(TestCase):
         self.client.login(username=self.user.email, password='pass12345')
 
     def _create_expense_data(self, count: int = 25) -> tuple:
-        """テスト用の支出データを作成"""
+        """テスト用の支出データを作成（同じ月内にすべてのデータを作成）"""
         pay = PaymentMethod.objects.create(user=self.user, name='カード')
         cat = Category.objects.create(user=self.user, name='食費')
-        base_date = timezone.now()
+        # 月の15日を基準にして、前後にデータを作成（月をまたがないように）
+        base_date = timezone.now().replace(day=15, hour=12, minute=0, second=0, microsecond=0)
         for i in range(count):
+            # -12日から+12日の範囲でデータを作成（月をまたがない）
+            offset = i - count // 2
             Transaction.objects.create(
                 user=self.user,
                 amount=1000 + i,
-                date=base_date - timedelta(days=i),
+                date=base_date + timedelta(hours=i),  # 同じ日の異なる時間に作成
                 transaction_type='expense',
                 payment_method=pay,
                 purpose=f'用途{i}',
@@ -243,9 +246,9 @@ class ShoppingListViewTest(TestCase):
         )
         resp = self.client.post(
             reverse('update_shopping_count', kwargs={'item_id': item.id}),
-            {'action': 'increment'},
+            {'field_type': 'remaining', 'action': 'increase'},
         )
-        self.assertIn(resp.status_code, [200, 302])
+        self.assertEqual(resp.status_code, 200)
         item.refresh_from_db()
         self.assertEqual(item.remaining_count, 2)
 

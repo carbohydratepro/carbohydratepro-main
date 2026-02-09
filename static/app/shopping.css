@@ -1,0 +1,98 @@
+/* 買い物リスト管理用CSS */
+.shopping-item-card {
+    transition: all 0.3s ease;
+    margin-bottom: 0.5rem;
+}
+
+.shopping-item-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.shopping-item-card.border-danger {
+    border-width: 2px;
+}
+
+.shopping-item-card.border-success {
+    border-width: 2px;
+}
+
+.shopping-item-card .card-body {
+    padding: 0.75rem;
+}
+
+.shopping-item-card .card-title {
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.shopping-item-card .small {
+    font-size: 0.8rem;
+    line-height: 1.2;
+}
+
+.shopping-item-card .badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+}
+
+.shopping-item-card .btn {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.85rem;
+}
+
+.shopping-item-card h5 {
+    font-size: 1rem;
+    margin-bottom: 0.3rem;
+}
+
+.shopping-item-card h6 {
+    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+}
+
+/* 残数と不足数のラベル幅は揃えない（デスクトップ用） */
+.shopping-controls-desktop .text-muted {
+    display: inline-block;
+}
+
+/* モバイル表示用のボタンサイズ調整（768px以下） */
+@media (max-width: 768px) {
+    /* モバイル用のラベル幅も揃える */
+    .shopping-controls-mobile .text-muted {
+        display: inline-block;
+        min-width: 4em;
+    }
+    
+    /* モバイル用のボタンを少し小さく */
+    .shopping-controls-mobile .btn-sm {
+        padding: 0.15rem 0.3rem;
+        font-size: 0.75rem;
+    }
+    
+    /* モバイル用のアイコンサイズ調整 */
+    .shopping-controls-mobile .btn-sm i {
+        font-size: 0.7rem;
+    }
+    
+    /* モバイル用のmargin調整 */
+    .shopping-controls-mobile .mx-1 {
+        margin-left: 0.25rem;
+        margin-right: 0.25rem;
+    }
+    
+    .shopping-controls-mobile .mr-1 {
+        margin-right: 0.25rem;
+    }
+    
+    .shopping-controls-mobile .ml-1 {
+        margin-left: 0.25rem;
+    }
+}

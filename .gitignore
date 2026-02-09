@@ -2,4 +2,4 @@
 *.env
 *.log
 *.jpg
-deploy.sh
+*:Zone.Identifier

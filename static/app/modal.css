@@ -1,0 +1,32 @@
+/* モーダルを画面中央に配置 */
+.modal-dialog-centered {
+    display: flex;
+    align-items: center;
+    min-height: calc(100% - 1rem);
+}
+
+@media (min-width: 576px) {
+    .modal-dialog-centered {
+        min-height: calc(100% - 3.5rem);
+    }
+}
+
+/* モーダルの最大高さ設定とスクロール */
+.modal-dialog-scrollable {
+    max-height: calc(100vh - 3.5rem);
+}
+
+.modal-dialog-scrollable .modal-body {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+/* モーダルの背景を中央配置 */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+    transform: translate(0, -50px);
+}
+
+.modal.show .modal-dialog {
+    transform: none;
+}

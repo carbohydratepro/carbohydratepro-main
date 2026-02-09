@@ -1,0 +1,156 @@
+.m-5 {
+    margin: 5%;
+}
+
+html, body {
+    height: 100%;
+    background-color: #ffffff; /* 明るい背景色 */
+    color: #333333; /* 明るい背景に映える文字色 */
+}
+
+/* グラフエリア */
+.chart-canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 300px;  /* グラフの最大高さを指定 */
+}
+
+@media (max-width: 768px) {
+    .chart-canvas {
+        max-height: 200px;  /* モバイルサイズでの高さを調整 */
+    }
+}
+
+/* コンテナ */
+.container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #ffffff; /* 白背景 */
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 見出し */
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333333; /* 明るめの文字色 */
+}
+
+/* メッセージダイアログ */
+.message-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;  /* 初期状態は非表示 */
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.message-dialog-overlay.show {
+    display: flex;  /* 表示時はflexに変更 */
+    opacity: 1;
+}
+
+.message-dialog {
+    background: #ffffff;  /* 白背景を明示的に指定 */
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    min-width: 400px;
+    max-width: 600px;
+    animation: slideDown 0.3s ease;
+    overflow: hidden;  /* 角丸を効かせる */
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.message-dialog-content {
+    padding: 30px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    background-color: #ffffff;  /* 白背景を明示的に指定 */
+}
+
+.message-dialog-content.success {
+    border-left: 5px solid #28a745;
+    background-color: #f8fff9;  /* 薄い緑背景 */
+}
+
+.message-dialog-content.error {
+    border-left: 5px solid #dc3545;
+    background-color: #fff8f8;  /* 薄い赤背景 */
+}
+
+.message-dialog-content.warning {
+    border-left: 5px solid #ffc107;
+    background-color: #fffef8;  /* 薄い黄色背景 */
+}
+
+.message-dialog-content.info {
+    border-left: 5px solid #17a2b8;
+    background-color: #f8fcff;  /* 薄い青背景 */
+}
+
+.message-icon {
+    font-size: 40px;
+    flex-shrink: 0;
+}
+
+.message-dialog-content.success .message-icon {
+    color: #28a745;
+}
+
+.message-dialog-content.error .message-icon {
+    color: #dc3545;
+}
+
+.message-dialog-content.warning .message-icon {
+    color: #ffc107;
+}
+
+.message-dialog-content.info .message-icon {
+    color: #17a2b8;
+}
+
+.message-text {
+    flex: 1;
+    font-size: 16px;
+    color: #333;
+    line-height: 1.5;
+}
+
+.message-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #999;
+    cursor: pointer;
+    padding: 5px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.message-close-btn:hover {
+    color: #333;
+}

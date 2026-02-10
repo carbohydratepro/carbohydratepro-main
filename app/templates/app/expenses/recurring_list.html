@@ -1,0 +1,112 @@
+{% extends "app/base.html" %}
+{% load app_filters %}
+
+{% block content %}
+<div class="container mt-2">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+        <h2 class="mb-0">定期支払い</h2>
+    </div>
+
+    <div class="d-flex flex-row-reverse mb-3">
+        <a href="{% url 'expense_list' %}" class="btn btn-secondary btn-sm mb-1">
+            <i class="fas fa-arrow-left"></i> 家計簿に戻る
+        </a>
+        <a href="{% url 'create_recurring_payment' %}" class="btn btn-primary btn-sm mr-2 mb-1">
+            <i class="fas fa-plus"></i> 新規登録
+        </a>
+        <form method="post" action="{% url 'execute_recurring_payments' %}" class="mr-2 mb-1" onsubmit="return confirm('本日分の定期支払いを実行しますか？');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success btn-sm">
+                <i class="fas fa-play"></i> 本日分を実行
+            </button>
+        </form>
+    </div>
+
+    {% if recurring_payments %}
+    <div class="row">
+        {% for recurring in recurring_payments %}
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card {% if not recurring.is_active %}border-secondary{% endif %}">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="card-title mb-0 text-truncate {% if not recurring.is_active %}text-muted{% endif %}" title="{{ recurring.purpose }}">
+                            {{ recurring.purpose|truncatechars:25 }}
+                        </h6>
+                        {% if recurring.is_active %}
+                        <span class="badge badge-success">有効</span>
+                        {% else %}
+                        <span class="badge badge-secondary">無効</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="mb-0 {% if recurring.transaction_type == 'income' %}text-primary{% elif recurring.transaction_type == 'expense' %}text-danger{% else %}text-secondary{% endif %}">
+                            {% if recurring.transaction_type == 'income' %}+{% elif recurring.transaction_type == 'expense' %}-{% endif %}&yen;{{ recurring.amount|comma_format }}
+                        </h5>
+                        <span class="badge badge-info">{{ recurring.get_frequency_display }}</span>
+                    </div>
+
+                    <div class="small text-muted mb-2">
+                        <div>
+                            <i class="fas fa-tag"></i> {{ recurring.category|truncatechars:10 }}
+                            <i class="fas fa-credit-card ml-2"></i> {{ recurring.payment_method|truncatechars:10 }}
+                        </div>
+                        <div class="mt-1">
+                            <i class="fas fa-calendar-alt"></i>
+                            {% if recurring.frequency == 'daily' %}
+                                毎日
+                            {% elif recurring.frequency == 'weekly' %}
+                                毎週
+                                {% if recurring.days_of_week %}
+                                    {% for day in recurring.days_of_week %}
+                                        {% if day == 0 %}月{% elif day == 1 %}火{% elif day == 2 %}水{% elif day == 3 %}木{% elif day == 4 %}金{% elif day == 5 %}土{% elif day == 6 %}日{% endif %}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}曜日
+                                {% endif %}
+                            {% elif recurring.frequency == 'monthly' %}
+                                毎月
+                                {% if recurring.days_of_month %}
+                                    {% for day in recurring.days_of_month %}{{ day }}{% if not forloop.last %}, {% endif %}{% endfor %}日
+                                {% endif %}
+                            {% elif recurring.frequency == 'yearly' %}
+                                毎年{{ recurring.month_of_year }}月
+                                {% if recurring.days_of_month %}
+                                    {% for day in recurring.days_of_month %}{{ day }}{% if not forloop.last %}, {% endif %}{% endfor %}日
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        {% if recurring.last_executed %}
+                        <div class="mt-1">
+                            <i class="fas fa-check"></i> 最終実行: {{ recurring.last_executed|date:"Y/m/d" }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <form method="post" action="{% url 'toggle_recurring_payment' recurring.id %}" class="mr-1">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if recurring.is_active %}btn-outline-secondary{% else %}btn-outline-success{% endif %} py-0 px-1" title="{% if recurring.is_active %}無効にする{% else %}有効にする{% endif %}">
+                                <i class="fas {% if recurring.is_active %}fa-pause{% else %}fa-play{% endif %}"></i>
+                            </button>
+                        </form>
+                        <a href="{% url 'edit_recurring_payment' recurring.id %}" class="btn btn-sm btn-outline-warning mr-1 py-0 px-1" title="編集">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form method="post" action="{% url 'delete_recurring_payment' recurring.id %}" style="display: inline;" onsubmit="return confirm('この定期支払いを削除してもよろしいですか？');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="削除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle"></i> 定期支払いが登録されていません。
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

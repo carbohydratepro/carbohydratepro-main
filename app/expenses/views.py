@@ -2,9 +2,9 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Q
 from django.utils.timezone import make_aware
-from .forms import TransactionForm, PaymentMethodForm, CategoryForm
-from .models import Transaction, PaymentMethod, Category
-from datetime import datetime, timedelta
+from .forms import TransactionForm, PaymentMethodForm, CategoryForm, RecurringPaymentForm
+from .models import Transaction, PaymentMethod, Category, RecurringPayment
+from datetime import datetime, timedelta, date
 import json
 from django.http import JsonResponse
 from django.core.paginator import Paginator
@@ -314,3 +314,91 @@ def delete_expenses(request, transaction_id):
         transaction.delete()
         return redirect('expense_list')
     return redirect('expense_list')
+
+
+@login_required
+def recurring_payment_list(request):
+    recurring_payments = RecurringPayment.objects.filter(
+        user=request.user
+    ).select_related('category', 'payment_method').order_by('-is_active', '-created_at')
+
+    return render(request, 'app/expenses/recurring_list.html', {
+        'recurring_payments': recurring_payments,
+    })
+
+
+@login_required
+def create_recurring_payment(request):
+    if request.method == 'POST':
+        form = RecurringPaymentForm(request.POST, user=request.user)
+        if form.is_valid():
+            recurring = form.save(commit=False)
+            recurring.user = request.user
+            recurring.save()
+            return redirect('recurring_payment_list')
+    else:
+        form = RecurringPaymentForm(user=request.user)
+
+    return render(request, 'app/expenses/recurring_form.html', {
+        'form': form,
+        'is_edit': False,
+    })
+
+
+@login_required
+def edit_recurring_payment(request, recurring_id):
+    recurring = get_object_or_404(RecurringPayment, id=recurring_id, user=request.user)
+    if request.method == 'POST':
+        form = RecurringPaymentForm(request.POST, instance=recurring, user=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect('recurring_payment_list')
+    else:
+        form = RecurringPaymentForm(instance=recurring, user=request.user)
+
+    return render(request, 'app/expenses/recurring_form.html', {
+        'form': form,
+        'recurring': recurring,
+        'is_edit': True,
+    })
+
+
+@login_required
+def delete_recurring_payment(request, recurring_id):
+    recurring = get_object_or_404(RecurringPayment, id=recurring_id, user=request.user)
+    if request.method == 'POST':
+        recurring.delete()
+    return redirect('recurring_payment_list')
+
+
+@login_required
+def toggle_recurring_payment(request, recurring_id):
+    recurring = get_object_or_404(RecurringPayment, id=recurring_id, user=request.user)
+    if request.method == 'POST':
+        recurring.is_active = not recurring.is_active
+        recurring.save(update_fields=['is_active'])
+    return redirect('recurring_payment_list')
+
+
+@login_required
+def execute_recurring_payments(request):
+    """手動で定期支払いを実行する"""
+    if request.method == 'POST':
+        today = date.today()
+        recurring_payments = RecurringPayment.objects.filter(
+            user=request.user, is_active=True
+        ).select_related('category', 'payment_method')
+
+        executed_count = 0
+        for recurring in recurring_payments:
+            if recurring.should_execute_on(today):
+                recurring.execute(today)
+                executed_count += 1
+
+        from django.contrib import messages
+        if executed_count > 0:
+            messages.success(request, f'{executed_count}件の定期支払いを実行しました。')
+        else:
+            messages.info(request, '本日実行する定期支払いはありません。')
+
+    return redirect('recurring_payment_list')

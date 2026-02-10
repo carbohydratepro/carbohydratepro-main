@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import ContactMessage
-from .expenses.models import Transaction, PaymentMethod, Category
+from .expenses.models import Transaction, PaymentMethod, Category, RecurringPayment
 from .memo.models import Memo
 from .shopping.models import ShoppingItem
 from .task.models import TaskLabel, Task
@@ -32,6 +32,13 @@ class PaymentMethodAdmin(admin.ModelAdmin):
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'user')
     search_fields = ('name', 'user__username')
+
+
+@admin.register(RecurringPayment)
+class RecurringPaymentAdmin(admin.ModelAdmin):
+    list_display = ('purpose', 'user', 'amount', 'frequency', 'is_active', 'last_executed')
+    search_fields = ('purpose', 'user__username')
+    list_filter = ('frequency', 'is_active', 'user')
 
 
 # Memo関連

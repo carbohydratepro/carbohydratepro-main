@@ -1,0 +1,269 @@
+{% extends "app/base.html" %}
+
+{% block content %}
+<div class="container mt-2">
+    <h2 class="mb-3">{% if is_edit %}定期支払いの編集{% else %}定期支払いの新規登録{% endif %}</h2>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                    {% if field.name == 'days_of_week' or field.name == 'days_of_month' %}
+                        {# 曜日・日付選択は後で独自UIで表示 #}
+                    {% else %}
+                    <div class="form-group">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                        <small class="form-text text-muted">{{ field.help_text }}</small>
+                        {% endif %}
+                        {% if field.errors %}
+                        <div class="text-danger small">
+                            {% for error in field.errors %}
+                            <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- 曜日選択UI（毎週用） -->
+                <div id="daysOfWeekGroup" class="form-group" style="display: none;">
+                    <label>曜日（最大7つ）</label>
+                    <div class="btn-group-toggle d-flex flex-wrap" data-toggle="buttons">
+                        {% for value, label in form.days_of_week.field.choices %}
+                        <label class="btn btn-outline-primary btn-sm m-1 day-of-week-btn" data-value="{{ value }}">
+                            <input type="checkbox" name="days_of_week" value="{{ value }}" autocomplete="off">
+                            {{ label }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% if form.days_of_week.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.days_of_week.errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        選択中: <span id="selectedDaysOfWeek" class="font-weight-bold">なし</span>
+                    </small>
+                </div>
+
+                <!-- 日付選択UI（毎月・毎年用） -->
+                <div id="daysOfMonthGroup" class="form-group" style="display: none;">
+                    <label>日（最大7つ）</label>
+                    <div class="calendar-grid mb-2">
+                        {% for value, label in form.days_of_month.field.choices %}
+                        <label class="calendar-day" data-value="{{ value }}">
+                            <input type="checkbox" name="days_of_month" value="{{ value }}">
+                            <span>{{ label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% if form.days_of_month.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.days_of_month.errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        選択中: <span id="selectedDaysOfMonth" class="font-weight-bold">なし</span>
+                    </small>
+                </div>
+
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% url 'recurring_payment_list' %}" class="btn btn-secondary">キャンセル</a>
+                    <button type="submit" class="btn btn-primary">{% if is_edit %}更新{% else %}登録{% endif %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    max-width: 400px;
+}
+
+.calendar-day {
+    position: relative;
+    padding: 8px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+}
+
+.calendar-day input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.calendar-day:hover {
+    background-color: #e3f2fd;
+}
+
+.calendar-day input:checked + span {
+    color: white;
+}
+
+.calendar-day:has(input:checked) {
+    background-color: #2196F3;
+    border-color: #2196F3;
+    color: white;
+}
+
+.day-of-week-btn {
+    min-width: 50px;
+}
+
+.day-of-week-btn.active {
+    background-color: #007bff !important;
+    color: white !important;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const frequencySelect = document.getElementById('id_frequency');
+    const daysOfWeekGroup = document.getElementById('daysOfWeekGroup');
+    const daysOfMonthGroup = document.getElementById('daysOfMonthGroup');
+    const monthOfYearGroup = document.getElementById('id_month_of_year').closest('.form-group');
+
+    const selectedDaysOfWeekSpan = document.getElementById('selectedDaysOfWeek');
+    const selectedDaysOfMonthSpan = document.getElementById('selectedDaysOfMonth');
+
+    const dayLabels = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土', 6: '日'};
+
+    function updateSelectedDaysOfWeek() {
+        const checked = Array.from(document.querySelectorAll('input[name="days_of_week"]:checked'));
+        if (checked.length === 0) {
+            selectedDaysOfWeekSpan.textContent = 'なし';
+        } else {
+            const labels = checked.map(cb => dayLabels[parseInt(cb.value)]);
+            selectedDaysOfWeekSpan.textContent = labels.join(', ');
+        }
+    }
+
+    function updateSelectedDaysOfMonth() {
+        const checked = Array.from(document.querySelectorAll('input[name="days_of_month"]:checked'));
+        if (checked.length === 0) {
+            selectedDaysOfMonthSpan.textContent = 'なし';
+        } else {
+            const days = checked.map(cb => cb.value + '日').sort((a, b) => parseInt(a) - parseInt(b));
+            selectedDaysOfMonthSpan.textContent = days.join(', ');
+        }
+    }
+
+    // 曜日選択のイベント
+    document.querySelectorAll('input[name="days_of_week"]').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const label = this.closest('.day-of-week-btn');
+            if (this.checked) {
+                label.classList.add('active');
+            } else {
+                label.classList.remove('active');
+            }
+            updateSelectedDaysOfWeek();
+
+            // 最大7つまで
+            const checked = document.querySelectorAll('input[name="days_of_week"]:checked');
+            if (checked.length >= 7) {
+                document.querySelectorAll('input[name="days_of_week"]:not(:checked)').forEach(cb => {
+                    cb.disabled = true;
+                    cb.closest('.day-of-week-btn').style.opacity = '0.5';
+                });
+            } else {
+                document.querySelectorAll('input[name="days_of_week"]').forEach(cb => {
+                    cb.disabled = false;
+                    cb.closest('.day-of-week-btn').style.opacity = '1';
+                });
+            }
+        });
+    });
+
+    // 日付選択のイベント
+    document.querySelectorAll('input[name="days_of_month"]').forEach(cb => {
+        cb.addEventListener('change', function() {
+            updateSelectedDaysOfMonth();
+
+            // 最大7つまで
+            const checked = document.querySelectorAll('input[name="days_of_month"]:checked');
+            if (checked.length >= 7) {
+                document.querySelectorAll('input[name="days_of_month"]:not(:checked)').forEach(cb => {
+                    cb.disabled = true;
+                    cb.closest('.calendar-day').style.opacity = '0.5';
+                });
+            } else {
+                document.querySelectorAll('input[name="days_of_month"]').forEach(cb => {
+                    cb.disabled = false;
+                    cb.closest('.calendar-day').style.opacity = '1';
+                });
+            }
+        });
+    });
+
+    function updateFieldVisibility() {
+        const frequency = frequencySelect.value;
+
+        daysOfWeekGroup.style.display = 'none';
+        daysOfMonthGroup.style.display = 'none';
+        monthOfYearGroup.style.display = 'none';
+
+        if (frequency === 'weekly') {
+            daysOfWeekGroup.style.display = 'block';
+        } else if (frequency === 'monthly') {
+            daysOfMonthGroup.style.display = 'block';
+        } else if (frequency === 'yearly') {
+            monthOfYearGroup.style.display = 'block';
+            daysOfMonthGroup.style.display = 'block';
+        }
+    }
+
+    // 初期値の復元（編集時）
+    {% if is_edit and form.initial.days_of_week %}
+    const initialDaysOfWeek = {{ form.initial.days_of_week|safe }};
+    initialDaysOfWeek.forEach(day => {
+        const cb = document.querySelector(`input[name="days_of_week"][value="${day}"]`);
+        if (cb) {
+            cb.checked = true;
+            cb.closest('.day-of-week-btn').classList.add('active');
+        }
+    });
+    updateSelectedDaysOfWeek();
+    {% endif %}
+
+    {% if is_edit and form.initial.days_of_month %}
+    const initialDaysOfMonth = {{ form.initial.days_of_month|safe }};
+    initialDaysOfMonth.forEach(day => {
+        const cb = document.querySelector(`input[name="days_of_month"][value="${day}"]`);
+        if (cb) {
+            cb.checked = true;
+        }
+    });
+    updateSelectedDaysOfMonth();
+    {% endif %}
+
+    frequencySelect.addEventListener('change', updateFieldVisibility);
+    updateFieldVisibility();
+});
+</script>
+{% endblock %}

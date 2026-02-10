@@ -1,6 +1,7 @@
 """
 支出管理機能のテスト
 """
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -8,8 +9,8 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
 
-from app.expenses.models import Category, PaymentMethod, Transaction
-from app.expenses.forms import TransactionForm, PaymentMethodForm, CategoryForm
+from app.expenses.models import Category, PaymentMethod, Transaction, RecurringPayment
+from app.expenses.forms import TransactionForm, PaymentMethodForm, CategoryForm, RecurringPaymentForm
 
 
 class PaymentMethodModelTest(TestCase):
@@ -676,3 +677,503 @@ class ExpensesChartDataTest(TestCase):
         self.assertEqual(response.context['total_expense'], Decimal('1000.00'))
         self.assertEqual(response.context['total_income'], Decimal('5000.00'))
         self.assertEqual(response.context['net_balance'], 4000.0)
+
+
+class RecurringPaymentModelTest(TestCase):
+    """定期支払いモデルのテスト"""
+
+    def setUp(self) -> None:
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            email='test@example.com',
+            username='testuser',
+            password='testpass123',
+            is_email_verified=True,
+        )
+        self.payment_method = PaymentMethod.objects.create(user=self.user, name='現金')
+        self.category = Category.objects.create(user=self.user, name='光熱費')
+
+    def _create_recurring(self, **kwargs: object) -> RecurringPayment:
+        defaults = {
+            'user': self.user,
+            'purpose': '電気代',
+            'amount': Decimal('5000.00'),
+            'transaction_type': 'expense',
+            'major_category': 'fixed',
+            'category': self.category,
+            'payment_method': self.payment_method,
+            'frequency': 'monthly',
+            'days_of_month': [15],
+        }
+        defaults.update(kwargs)
+        return RecurringPayment.objects.create(**defaults)
+
+    def test_create_recurring_payment(self) -> None:
+        """定期支払いの作成テスト"""
+        recurring = self._create_recurring()
+        self.assertEqual(recurring.purpose, '電気代')
+        self.assertEqual(recurring.amount, Decimal('5000.00'))
+        self.assertTrue(recurring.is_active)
+        self.assertIsNone(recurring.last_executed)
+
+    def test_str_representation(self) -> None:
+        """文字列表現のテスト"""
+        recurring = self._create_recurring()
+        self.assertIn('電気代', str(recurring))
+        self.assertIn('毎月', str(recurring))
+
+    def test_should_execute_daily(self) -> None:
+        """毎日の実行判定テスト"""
+        recurring = self._create_recurring(frequency='daily')
+        self.assertTrue(recurring.should_execute_on(date.today()))
+
+    def test_should_execute_daily_already_executed(self) -> None:
+        """毎日・実行済みの場合は実行しない"""
+        recurring = self._create_recurring(frequency='daily', last_executed=date.today())
+        self.assertFalse(recurring.should_execute_on(date.today()))
+
+    def test_should_execute_weekly_correct_day(self) -> None:
+        """毎週の正しい曜日の実行判定テスト"""
+        today = date.today()
+        recurring = self._create_recurring(
+            frequency='weekly', days_of_week=[today.weekday()]
+        )
+        self.assertTrue(recurring.should_execute_on(today))
+
+    def test_should_execute_weekly_wrong_day(self) -> None:
+        """毎週の異なる曜日では実行しない"""
+        today = date.today()
+        wrong_day = (today.weekday() + 1) % 7
+        recurring = self._create_recurring(
+            frequency='weekly', days_of_week=[wrong_day]
+        )
+        self.assertFalse(recurring.should_execute_on(today))
+
+    def test_should_execute_weekly_multiple_days(self) -> None:
+        """毎週・複数曜日の実行判定テスト"""
+        today = date.today()
+        recurring = self._create_recurring(
+            frequency='weekly', days_of_week=[0, 2, 4]  # 月・水・金
+        )
+        if today.weekday() in [0, 2, 4]:
+            self.assertTrue(recurring.should_execute_on(today))
+        else:
+            self.assertFalse(recurring.should_execute_on(today))
+
+    def test_should_execute_monthly_correct_day(self) -> None:
+        """毎月の正しい日の実行判定テスト"""
+        target = date(2025, 3, 15)
+        recurring = self._create_recurring(frequency='monthly', days_of_month=[15])
+        self.assertTrue(recurring.should_execute_on(target))
+
+    def test_should_execute_monthly_wrong_day(self) -> None:
+        """毎月の異なる日では実行しない"""
+        target = date(2025, 3, 10)
+        recurring = self._create_recurring(frequency='monthly', days_of_month=[15])
+        self.assertFalse(recurring.should_execute_on(target))
+
+    def test_should_execute_monthly_end_of_month(self) -> None:
+        """月末日を超える場合は月末日で実行"""
+        target = date(2025, 2, 28)
+        recurring = self._create_recurring(frequency='monthly', days_of_month=[31])
+        self.assertTrue(recurring.should_execute_on(target))
+
+    def test_should_execute_monthly_multiple_days(self) -> None:
+        """毎月・複数日の実行判定テスト"""
+        target = date(2025, 3, 10)
+        recurring = self._create_recurring(frequency='monthly', days_of_month=[5, 10, 15, 20])
+        self.assertTrue(recurring.should_execute_on(target))
+        self.assertTrue(recurring.should_execute_on(date(2025, 3, 5)))
+        self.assertFalse(recurring.should_execute_on(date(2025, 3, 12)))
+
+    def test_should_execute_yearly_correct_date(self) -> None:
+        """毎年の正しい日付の実行判定テスト"""
+        target = date(2025, 6, 1)
+        recurring = self._create_recurring(
+            frequency='yearly', month_of_year=6, days_of_month=[1]
+        )
+        self.assertTrue(recurring.should_execute_on(target))
+
+    def test_should_execute_yearly_wrong_month(self) -> None:
+        """毎年の異なる月では実行しない"""
+        target = date(2025, 5, 1)
+        recurring = self._create_recurring(
+            frequency='yearly', month_of_year=6, days_of_month=[1]
+        )
+        self.assertFalse(recurring.should_execute_on(target))
+
+    def test_should_not_execute_when_inactive(self) -> None:
+        """無効な定期支払いは実行しない"""
+        recurring = self._create_recurring(frequency='daily', is_active=False)
+        self.assertFalse(recurring.should_execute_on(date.today()))
+
+    def test_execute_creates_transaction(self) -> None:
+        """実行時にTransactionが作成されるテスト"""
+        recurring = self._create_recurring()
+        target = date(2025, 3, 15)
+        transaction = recurring.execute(target)
+
+        self.assertEqual(transaction.user, self.user)
+        self.assertEqual(transaction.amount, Decimal('5000.00'))
+        self.assertEqual(transaction.purpose, '電気代')
+        self.assertEqual(transaction.transaction_type, 'expense')
+        self.assertEqual(transaction.major_category, 'fixed')
+        self.assertEqual(transaction.category, self.category)
+        self.assertEqual(transaction.payment_method, self.payment_method)
+
+        recurring.refresh_from_db()
+        self.assertEqual(recurring.last_executed, target)
+
+    def test_execute_updates_last_executed(self) -> None:
+        """実行後にlast_executedが更新されるテスト"""
+        recurring = self._create_recurring()
+        target = date(2025, 3, 15)
+        recurring.execute(target)
+
+        recurring.refresh_from_db()
+        self.assertEqual(recurring.last_executed, target)
+
+
+class RecurringPaymentFormTest(TestCase):
+    """定期支払いフォームのテスト"""
+
+    def setUp(self) -> None:
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            email='test@example.com',
+            username='testuser',
+            password='testpass123',
+            is_email_verified=True,
+        )
+        self.payment_method = PaymentMethod.objects.create(user=self.user, name='現金')
+        self.category = Category.objects.create(user=self.user, name='光熱費')
+
+    def test_valid_monthly_form(self) -> None:
+        """毎月の有効なフォームデータのテスト"""
+        form_data = {
+            'purpose': '電気代',
+            'amount': 5000,
+            'transaction_type': 'expense',
+            'major_category': 'fixed',
+            'category': self.category.id,
+            'payment_method': self.payment_method.id,
+            'frequency': 'monthly',
+            'days_of_month': ['15'],
+        }
+        form = RecurringPaymentForm(data=form_data, user=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_valid_weekly_form(self) -> None:
+        """毎週の有効なフォームデータのテスト"""
+        form_data = {
+            'purpose': '習い事',
+            'amount': 3000,
+            'transaction_type': 'expense',
+            'major_category': 'fixed',
+            'category': self.category.id,
+            'payment_method': self.payment_method.id,
+            'frequency': 'weekly',
+            'days_of_week': ['1'],
+        }
+        form = RecurringPaymentForm(data=form_data, user=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_valid_weekly_multiple_days_form(self) -> None:
+        """毎週・複数曜日の有効なフォームデータのテスト"""
+        form_data = {
+            'purpose': '習い事',
+            'amount': 3000,
+            'transaction_type': 'expense',
+            'major_category': 'fixed',
+            'category': self.category.id,
+            'payment_method': self.payment_method.id,
+            'frequency': 'weekly',
+            'days_of_week': ['1', '3', '5'],
+        }
+        form = RecurringPaymentForm(data=form_data, user=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_valid_daily_form(self) -> None:
+        """毎日の有効なフォームデータのテスト"""
+        form_data = {
+            'purpose': '交通費',
+            'amount': 500,
+            'transaction_type': 'expense',
+            'major_category': 'variable',
+            'category': self.category.id,
+            'payment_method': self.payment_method.id,
+            'frequency': 'daily',
+        }
+        form = RecurringPaymentForm(data=form_data, user=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_valid_yearly_form(self) -> None:
+        """毎年の有効なフォームデータのテスト"""
+        form_data = {
+            'purpose': '年会費',
+            'amount': 10000,
+            'transaction_type': 'expense',
+            'major_category': 'fixed',
+            'category': self.category.id,
+            'payment_method': self.payment_method.id,
+            'frequency': 'yearly',
+            'month_of_year': 4,
+            'days_of_month': ['1'],
+        }
+        form = RecurringPaymentForm(data=form_data, user=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_weekly_without_days_of_week_invalid(self) -> None:
+        """毎週で曜日未指定は無効"""
+        form_data = {
+            'purpose': '習い事',
+            'amount': 3000,
+            'transaction_type': 'expense',
+            'major_category': 'fixed',
+            'category': self.category.id,
+            'payment_method': self.payment_method.id,
+            'frequency': 'weekly',
+        }
+        form = RecurringPaymentForm(data=form_data, user=self.user)
+        self.assertFalse(form.is_valid())
+        self.assertIn('days_of_week', form.errors)
+
+    def test_monthly_without_days_of_month_invalid(self) -> None:
+        """毎月で日未指定は無効"""
+        form_data = {
+            'purpose': '電気代',
+            'amount': 5000,
+            'transaction_type': 'expense',
+            'major_category': 'fixed',
+            'category': self.category.id,
+            'payment_method': self.payment_method.id,
+            'frequency': 'monthly',
+        }
+        form = RecurringPaymentForm(data=form_data, user=self.user)
+        self.assertFalse(form.is_valid())
+        self.assertIn('days_of_month', form.errors)
+
+    def test_yearly_without_month_invalid(self) -> None:
+        """毎年で月未指定は無効"""
+        form_data = {
+            'purpose': '年会費',
+            'amount': 10000,
+            'transaction_type': 'expense',
+            'major_category': 'fixed',
+            'category': self.category.id,
+            'payment_method': self.payment_method.id,
+            'frequency': 'yearly',
+            'days_of_month': ['1'],
+        }
+        form = RecurringPaymentForm(data=form_data, user=self.user)
+        self.assertFalse(form.is_valid())
+        self.assertIn('month_of_year', form.errors)
+
+    def test_weekly_too_many_days_invalid(self) -> None:
+        """毎週で8つ以上選択は無効"""
+        form_data = {
+            'purpose': '習い事',
+            'amount': 3000,
+            'transaction_type': 'expense',
+            'major_category': 'fixed',
+            'category': self.category.id,
+            'payment_method': self.payment_method.id,
+            'frequency': 'weekly',
+            'days_of_week': ['0', '1', '2', '3', '4', '5', '6', '7'],
+        }
+        form = RecurringPaymentForm(data=form_data, user=self.user)
+        self.assertFalse(form.is_valid())
+        self.assertIn('days_of_week', form.errors)
+
+    def test_negative_amount_invalid(self) -> None:
+        """負の金額が無効"""
+        form_data = {
+            'purpose': '電気代',
+            'amount': -100,
+            'transaction_type': 'expense',
+            'major_category': 'fixed',
+            'category': self.category.id,
+            'payment_method': self.payment_method.id,
+            'frequency': 'daily',
+        }
+        form = RecurringPaymentForm(data=form_data, user=self.user)
+        self.assertFalse(form.is_valid())
+        self.assertIn('amount', form.errors)
+
+
+class RecurringPaymentViewTest(TestCase):
+    """定期支払いビューのテスト"""
+
+    def setUp(self) -> None:
+        self.client = Client()
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            email='test@example.com',
+            username='testuser',
+            password='testpass123',
+            is_email_verified=True,
+        )
+        self.payment_method = PaymentMethod.objects.create(user=self.user, name='現金')
+        self.category = Category.objects.create(user=self.user, name='光熱費')
+        self.client.login(username='test@example.com', password='testpass123')
+
+    def _create_recurring(self, **kwargs: object) -> RecurringPayment:
+        defaults = {
+            'user': self.user,
+            'purpose': '電気代',
+            'amount': Decimal('5000.00'),
+            'transaction_type': 'expense',
+            'major_category': 'fixed',
+            'category': self.category,
+            'payment_method': self.payment_method,
+            'frequency': 'monthly',
+            'days_of_month': [15],
+        }
+        defaults.update(kwargs)
+        return RecurringPayment.objects.create(**defaults)
+
+    def test_recurring_list_requires_login(self) -> None:
+        """定期支払い一覧に認証が必要"""
+        self.client.logout()
+        response = self.client.get(reverse('recurring_payment_list'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_recurring_list_view(self) -> None:
+        """定期支払い一覧の表示テスト"""
+        self._create_recurring()
+        response = self.client.get(reverse('recurring_payment_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'app/expenses/recurring_list.html')
+        self.assertEqual(len(response.context['recurring_payments']), 1)
+
+    def test_create_recurring_get(self) -> None:
+        """定期支払い作成フォーム（GET）のテスト"""
+        response = self.client.get(reverse('create_recurring_payment'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'app/expenses/recurring_form.html')
+
+    def test_create_recurring_post(self) -> None:
+        """定期支払い作成（POST）のテスト"""
+        form_data = {
+            'purpose': '電気代',
+            'amount': 5000,
+            'transaction_type': 'expense',
+            'major_category': 'fixed',
+            'category': self.category.id,
+            'payment_method': self.payment_method.id,
+            'frequency': 'monthly',
+            'days_of_month': ['15'],
+        }
+        response = self.client.post(reverse('create_recurring_payment'), form_data)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(RecurringPayment.objects.filter(purpose='電気代').exists())
+
+    def test_edit_recurring_get(self) -> None:
+        """定期支払い編集フォーム（GET）のテスト"""
+        recurring = self._create_recurring()
+        response = self.client.get(
+            reverse('edit_recurring_payment', kwargs={'recurring_id': recurring.id})
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_edit_recurring_post(self) -> None:
+        """定期支払い編集（POST）のテスト"""
+        recurring = self._create_recurring()
+        form_data = {
+            'purpose': 'ガス代',
+            'amount': 3000,
+            'transaction_type': 'expense',
+            'major_category': 'fixed',
+            'category': self.category.id,
+            'payment_method': self.payment_method.id,
+            'frequency': 'monthly',
+            'days_of_month': ['20'],
+        }
+        response = self.client.post(
+            reverse('edit_recurring_payment', kwargs={'recurring_id': recurring.id}),
+            form_data,
+        )
+        self.assertEqual(response.status_code, 302)
+        recurring.refresh_from_db()
+        self.assertEqual(recurring.purpose, 'ガス代')
+        self.assertIn(20, recurring.days_of_month)
+
+    def test_edit_other_user_forbidden(self) -> None:
+        """他ユーザーの定期支払い編集が禁止されることをテスト"""
+        User = get_user_model()
+        other_user = User.objects.create_user(
+            email='other@example.com',
+            username='otheruser',
+            password='testpass123',
+            is_email_verified=True,
+        )
+        other_payment = PaymentMethod.objects.create(user=other_user, name='現金')
+        other_category = Category.objects.create(user=other_user, name='光熱費')
+        other_recurring = RecurringPayment.objects.create(
+            user=other_user,
+            purpose='他ユーザー支払い',
+            amount=Decimal('1000.00'),
+            transaction_type='expense',
+            major_category='fixed',
+            category=other_category,
+            payment_method=other_payment,
+            frequency='monthly',
+            days_of_month=[1],
+        )
+        response = self.client.get(
+            reverse('edit_recurring_payment', kwargs={'recurring_id': other_recurring.id})
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_recurring(self) -> None:
+        """定期支払い削除のテスト"""
+        recurring = self._create_recurring()
+        response = self.client.post(
+            reverse('delete_recurring_payment', kwargs={'recurring_id': recurring.id})
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(RecurringPayment.objects.filter(id=recurring.id).exists())
+
+    def test_toggle_recurring_active(self) -> None:
+        """定期支払い有効/無効切り替えのテスト"""
+        recurring = self._create_recurring()
+        self.assertTrue(recurring.is_active)
+
+        response = self.client.post(
+            reverse('toggle_recurring_payment', kwargs={'recurring_id': recurring.id})
+        )
+        self.assertEqual(response.status_code, 302)
+        recurring.refresh_from_db()
+        self.assertFalse(recurring.is_active)
+
+        response = self.client.post(
+            reverse('toggle_recurring_payment', kwargs={'recurring_id': recurring.id})
+        )
+        recurring.refresh_from_db()
+        self.assertTrue(recurring.is_active)
+
+    def test_execute_recurring_payments(self) -> None:
+        """定期支払い手動実行のテスト"""
+        today = date.today()
+        recurring = self._create_recurring(frequency='daily')
+
+        response = self.client.post(reverse('execute_recurring_payments'))
+        self.assertEqual(response.status_code, 302)
+
+        self.assertTrue(Transaction.objects.filter(
+            user=self.user, purpose='電気代'
+        ).exists())
+        recurring.refresh_from_db()
+        self.assertEqual(recurring.last_executed, today)
+
+    def test_execute_recurring_no_match(self) -> None:
+        """実行日に該当しない場合のテスト"""
+        today = date.today()
+        wrong_day = (today.weekday() + 1) % 7
+        self._create_recurring(frequency='weekly', days_of_week=[wrong_day])
+
+        response = self.client.post(reverse('execute_recurring_payments'))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Transaction.objects.filter(
+            user=self.user, purpose='電気代'
+        ).exists())

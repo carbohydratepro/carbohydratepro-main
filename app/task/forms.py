@@ -1,6 +1,10 @@
 from django import forms
 from django.utils import timezone
 from .models import Task, TaskLabel
+from typing import Any, Dict, Optional
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 class TaskLabelForm(forms.ModelForm):
@@ -12,7 +16,7 @@ class TaskLabelForm(forms.ModelForm):
             'color': forms.TextInput(attrs={'type': 'color', 'class': 'form-control form-control-color'}),
         }
         
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         # エラーメッセージのカスタマイズ
         self.fields['name'].error_messages = {
@@ -61,8 +65,8 @@ class TaskForm(forms.ModelForm):
             'description': '詳細',
         }
 
-    def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        user: Optional[User] = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
         # ユーザーに基づいてラベルのクエリセットをフィルタリング
@@ -88,7 +92,7 @@ class TaskForm(forms.ModelForm):
             else:
                 field.widget.attrs['class'] = 'form-control'
     
-    def clean(self):
+    def clean(self) -> Dict[str, Any]:
         cleaned_data = super().clean()
         frequency = cleaned_data.get('frequency')
         repeat_interval = cleaned_data.get('repeat_interval')

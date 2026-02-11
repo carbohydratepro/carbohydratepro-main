@@ -605,3 +605,236 @@ class TaskAjaxViewTest(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json().get('success'))
+
+
+class RecurringTaskTest(TestCase):
+    """繰り返しタスクの詳細テスト"""
+
+    def setUp(self) -> None:
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            email='test@example.com',
+            username='testuser',
+            password='testpass123',
+            is_email_verified=True,
+        )
+
+    def test_recurring_task_creates_child_tasks(self) -> None:
+        """繰り返しタスクが子タスクを正しく生成するかのテスト"""
+        from app.task.views import create_recurring_tasks
+
+        parent_task = Task.objects.create(
+            user=self.user,
+            title='毎日のタスク',
+            frequency='daily',
+            repeat_interval=1,
+            repeat_count=5,
+            start_date=timezone.now(),
+            end_date=timezone.now() + timedelta(hours=1),
+            status='not_started'
+        )
+
+        create_recurring_tasks(parent_task)
+
+        # 子タスクが5個生成されることを確認
+        child_tasks = Task.objects.filter(parent_task=parent_task)
+        self.assertEqual(child_tasks.count(), 5)
+
+        # 各子タスクの開始日が正しく設定されていることを確認
+        for i, child in enumerate(child_tasks.order_by('start_date'), start=1):
+            expected_date = parent_task.start_date + timedelta(days=i)
+            self.assertEqual(child.start_date.date(), expected_date.date())
+            self.assertEqual(child.title, parent_task.title)
+            self.assertEqual(child.status, 'not_started')
+
+    def test_recurring_task_without_start_date_no_children(self) -> None:
+        """開始日なしの繰り返しタスクは子タスクを生成しないテスト"""
+        from app.task.views import create_recurring_tasks
+
+        parent_task = Task.objects.create(
+            user=self.user,
+            title='開始日なしタスク',
+            frequency='daily',
+            repeat_interval=1,
+            repeat_count=3,
+            status='not_started'
+        )
+
+        create_recurring_tasks(parent_task)
+
+        # 子タスクが生成されないことを確認
+        child_tasks = Task.objects.filter(parent_task=parent_task)
+        self.assertEqual(child_tasks.count(), 0)
+
+    def test_delete_parent_task_deletes_children(self) -> None:
+        """親タスク削除時に子タスクもカスケード削除されるテスト"""
+        from app.task.views import create_recurring_tasks
+
+        parent_task = Task.objects.create(
+            user=self.user,
+            title='削除テスト',
+            frequency='weekly',
+            repeat_interval=1,
+            repeat_count=3,
+            start_date=timezone.now(),
+            status='not_started'
+        )
+
+        create_recurring_tasks(parent_task)
+
+        # 子タスクが3個あることを確認
+        self.assertEqual(Task.objects.filter(parent_task=parent_task).count(), 3)
+
+        # 親タスクを削除
+        parent_task.delete()
+
+        # 子タスクも削除されることを確認
+        self.assertEqual(Task.objects.filter(parent_task=parent_task).count(), 0)
+
+    def test_update_recurring_task_regenerates_children(self) -> None:
+        """繰り返しタスクの更新時に子タスクが再生成されるテスト"""
+        from app.task.views import create_recurring_tasks
+
+        parent_task = Task.objects.create(
+            user=self.user,
+            title='更新テスト',
+            frequency='daily',
+            repeat_interval=1,
+            repeat_count=3,
+            start_date=timezone.now(),
+            status='not_started'
+        )
+
+        create_recurring_tasks(parent_task)
+        initial_count = Task.objects.filter(parent_task=parent_task).count()
+        self.assertEqual(initial_count, 3)
+
+        # 繰り返し回数を変更
+        parent_task.repeat_count = 5
+        parent_task.save()
+
+        # 既存の子タスクを削除して再生成
+        Task.objects.filter(parent_task=parent_task).delete()
+        create_recurring_tasks(parent_task)
+
+        # 新しい子タスクが5個生成されることを確認
+        updated_count = Task.objects.filter(parent_task=parent_task).count()
+        self.assertEqual(updated_count, 5)
+
+    def test_weekly_recurring_task_dates(self) -> None:
+        """毎週繰り返しタスクの日付が正しく設定されるテスト"""
+        from app.task.views import create_recurring_tasks
+
+        start = timezone.now()
+        parent_task = Task.objects.create(
+            user=self.user,
+            title='毎週タスク',
+            frequency='weekly',
+            repeat_interval=1,
+            repeat_count=4,
+            start_date=start,
+            status='not_started'
+        )
+
+        create_recurring_tasks(parent_task)
+
+        child_tasks = Task.objects.filter(parent_task=parent_task).order_by('start_date')
+        for i, child in enumerate(child_tasks, start=1):
+            expected_date = start + timedelta(weeks=i)
+            self.assertEqual(child.start_date.date(), expected_date.date())
+
+    def test_monthly_recurring_task_dates(self) -> None:
+        """毎月繰り返しタスクの日付が正しく設定されるテスト"""
+        from app.task.views import create_recurring_tasks
+        from dateutil.relativedelta import relativedelta
+
+        start = timezone.now()
+        parent_task = Task.objects.create(
+            user=self.user,
+            title='毎月タスク',
+            frequency='monthly',
+            repeat_interval=1,
+            repeat_count=3,
+            start_date=start,
+            status='not_started'
+        )
+
+        create_recurring_tasks(parent_task)
+
+        child_tasks = Task.objects.filter(parent_task=parent_task).order_by('start_date')
+        for i, child in enumerate(child_tasks, start=1):
+            expected_date = start + relativedelta(months=i)
+            self.assertEqual(child.start_date.date(), expected_date.date())
+
+
+class TaskFormEdgeCaseTest(TestCase):
+    """タスクフォームのエッジケーステスト"""
+
+    def setUp(self) -> None:
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            email='test@example.com',
+            username='testuser',
+            password='testpass123',
+            is_email_verified=True,
+        )
+
+    def test_end_date_before_start_date_invalid(self) -> None:
+        """終了日時が開始日時より前の場合が無効であることをテスト"""
+        form = TaskForm(
+            user=self.user,
+            data={
+                'title': 'テストタスク',
+                'priority': 'medium',
+                'status': 'not_started',
+                'start_date': (timezone.now() + timedelta(days=1)).date(),
+                'start_time': '10:00',
+                'end_date': timezone.now().date(),
+                'end_time': '09:00',
+                'all_day': False,
+                'frequency': '',
+                'repeat_interval': 1,
+            }
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_all_day_task_time_set_correctly(self) -> None:
+        """終日タスクの時刻が00:00〜23:59に正しく設定されるテスト"""
+        form = TaskForm(
+            user=self.user,
+            data={
+                'title': '終日タスク',
+                'priority': 'medium',
+                'status': 'not_started',
+                'start_date': timezone.now().date(),
+                'end_date': timezone.now().date(),
+                'all_day': True,
+                'frequency': '',
+                'repeat_interval': 1,
+            }
+        )
+        self.assertTrue(form.is_valid())
+        cleaned_data = form.cleaned_data
+
+        # 開始時刻が00:00に設定されていることを確認
+        self.assertEqual(cleaned_data['start_date'].time().hour, 0)
+        self.assertEqual(cleaned_data['start_date'].time().minute, 0)
+
+        # 終了時刻が23:59に設定されていることを確認
+        self.assertEqual(cleaned_data['end_date'].time().hour, 23)
+        self.assertEqual(cleaned_data['end_date'].time().minute, 59)
+
+    def test_recurring_task_without_interval_invalid(self) -> None:
+        """繰り返しタスクで間隔なしが無効であることをテスト"""
+        form = TaskForm(
+            user=self.user,
+            data={
+                'title': '繰り返しタスク',
+                'frequency': 'daily',
+                'repeat_interval': '',
+                'repeat_count': 5,
+                'priority': 'medium',
+                'status': 'not_started',
+            }
+        )
+        self.assertFalse(form.is_valid())

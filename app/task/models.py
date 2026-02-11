@@ -8,7 +8,7 @@ class TaskLabel(models.Model):
     name = models.CharField(max_length=30, verbose_name="ラベル名")
     color = models.CharField(max_length=7, default='#6c757d', verbose_name="色")  # HEXカラーコード
     
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
     
     class Meta:
@@ -53,7 +53,7 @@ class Task(models.Model):
     description = models.TextField(blank=True, verbose_name="詳細")
     parent_task = models.ForeignKey('self', on_delete=models.CASCADE, blank=True, null=True, related_name='recurring_instances', verbose_name="親タスク")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.title} - {self.get_status_display()}"
 
     class Meta:

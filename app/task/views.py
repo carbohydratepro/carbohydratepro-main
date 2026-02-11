@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
 from django.utils.timezone import make_aware
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpRequest, HttpResponse
 from django.core.paginator import Paginator
 from .forms import TaskForm, TaskLabelForm
 from .models import Task, TaskLabel
@@ -12,7 +12,7 @@ import calendar
 
 
 @login_required
-def task_list(request):
+def task_list(request: HttpRequest) -> HttpResponse:
     """タスク一覧表示"""
     # 表示モードと日付選択
     view_mode = request.GET.get('view_mode', 'month')  # 'month' or 'day'
@@ -216,7 +216,7 @@ def task_list(request):
 
 
 @login_required
-def create_task(request):
+def create_task(request: HttpRequest) -> HttpResponse:
     """タスク新規作成"""
     if request.method == 'POST':
         form = TaskForm(request.POST, user=request.user)
@@ -241,7 +241,7 @@ def create_task(request):
     return render(request, 'app/task/create_modal.html', {'form': form})
 
 
-def create_recurring_tasks(parent_task):
+def create_recurring_tasks(parent_task: Task) -> None:
     """繰り返しタスクの子タスクを作成"""
     from dateutil.relativedelta import relativedelta
     
@@ -297,7 +297,7 @@ def create_recurring_tasks(parent_task):
 
 
 @login_required
-def edit_task(request, task_id):
+def edit_task(request: HttpRequest, task_id: int) -> HttpResponse:
     """タスク編集"""
     task = get_object_or_404(Task, id=task_id, user=request.user)
     
@@ -326,7 +326,7 @@ def edit_task(request, task_id):
 
 
 @login_required
-def delete_task(request, task_id):
+def delete_task(request: HttpRequest, task_id: int) -> HttpResponse:
     """タスク削除"""
     task = get_object_or_404(Task, id=task_id, user=request.user)
     
@@ -338,7 +338,7 @@ def delete_task(request, task_id):
 
 
 @login_required
-def get_day_tasks(request, date):
+def get_day_tasks(request: HttpRequest, date: str) -> JsonResponse:
     """指定日のタスクを取得（API）"""
     try:
         # 日付をパース
@@ -394,7 +394,7 @@ def get_day_tasks(request, date):
 
 
 @login_required
-def task_settings(request):
+def task_settings(request: HttpRequest) -> HttpResponse:
     """タスク設定画面（ラベル管理・週の開始曜日設定）"""
     labels = TaskLabel.objects.filter(user=request.user)
     current_week_start = request.session.get('task_week_start', 'sunday')

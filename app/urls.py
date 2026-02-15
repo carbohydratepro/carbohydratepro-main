@@ -17,7 +17,6 @@ urlpatterns = [
     path('expenses/recurring/edit/<int:recurring_id>/', views.edit_recurring_payment, name='edit_recurring_payment'),
     path('expenses/recurring/delete/<int:recurring_id>/', views.delete_recurring_payment, name='delete_recurring_payment'),
     path('expenses/recurring/toggle/<int:recurring_id>/', views.toggle_recurring_payment, name='toggle_recurring_payment'),
-    path('expenses/recurring/execute/', views.execute_recurring_payments, name='execute_recurring_payments'),
     # タスク管理
     path('tasks/', views.task_list, name='task_list'),
     path('tasks/create/', views.create_task, name='create_task'),

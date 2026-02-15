@@ -1,0 +1,34 @@
+FROM python:3.11
+
+# 環境変数を設定
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# cronパッケージをインストール
+RUN apt-get update && apt-get install -y cron && rm -rf /var/lib/apt/lists/*
+
+# 作業ディレクトリを設定
+RUN mkdir /code
+WORKDIR /code
+
+# 依存関係をインストール
+COPY requirements.txt /code/
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# メモリを解放するためにキャッシュを削除
+RUN rm -rf /root/.cache/pip/
+
+# プロジェクトのファイルをコンテナにコピー
+COPY . /code/
+
+# cron設定ファイルをコピー
+COPY crontab /etc/cron.d/recurring-payments
+
+# cron設定ファイルのパーミッションを設定
+RUN chmod 0644 /etc/cron.d/recurring-payments
+
+# cronログファイルを作成
+RUN touch /var/log/cron.log
+
+# cronデーモンを起動し、ログを出力
+CMD cron && tail -f /var/log/cron.log

@@ -7,6 +7,10 @@
         <h2 class="mb-0">定期支払い</h2>
     </div>
 
+    <div class="alert alert-info mb-3">
+        <i class="fas fa-info-circle"></i> 定期支払いは毎日0時に自動的に実行されます。手動で実行する必要はありません。
+    </div>
+
     <div class="d-flex flex-row-reverse mb-3">
         <a href="{% url 'expense_list' %}" class="btn btn-secondary btn-sm mb-1">
             <i class="fas fa-arrow-left"></i> 家計簿に戻る
@@ -14,12 +18,6 @@
         <a href="{% url 'create_recurring_payment' %}" class="btn btn-primary btn-sm mr-2 mb-1">
             <i class="fas fa-plus"></i> 新規登録
         </a>
-        <form method="post" action="{% url 'execute_recurring_payments' %}" class="mr-2 mb-1" onsubmit="return confirm('本日分の定期支払いを実行しますか？');">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-success btn-sm">
-                <i class="fas fa-play"></i> 本日分を実行
-            </button>
-        </form>
     </div>
 
     {% if recurring_payments %}

@@ -41,6 +41,19 @@ services:
       - ./gunicorn.conf:/etc/nginx/conf.d/default.conf
       - ./static_root:/var/www/static
       - gunicorn:/var/run/gunicorn
+
+  cron:
+    build:
+      context: .
+      dockerfile: Dockerfile.cron
+    container_name: cron
+    volumes:
+      - .:/code/
+    env_file: secret.env
+    restart: unless-stopped
+    depends_on:
+      - db
+
 volumes:
   postgres_data:
   gunicorn:

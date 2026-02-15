@@ -378,27 +378,3 @@ def toggle_recurring_payment(request, recurring_id):
         recurring.is_active = not recurring.is_active
         recurring.save(update_fields=['is_active'])
     return redirect('recurring_payment_list')
-
-
-@login_required
-def execute_recurring_payments(request):
-    """手動で定期支払いを実行する"""
-    if request.method == 'POST':
-        today = date.today()
-        recurring_payments = RecurringPayment.objects.filter(
-            user=request.user, is_active=True
-        ).select_related('category', 'payment_method')
-
-        executed_count = 0
-        for recurring in recurring_payments:
-            if recurring.should_execute_on(today):
-                recurring.execute(today)
-                executed_count += 1
-
-        from django.contrib import messages
-        if executed_count > 0:
-            messages.success(request, f'{executed_count}件の定期支払いを実行しました。')
-        else:
-            messages.info(request, '本日実行する定期支払いはありません。')
-
-    return redirect('recurring_payment_list')

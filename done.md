@@ -1,5 +1,9 @@
 # 完了タスク
 
+## 監視スクリプトの状態確認と改善
+- **実装内容**: 監視スクリプト（check_security_log, check_debug_log）の状況を確認し、Docker環境に統合。ホスト環境にcronがインストールされておらず、監視スクリプトが過去に一度も実行されていないことを確認。crontabにセキュリティログ監視（1分ごと）とデバッグログ監視（5分ごと）を追加。SECURITY_MONITORING_SETUP.mdをDocker環境向けに全面改訂（Windows環境の記述を削除、Docker環境での手動テスト方法を追記、トラブルシューティングをDocker向けに更新）。非推奨のcheck_security.sh/batと不要なbatファイル（check_security_only.bat, check_debug_only.bat）をすべて削除。スクリプトファイルに実行権限を付与。Docker管理方式を推奨実装として確定。
+- **実装日時**: 2026-02-15 19:07
+
 ## 家計簿機能の定期支払仕様変更
 - **実装内容**: 定期支払いをcronで自動実行する仕組みを実装。本番環境・ローカル環境の両方にcronサービスを追加（docker-compose.yml、docker-compose-dev.yml）。Dockerfile.cronとcrontabファイルを作成し、毎日0時に自動実行されるよう設定。CRON_SETUP.mdを作成してcron設定の詳細と手動テスト方法を記載。定期支払い画面（recurring_list.html）から手動実行ボタンを削除し、自動実行される旨の説明を追加。views.pyとurls.pyから手動実行用のexecute_recurring_paymentsビュー・URL設定を削除。本番環境への変更ルール（.claude/rules/production.md）を追加。
 - **実装日時**: 2026-02-15 02:14

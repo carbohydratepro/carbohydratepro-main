@@ -6,6 +6,17 @@
 1. **security.log**: セキュリティイベント（管理者ログイン、不正アクセス試行など）- **1分ごと**に監視
 2. **django_debug.log**: アプリケーションエラー（ERROR、WARNING、CRITICAL、Traceback）- **5分ごと**に監視
 
+## 本番環境・ローカル環境（Docker環境）
+
+**重要**: 現在、監視スクリプトはDockerのcronコンテナで自動実行されます。
+
+### 自動実行の仕組み
+
+監視スクリプトは定期支払い機能と同じcronコンテナで実行されます：
+- `crontab` ファイルに設定が記載されています
+- コンテナ起動時に自動的に監視が開始されます
+- 手動設定は不要です
+
 ## 機能
 1. **リアルタイム通知**: 管理者・スタッフがログインした際に即座にメール送信（オプション）
 2. **定期セキュリティ監視**: 1分ごとにsecurity.logを確認し、過去1分間の活動をレポート
@@ -13,73 +24,59 @@
 
 ## セットアップ方法
 
-### 1. コマンドのテスト
-まず、管理コマンドが正しく動作するか確認します：
+### Docker環境（本番・ローカル共通）
+
+監視機能は既にcronコンテナに統合されています。以下の手順で有効化できます：
+
+#### 1. コンテナの再起動
+
+監視機能を有効化するには、cronコンテナを再起動してください：
 
 ```bash
-# セキュリティログチェック
-python manage.py check_security_log
+# 本番環境
+docker-compose build cron
+docker-compose up -d cron
 
-# デバッグログチェック
-python manage.py check_debug_log
+# ローカル環境
+docker-compose -f docker-compose-dev.yml build cron
+docker-compose -f docker-compose-dev.yml up -d cron
 ```
 
-### 2. Windows環境（タスクスケジューラ）
+#### 2. 動作確認
 
-#### セキュリティログ監視タスク（1分ごと）:
+cronログを確認して、監視スクリプトが実行されているか確認します：
 
-1. タスクスケジューラを開く
-   - Win + R → `taskschd.msc` → Enter
+```bash
+# ログをリアルタイムで監視
+docker logs -f cron
 
-2. 「タスクの作成」をクリック
+# 過去のログを確認
+docker logs cron --tail 50
+```
 
-3. **全般タブ**:
-   - 名前: `セキュリティログ監視（1分）`
-   - 説明: `1分ごとにセキュリティログを確認してメール通知`
-   - 「最上位の特権で実行する」にチェック
+#### 3. 手動テスト
 
-4. **トリガータブ**:
-   - 「新規」をクリック
-   - 繰り返し間隔: `1分間`
-   - 継続時間: `無期限`
-   - 有効: チェック
+コンテナ内でコマンドを手動実行してテストできます：
 
-5. **操作タブ**:
-   - 「新規」をクリック
-   - プログラム/スクリプト: `\\wsl.localhost\archlinux\home\carbohydratepro-main\check_security_only.bat`
-   - 開始: `\\wsl.localhost\archlinux\home\carbohydratepro-main`
+```bash
+# 本番環境
+docker-compose exec cron python manage.py check_security_log
+docker-compose exec cron python manage.py check_debug_log
 
-6. **条件タブ**:
-   - 「コンピューターをAC電源で使用している場合のみタスクを開始する」のチェックを外す
+# ローカル環境
+docker-compose -f docker-compose-dev.yml exec cron python manage.py check_security_log
+docker-compose -f docker-compose-dev.yml exec cron python manage.py check_debug_log
+```
 
-7. 「OK」をクリックして保存
+---
 
-#### デバッグログ監視タスク（5分ごと）:
+## レガシー環境（非Docker）
 
-1. タスクスケジューラで「タスクの作成」をクリック
+以下の方法は、Docker環境を使用しない場合のみ参照してください。
 
-2. **全般タブ**:
-   - 名前: `デバッグログ監視（5分）`
-   - 説明: `5分ごとにデバッグログを確認してメール通知`
-   - 「最上位の特権で実行する」にチェック
+### Linux/WSL環境（cron）- 非推奨
 
-3. **トリガータブ**:
-   - 「新規」をクリック
-   - 繰り返し間隔: `5分間`
-   - 継続時間: `無期限`
-   - 有効: チェック
-
-4. **操作タブ**:
-   - 「新規」をクリック
-   - プログラム/スクリプト: `\\wsl.localhost\archlinux\home\carbohydratepro-main\check_debug_only.bat`
-   - 開始: `\\wsl.localhost\archlinux\home\carbohydratepro-main`
-
-5. **条件タブ**:
-   - 「コンピューターをAC電源で使用している場合のみタスクを開始する」のチェックを外す
-
-6. 「OK」をクリックして保存
-
-### 3. Linux/WSL環境（cron）
+**注意**: Docker環境を使用している場合、この方法は不要です。
 
 #### 手順:
 
@@ -110,7 +107,9 @@ crontab -e
 crontab -l
 ```
 
-### 4. 動作確認
+---
+
+## 動作確認
 
 1. 管理者アカウントでログイン
 2. `security.log` にログが記録されることを確認
@@ -159,26 +158,34 @@ crontab -l
 
 3. `project/settings.py` のログ設定を確認（上記セットアップ手順参照）
 
-### タスクが実行されない場合（Windows）
-1. タスクスケジューラで「タスクの実行」を手動でテスト
-2. `security_check.log` と `debug_check.log` でエラーを確認
-3. Pythonのパスが正しいか確認
-4. check_security.bat のパスが正しいか確認
-
-### cronが動作しない場合（Linux）
-1. cronサービスが実行中か確認:
+### cronコンテナが動作しない場合
+1. cronコンテナの状態を確認:
    ```bash
-   sudo systemctl status cron
+   docker ps | grep cron
    ```
 
-2. ログを確認:
+2. cronコンテナのログを確認:
    ```bash
-   grep CRON /var/log/syslog
+   docker logs cron --tail 50
    ```
 
-3. スクリプトの実行権限を確認:
+3. cronコンテナ内でcronが実行されているか確認:
    ```bash
-   ls -l /home/carbohydratepro-main/check_security.sh
+   docker exec cron ps aux | grep cron
+   ```
+
+4. cron設定ファイルを確認:
+   ```bash
+   docker exec cron cat /etc/cron.d/recurring-payments
+   ```
+
+5. コンテナを再起動:
+   ```bash
+   # ローカル環境
+   docker-compose -f docker-compose-dev.yml restart cron
+
+   # 本番環境
+   docker-compose restart cron
    ```
 
 ### エラーログが記録されない場合

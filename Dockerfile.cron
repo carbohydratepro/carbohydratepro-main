@@ -3,9 +3,13 @@ FROM python:3.11
 # 環境変数を設定
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+ENV TZ=Asia/Tokyo
 
-# cronパッケージをインストール
-RUN apt-get update && apt-get install -y cron && rm -rf /var/lib/apt/lists/*
+# cronパッケージとタイムゾーンデータをインストール
+RUN apt-get update && apt-get install -y cron tzdata && rm -rf /var/lib/apt/lists/*
+
+# タイムゾーンを設定
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # 作業ディレクトリを設定
 RUN mkdir /code

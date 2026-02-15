@@ -10,7 +10,8 @@
 
 - **cronコンテナ**: `Dockerfile.cron` を使用してビルドされます
 - **cron設定ファイル**: `crontab` に定期実行の設定が記載されています
-- **実行時刻**: 毎日0時（UTC）
+- **タイムゾーン**: 日本時間（JST / Asia/Tokyo）
+- **実行時刻**: 毎日0時（日本時間）
 - **実行コマンド**: `python manage.py execute_recurring_payments`
 
 ### cronコンテナの起動
@@ -93,8 +94,9 @@ python manage.py execute_recurring_payments
 
 ### タイムゾーンについて
 
-- cronコンテナはUTCタイムゾーンで動作します
-- 日本時間（JST）で0時に実行したい場合は、crontabの設定を `0 15 * * *`（UTC 15:00 = JST 0:00）に変更してください
+- cronコンテナは日本時間（JST / Asia/Tokyo）で動作します
+- Dockerfile.cronで `TZ=Asia/Tokyo` が設定されています
+- crontabの時刻設定は日本時間で記述してください（例：`0 0 * * *` = JST 0:00）
 
 ### 設定変更後の反映
 

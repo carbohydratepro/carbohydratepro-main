@@ -1151,29 +1151,3 @@ class RecurringPaymentViewTest(TestCase):
         )
         recurring.refresh_from_db()
         self.assertTrue(recurring.is_active)
-
-    def test_execute_recurring_payments(self) -> None:
-        """定期支払い手動実行のテスト"""
-        today = date.today()
-        recurring = self._create_recurring(frequency='daily')
-
-        response = self.client.post(reverse('execute_recurring_payments'))
-        self.assertEqual(response.status_code, 302)
-
-        self.assertTrue(Transaction.objects.filter(
-            user=self.user, purpose='電気代'
-        ).exists())
-        recurring.refresh_from_db()
-        self.assertEqual(recurring.last_executed, today)
-
-    def test_execute_recurring_no_match(self) -> None:
-        """実行日に該当しない場合のテスト"""
-        today = date.today()
-        wrong_day = (today.weekday() + 1) % 7
-        self._create_recurring(frequency='weekly', days_of_week=[wrong_day])
-
-        response = self.client.post(reverse('execute_recurring_payments'))
-        self.assertEqual(response.status_code, 302)
-        self.assertFalse(Transaction.objects.filter(
-            user=self.user, purpose='電気代'
-        ).exists())

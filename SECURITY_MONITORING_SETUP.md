@@ -33,11 +33,6 @@
 監視機能を有効化するには、cronコンテナを再起動してください：
 
 ```bash
-# 本番環境
-docker-compose build cron
-docker-compose up -d cron
-
-# ローカル環境
 docker-compose -f docker-compose-dev.yml build cron
 docker-compose -f docker-compose-dev.yml up -d cron
 ```
@@ -59,11 +54,6 @@ docker logs cron --tail 50
 コンテナ内でコマンドを手動実行してテストできます：
 
 ```bash
-# 本番環境
-docker-compose exec cron python manage.py check_security_log
-docker-compose exec cron python manage.py check_debug_log
-
-# ローカル環境
 docker-compose -f docker-compose-dev.yml exec cron python manage.py check_security_log
 docker-compose -f docker-compose-dev.yml exec cron python manage.py check_debug_log
 ```
@@ -181,11 +171,7 @@ crontab -l
 
 5. コンテナを再起動:
    ```bash
-   # ローカル環境
    docker-compose -f docker-compose-dev.yml restart cron
-
-   # 本番環境
-   docker-compose restart cron
    ```
 
 ### エラーログが記録されない場合

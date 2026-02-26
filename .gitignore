@@ -4,3 +4,6 @@
 *.jpg
 *:Zone.Identifier
 *.sql
+*.ctl
+deploy.sh
+settings.local.json

@@ -2,7 +2,7 @@
 *.env
 *.log
 *.jpg
-*:Zone.Identifier
+*Zone.Identifier
 *.sql
 *.ctl
 deploy.sh

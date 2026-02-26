@@ -685,11 +685,12 @@ class RecurringTaskTest(TestCase):
         # 子タスクが3個あることを確認
         self.assertEqual(Task.objects.filter(parent_task=parent_task).count(), 3)
 
-        # 親タスクを削除
+        # 親タスクを削除（削除後はpkがNoneになるため事前に保存）
+        parent_task_pk = parent_task.pk
         parent_task.delete()
 
         # 子タスクも削除されることを確認
-        self.assertEqual(Task.objects.filter(parent_task=parent_task).count(), 0)
+        self.assertEqual(Task.objects.filter(parent_task_id=parent_task_pk).count(), 0)
 
     def test_update_recurring_task_regenerates_children(self) -> None:
         """繰り返しタスクの更新時に子タスクが再生成されるテスト"""
@@ -838,3 +839,35 @@ class TaskFormEdgeCaseTest(TestCase):
             }
         )
         self.assertFalse(form.is_valid())
+
+
+class TempTaskBoardViewTest(TestCase):
+    """一時タスクボードビューのテスト"""
+
+    def setUp(self) -> None:
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            email='board_test@example.com',
+            username='boardtestuser',
+            password='testpass123',
+            is_email_verified=True,
+        )
+        self.client = Client()
+
+    def test_board_view_requires_login(self) -> None:
+        """未ログイン時はリダイレクトされることを確認"""
+        response = self.client.get(reverse('temp_task_board'))
+        self.assertNotEqual(response.status_code, 200)
+        self.assertIn(response.status_code, [301, 302])
+
+    def test_board_view_accessible_when_logged_in(self) -> None:
+        """ログイン時にボード画面が表示されることを確認"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('temp_task_board'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_board_view_uses_correct_template(self) -> None:
+        """正しいテンプレートが使用されることを確認"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('temp_task_board'))
+        self.assertTemplateUsed(response, 'app/task/board.html')

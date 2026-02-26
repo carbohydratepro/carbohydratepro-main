@@ -1,5 +1,5 @@
 # ベースとなるイメージを指定
-FROM python:3.11
+FROM python:3.12
 
 # 環境変数を設定 (Pythonが.pycファイルを生成しないように)
 ENV PYTHONDONTWRITEBYTECODE 1

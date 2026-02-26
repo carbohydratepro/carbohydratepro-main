@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM python:3.12
 
 # 環境変数を設定
 ENV PYTHONDONTWRITEBYTECODE 1

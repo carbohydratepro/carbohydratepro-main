@@ -134,8 +134,6 @@ TIME_ZONE = 'Asia/Tokyo'
 
 USE_I18N = True
 
-USE_L10N = True
-
 USE_TZ = True
 
 # 数値の三桁区切り表示を有効化
@@ -281,7 +279,6 @@ ADMIN_ENABLED = env.bool('ADMIN_ENABLED', default=DEBUG)
 
 # セキュリティヘッダー（本番環境用）
 if not DEBUG:
-    SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
     SECURE_HSTS_SECONDS = 31536000

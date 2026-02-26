@@ -24,6 +24,7 @@ urlpatterns = [
     path('tasks/delete/<int:task_id>/', views.delete_task, name='delete_task'),
     path('tasks/day/<str:date>/', views.get_day_tasks, name='get_day_tasks'),
     path('tasks/settings/', views.task_settings, name='task_settings'),
+    path('tasks/board/', views.temp_task_board, name='temp_task_board'),
     # メモ管理
     path('memos/', views.memo_list, name='memo_list'),
     path('memos/create/', views.create_memo, name='create_memo'),

@@ -1,0 +1,293 @@
+/* 一時タスク管理（カンバンボード）用CSS */
+
+.temp-task-container {
+    padding: 16px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.temp-task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.temp-task-title {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+/* カンバンボード全体 */
+.kanban-board {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+/* カンバンカラム */
+.kanban-column {
+    flex: 1;
+    min-width: 0;
+    background-color: #f4f5f7;
+    border-radius: 10px;
+    padding: 12px;
+    min-height: 300px;
+}
+
+/* カラムヘッダー */
+.kanban-column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 3px solid transparent;
+}
+
+.todo-header {
+    border-bottom-color: #6c757d;
+}
+
+.doing-header {
+    border-bottom-color: #007bff;
+}
+
+.done-header {
+    border-bottom-color: #28a745;
+}
+
+.column-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+.task-count {
+    background-color: #dee2e6;
+    color: #555;
+    border-radius: 12px;
+    padding: 1px 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    min-width: 24px;
+    text-align: center;
+}
+
+/* タスク追加フォーム */
+.kanban-add-form {
+    margin-bottom: 10px;
+}
+
+.kanban-input-group {
+    display: flex;
+    gap: 6px;
+}
+
+.kanban-input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.2s;
+    background-color: white;
+}
+
+.kanban-input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+}
+
+.kanban-add-btn {
+    padding: 6px 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+}
+
+.kanban-add-btn:hover {
+    background-color: #0056b3;
+}
+
+/* タスクリストエリア */
+.kanban-tasks {
+    min-height: 80px;
+    transition: background-color 0.2s, outline 0.2s;
+    border-radius: 6px;
+    padding: 4px 2px;
+}
+
+.kanban-tasks.drag-over {
+    background-color: #dbeafe;
+    outline: 2px dashed #3b82f6;
+}
+
+/* タスクカード */
+.kanban-task-card {
+    background: white;
+    border-radius: 7px;
+    padding: 9px 12px;
+    margin-bottom: 7px;
+    cursor: grab;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    transition: box-shadow 0.2s, transform 0.15s, opacity 0.15s;
+    user-select: none;
+    touch-action: none;
+    border-left: 3px solid transparent;
+}
+
+#tasks-todo .kanban-task-card {
+    border-left-color: #6c757d;
+}
+
+#tasks-doing .kanban-task-card {
+    border-left-color: #007bff;
+}
+
+#tasks-done .kanban-task-card {
+    border-left-color: #28a745;
+}
+
+.kanban-task-card:hover {
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+.kanban-task-card.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+}
+
+.kanban-task-card:active {
+    cursor: grabbing;
+}
+
+.kanban-task-text {
+    flex: 1;
+    word-break: break-word;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #333;
+    margin-right: 6px;
+}
+
+.kanban-task-delete {
+    border: none;
+    background: none;
+    color: #bbb;
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+    line-height: 1;
+    margin-top: 2px;
+    transition: color 0.15s;
+}
+
+.kanban-task-delete:hover {
+    color: #dc3545;
+}
+
+/* ゴミ箱エリア */
+.kanban-trash {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 14px;
+    border: 2px dashed #dee2e6;
+    border-radius: 10px;
+    color: #bbb;
+    transition: all 0.2s;
+    background: transparent;
+    cursor: default;
+}
+
+.kanban-trash .fas {
+    font-size: 1.2rem;
+}
+
+.kanban-trash.drag-over {
+    background-color: #fff5f5;
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.trash-label {
+    font-size: 0.875rem;
+}
+
+/* クローン（タッチドラッグ用） */
+.touch-clone {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.75;
+    transform: rotate(2deg) scale(1.03);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+    border-radius: 7px;
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+    .temp-task-container {
+        padding: 10px;
+    }
+
+    .temp-task-title {
+        font-size: 1.2rem;
+    }
+
+    .kanban-board {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .kanban-column {
+        width: 100%;
+        min-height: 120px;
+    }
+
+    .kanban-trash {
+        margin-top: 10px;
+        padding: 12px;
+    }
+
+    .trash-label {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .column-title {
+        font-size: 0.9rem;
+    }
+
+    .kanban-input {
+        font-size: 0.8rem;
+        padding: 5px 8px;
+    }
+
+    .kanban-add-btn {
+        padding: 5px 9px;
+    }
+
+    .kanban-task-card {
+        padding: 8px 10px;
+    }
+
+    .kanban-task-text {
+        font-size: 0.82rem;
+    }
+}

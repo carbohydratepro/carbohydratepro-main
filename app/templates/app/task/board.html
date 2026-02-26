@@ -1,0 +1,81 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app/temp_task.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="temp-task-container">
+    <div class="temp-task-header">
+        <h2 class="temp-task-title">一時タスク</h2>
+        <button class="btn btn-outline-danger btn-sm" onclick="clearAllTasks()">
+            <i class="fas fa-trash"></i> 全削除
+        </button>
+    </div>
+
+    <div class="kanban-board" id="kanbanBoard">
+        <!-- やること (Todo) -->
+        <div class="kanban-column" id="col-todo" data-status="todo">
+            <div class="kanban-column-header todo-header">
+                <span class="column-title">やること</span>
+                <span class="task-count" id="count-todo">0</span>
+            </div>
+            <div class="kanban-add-form">
+                <div class="kanban-input-group">
+                    <input type="text" class="kanban-input" placeholder="タスクを追加..."
+                           id="input-todo" data-status="todo">
+                    <button class="kanban-add-btn" onclick="addTask('todo')" title="追加">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="kanban-tasks" id="tasks-todo" data-status="todo"></div>
+        </div>
+
+        <!-- やってる (In Progress) -->
+        <div class="kanban-column" id="col-doing" data-status="doing">
+            <div class="kanban-column-header doing-header">
+                <span class="column-title">やってる</span>
+                <span class="task-count" id="count-doing">0</span>
+            </div>
+            <div class="kanban-add-form">
+                <div class="kanban-input-group">
+                    <input type="text" class="kanban-input" placeholder="タスクを追加..."
+                           id="input-doing" data-status="doing">
+                    <button class="kanban-add-btn" onclick="addTask('doing')" title="追加">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="kanban-tasks" id="tasks-doing" data-status="doing"></div>
+        </div>
+
+        <!-- できた (Done) -->
+        <div class="kanban-column" id="col-done" data-status="done">
+            <div class="kanban-column-header done-header">
+                <span class="column-title">できた</span>
+                <span class="task-count" id="count-done">0</span>
+            </div>
+            <div class="kanban-add-form">
+                <div class="kanban-input-group">
+                    <input type="text" class="kanban-input" placeholder="タスクを追加..."
+                           id="input-done" data-status="done">
+                    <button class="kanban-add-btn" onclick="addTask('done')" title="追加">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="kanban-tasks" id="tasks-done" data-status="done"></div>
+        </div>
+    </div>
+
+    <!-- ゴミ箱エリア -->
+    <div class="kanban-trash" id="trashArea">
+        <i class="fas fa-trash-alt"></i>
+        <span class="trash-label">ここにドラッグして削除</span>
+    </div>
+</div>
+
+<script src="{% static 'app/temp_task.js' %}"></script>
+{% endblock %}

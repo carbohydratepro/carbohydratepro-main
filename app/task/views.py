@@ -394,6 +394,12 @@ def get_day_tasks(request: HttpRequest, date: str) -> JsonResponse:
 
 
 @login_required
+def temp_task_board(request: HttpRequest) -> HttpResponse:
+    """一時タスク管理ボード（LocalStorage使用）"""
+    return render(request, 'app/task/board.html')
+
+
+@login_required
 def task_settings(request: HttpRequest) -> HttpResponse:
     """タスク設定画面（ラベル管理・週の開始曜日設定）"""
     labels = TaskLabel.objects.filter(user=request.user)

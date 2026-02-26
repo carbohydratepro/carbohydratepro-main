@@ -60,45 +60,6 @@ docker-compose -f docker-compose-dev.yml exec cron python manage.py check_debug_
 
 ---
 
-## レガシー環境（非Docker）
-
-以下の方法は、Docker環境を使用しない場合のみ参照してください。
-
-### Linux/WSL環境（cron）- 非推奨
-
-**注意**: Docker環境を使用している場合、この方法は不要です。
-
-#### 手順:
-
-1. スクリプトに実行権限を付与:
-```bash
-chmod +x /home/carbohydratepro-main/check_security_only.sh
-chmod +x /home/carbohydratepro-main/check_debug_only.sh
-```
-
-2. crontabを編集:
-```bash
-crontab -e
-```
-
-3. 以下の行を追加:
-```
-# セキュリティログ監視（1分ごと）
-* * * * * /home/carbohydratepro-main/check_security_only.sh
-
-# デバッグログ監視（5分ごと）
-*/5 * * * * /home/carbohydratepro-main/check_debug_only.sh
-```
-
-4. crontabを保存して終了
-
-5. cronが正しく動作しているか確認:
-```bash
-crontab -l
-```
-
----
-
 ## 動作確認
 
 1. 管理者アカウントでログイン

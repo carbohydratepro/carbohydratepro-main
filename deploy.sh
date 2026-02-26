@@ -22,7 +22,7 @@ set -euo pipefail
 REMOTE_HOST="${1:-54.238.169.177}"
 BRANCH="${2:-main}"
 REMOTE_DIR="carbohydratepro"
-COMPOSE_FILE="docker-compose.yml"
+COMPOSE_FILE="docker-compose-dev.yml"
 
 echo "============================================"
 echo " デプロイ開始"
@@ -32,7 +32,7 @@ echo "============================================"
 
 # 1. ローカルの変更確認
 echo ""
-echo "[1/6] ローカルの未コミット変更を確認中..."
+echo "[1/7] ローカルの未コミット変更を確認中..."
 if [ -n "$(git status --porcelain)" ]; then
     echo "警告: 未コミットの変更があります"
     git status --short
@@ -45,7 +45,7 @@ fi
 
 # 2. リモートサーバーで最新コードを取得
 echo ""
-echo "[2/6] リモートサーバーで最新コードを取得中..."
+echo "[2/7] リモートサーバーで最新コードを取得中..."
 ssh "${REMOTE_HOST}" bash -s <<EOF
     set -euo pipefail
     cd ${REMOTE_DIR}
@@ -57,7 +57,7 @@ EOF
 
 # 3. コンテナのビルド
 echo ""
-echo "[3/6] コンテナをビルド中..."
+echo "[3/7] コンテナをビルド中..."
 ssh "${REMOTE_HOST}" bash -s <<EOF
     set -euo pipefail
     cd ${REMOTE_DIR}
@@ -66,7 +66,7 @@ EOF
 
 # 4. コンテナの再起動
 echo ""
-echo "[4/6] コンテナを再起動中..."
+echo "[4/7] コンテナを再起動中..."
 ssh "${REMOTE_HOST}" bash -s <<EOF
     set -euo pipefail
     cd ${REMOTE_DIR}

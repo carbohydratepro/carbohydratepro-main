@@ -521,3 +521,64 @@ class PasswordChangeViewTest(TestCase):
             }
         )
         self.assertEqual(response.status_code, 200)
+
+
+@override_settings(CSRF_TRUSTED_ORIGINS=['http://testserver'])
+class CsrfProtectionTest(TestCase):
+    """CSRF 保護の動作確認テスト
+
+    Django のテストクライアントはデフォルトで CSRF チェックを無効化するため、
+    このクラスでは enforce_csrf_checks=True および HTTP_ORIGIN を明示的に指定して
+    ブラウザと同等の CSRF 検証を行う。
+    """
+
+    def setUp(self) -> None:
+        User = get_user_model()
+        self.password = 'testpass123'
+        self.user = User.objects.create_user(
+            email='csrf_test@example.com',
+            username='csrftestuser',
+            password=self.password,
+            is_email_verified=True,
+        )
+
+    def test_login_without_csrf_token_fails(self) -> None:
+        """CSRF トークンなしの POST が 403 になること"""
+        client = Client(enforce_csrf_checks=True)
+        response = client.post(
+            reverse('login'),
+            {'username': self.user.email, 'password': self.password},
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_login_with_valid_origin_and_csrf_token_succeeds(self) -> None:
+        """信頼済み Origin + CSRF トークンありの POST が成功すること"""
+        client = Client(enforce_csrf_checks=True)
+        get_response = client.get(reverse('login'))
+        csrf_token = get_response.cookies['csrftoken'].value
+        response = client.post(
+            reverse('login'),
+            {
+                'username': self.user.email,
+                'password': self.password,
+                'csrfmiddlewaretoken': csrf_token,
+            },
+            HTTP_ORIGIN='http://testserver',
+        )
+        self.assertNotEqual(response.status_code, 403)
+
+    def test_login_with_untrusted_origin_fails(self) -> None:
+        """CSRF_TRUSTED_ORIGINS に含まれない Origin からの POST が 403 になること"""
+        client = Client(enforce_csrf_checks=True)
+        get_response = client.get(reverse('login'))
+        csrf_token = get_response.cookies['csrftoken'].value
+        response = client.post(
+            reverse('login'),
+            {
+                'username': self.user.email,
+                'password': self.password,
+                'csrfmiddlewaretoken': csrf_token,
+            },
+            HTTP_ORIGIN='http://evil.example.com',
+        )
+        self.assertEqual(response.status_code, 403)

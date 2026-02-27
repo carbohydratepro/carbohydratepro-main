@@ -177,6 +177,9 @@ else:
 
 SITE_NAME = env('SITE_NAME', default='carbohydratepro')
 
+# Django 4.0+ の CSRF 検証で必要（Origin ヘッダーの許可リスト）
+CSRF_TRUSTED_ORIGINS = [f'{SITE_PROTOCOL}://{SITE_DOMAIN}']
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

@@ -6,6 +6,30 @@
   完了したタスクは自動的に done.md に移動されます。
 -->
 
+1. [ ] factory_boy の導入（テストデータ管理の統一）
+    - requirements.txt に factory_boy を追加する
+    - 各アプリの主要モデルに対応する Factory クラスを作成する
+    - 既存のテストの setUp() を Factory を使った記述に順次移行する
+
+1. [ ] Service + Selector パターン導入: expenses
+    - app/expenses/services.py を作成し、ビジネスロジックをビューから切り出す
+    - app/expenses/selectors.py を作成し、クエリロジックをビューから切り出す
+    - RecurringPaymentService を作成し、モデルのビジネスロジックを移動する
+    - views.py を薄くし、サービス・セレクターを呼び出す形に変更する
+
+1. [ ] Service + Selector パターン導入: tasks
+    - app/task/services.py を作成し、タスク作成・更新・削除ロジックを分離する
+    - app/task/selectors.py を作成し、タスク一覧取得・フィルタリングクエリを分離する
+    - views.py を薄くし、サービス・セレクターを呼び出す形に変更する
+
+1. [ ] Service + Selector パターン導入: memo / shopping
+    - app/memo/services.py、app/memo/selectors.py を作成する
+    - app/shopping/services.py、app/shopping/selectors.py を作成する
+    - 各 views.py を薄くする
+
+1. [ ] auth_app/signals.py の整理（Service 層への集約）
+    - signals.py の肥大化している処理を users/services.py に移動する
+    - シグナル経由の副作用（メール送信・デフォルトデータ生成）を明示的な関数呼び出しに変える
 
 1. [ ] jsファイルをts運用に変える
     - すべてのjsファイルをTSに変え、型安全性を向上させる

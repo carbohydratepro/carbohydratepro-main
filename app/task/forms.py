@@ -1,7 +1,7 @@
 from django import forms
 from django.utils import timezone
 from .models import Task, TaskLabel
-from typing import Any, Dict, Optional
+from typing import Optional
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -16,7 +16,7 @@ class TaskLabelForm(forms.ModelForm):
             'color': forms.TextInput(attrs={'type': 'color', 'class': 'form-control form-control-color'}),
         }
         
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         # エラーメッセージのカスタマイズ
         self.fields['name'].error_messages = {
@@ -65,7 +65,7 @@ class TaskForm(forms.ModelForm):
             'description': '詳細',
         }
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
         user: Optional[User] = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
@@ -92,7 +92,7 @@ class TaskForm(forms.ModelForm):
             else:
                 field.widget.attrs['class'] = 'form-control'
     
-    def clean(self) -> Dict[str, Any]:
+    def clean(self) -> dict[str, object]:
         cleaned_data = super().clean()
         frequency = cleaned_data.get('frequency')
         repeat_interval = cleaned_data.get('repeat_interval')

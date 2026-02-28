@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
+from django.http import HttpRequest, HttpResponse
 from .forms import ContactMessageForm
 from .models import ContactMessage
 import logging
@@ -19,7 +20,7 @@ from .shopping.views import shopping_list, create_shopping_item, edit_shopping_i
 from .task.views import task_list, create_task, edit_task, delete_task, get_day_tasks, task_settings, temp_task_board
 
 @login_required
-def contact(request):
+def contact(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         form = ContactMessageForm(request.POST)
         if form.is_valid():

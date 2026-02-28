@@ -24,10 +24,10 @@ class ShoppingItem(models.Model):
     created_date = models.DateTimeField(auto_now_add=True, verbose_name="登録日")
     updated_date = models.DateTimeField(auto_now=True, verbose_name="更新日")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.title} - {self.get_status_display()}"
 
-    def save(self, *args, **kwargs):
+    def save(self, *args: object, **kwargs: object) -> None:
         # 残数を0～999の範囲に制限
         if self.remaining_count < 0:
             self.remaining_count = 0

@@ -1,5 +1,7 @@
+from typing import Optional
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DefaultUserAdmin
+from django.http import HttpRequest
 from .models import CustomUser, LoginHistory, EmailVerificationToken
 
 
@@ -10,7 +12,7 @@ class LoginHistoryInline(admin.TabularInline):
     readonly_fields = ('login_time', 'ip_address', 'user_agent', 'location', 'success')
     can_delete = False
     
-    def has_add_permission(self, request, obj=None):
+    def has_add_permission(self, request: HttpRequest, obj: Optional[LoginHistory] = None) -> bool:
         return False
 
 
@@ -46,17 +48,17 @@ class LoginHistoryAdmin(admin.ModelAdmin):
     date_hierarchy = 'login_time'
     ordering = ('-login_time',)
     
-    def short_user_agent(self, obj):
+    def short_user_agent(self, obj: LoginHistory) -> str:
         """User-Agentの短縮表示"""
         if len(obj.user_agent) > 50:
             return obj.user_agent[:50] + '...'
         return obj.user_agent
     short_user_agent.short_description = 'User-Agent'
-    
-    def has_add_permission(self, request):
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
         return False
-    
-    def has_delete_permission(self, request, obj=None):
+
+    def has_delete_permission(self, request: HttpRequest, obj: Optional[LoginHistory] = None) -> bool:
         return request.user.is_superuser
 
 
@@ -73,16 +75,16 @@ class EmailVerificationTokenAdmin(admin.ModelAdmin):
     date_hierarchy = 'created_at'
     ordering = ('-created_at',)
     
-    def is_valid_display(self, obj):
+    def is_valid_display(self, obj: EmailVerificationToken) -> bool:
         """トークンが有効かどうかの表示"""
         return obj.is_valid()
     is_valid_display.boolean = True
     is_valid_display.short_description = '有効'
-    
-    def has_add_permission(self, request):
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
         return False
-    
-    def has_delete_permission(self, request, obj=None):
+
+    def has_delete_permission(self, request: HttpRequest, obj: Optional[EmailVerificationToken] = None) -> bool:
         return request.user.is_superuser
 
 

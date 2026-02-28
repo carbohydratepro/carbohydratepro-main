@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.http import JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import MemoForm, MemoTypeForm
@@ -10,7 +10,7 @@ from . import selectors, services
 
 
 @login_required
-def memo_list(request):
+def memo_list(request: HttpRequest) -> HttpResponse:
     """メモ一覧表示（ページネーション付き）"""
     services.ensure_default_memo_types()
     memo_type_filter = request.GET.get('memo_type', '')
@@ -36,7 +36,7 @@ def memo_list(request):
 
 
 @login_required
-def create_memo(request):
+def create_memo(request: HttpRequest) -> HttpResponse:
     """メモ新規作成"""
     services.ensure_default_memo_types()
     if request.method == 'POST':
@@ -58,7 +58,7 @@ def create_memo(request):
 
 
 @login_required
-def edit_memo(request, memo_id):
+def edit_memo(request: HttpRequest, memo_id: int) -> HttpResponse:
     """メモ編集"""
     memo = get_object_or_404(Memo, id=memo_id, user=request.user)
     services.ensure_default_memo_types()
@@ -80,7 +80,7 @@ def edit_memo(request, memo_id):
 
 
 @login_required
-def delete_memo(request, memo_id):
+def delete_memo(request: HttpRequest, memo_id: int) -> HttpResponse:
     """メモ削除"""
     memo = get_object_or_404(Memo, id=memo_id, user=request.user)
 
@@ -92,7 +92,7 @@ def delete_memo(request, memo_id):
 
 
 @login_required
-def toggle_memo_favorite(request, memo_id):
+def toggle_memo_favorite(request: HttpRequest, memo_id: int) -> JsonResponse:
     """メモのお気に入り状態を切り替え（Ajax用）"""
     if request.method == 'POST':
         memo = get_object_or_404(Memo, id=memo_id, user=request.user)
@@ -106,7 +106,7 @@ def toggle_memo_favorite(request, memo_id):
 
 
 @login_required
-def memo_settings(request):
+def memo_settings(request: HttpRequest) -> HttpResponse:
     services.ensure_default_memo_types()
     memo_types = selectors.get_memo_types(request.user).order_by('user', 'name')
     if request.method == 'POST':

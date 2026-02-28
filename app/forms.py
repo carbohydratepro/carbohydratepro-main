@@ -21,7 +21,7 @@ class ContactMessageForm(forms.ModelForm):
             "message": forms.Textarea(attrs={"class": "form-control", "rows": 8, "placeholder": "お問い合わせ内容を詳しくご記入ください"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.required = True

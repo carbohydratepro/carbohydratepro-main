@@ -1,4 +1,5 @@
-from django.http import Http404
+from collections.abc import Callable
+from django.http import Http404, HttpRequest, HttpResponse
 from django.conf import settings
 from django.urls import resolve
 import logging
@@ -10,10 +11,10 @@ class AdminSecurityMiddleware:
     管理サイトへのアクセスを制限するミドルウェア
     """
     
-    def __init__(self, get_response):
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
 
-    def __call__(self, request):
+    def __call__(self, request: HttpRequest) -> HttpResponse:
         # 管理サイトが無効になっている場合は404を返す
         if not getattr(settings, 'ADMIN_ENABLED', True):
             try:

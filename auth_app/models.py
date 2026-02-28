@@ -5,17 +5,17 @@ import uuid
 from datetime import timedelta
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, email, password=None, **extra_fields):
+    def create_user(self, email: str, password: str | None = None, **extra_fields: object) -> 'CustomUser':
         if not email:
             raise ValueError('The Email field must be set')
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
-        
+
         return user
 
-    def create_superuser(self, email, password=None, **extra_fields):
+    def create_superuser(self, email: str, password: str | None = None, **extra_fields: object) -> 'CustomUser':
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_staff', True)
 
@@ -46,7 +46,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.email or "未指定ユーザー"
 
 
@@ -69,7 +69,7 @@ class LoginHistory(models.Model):
         verbose_name_plural = 'ログイン履歴'
         ordering = ['-login_time']
     
-    def __str__(self):
+    def __str__(self) -> str:
         status = "成功" if self.success else "失敗"
         return f"{self.user.username} - {self.login_time.strftime('%Y-%m-%d %H:%M:%S')} ({status})"
 
@@ -97,15 +97,15 @@ class EmailVerificationToken(models.Model):
         verbose_name_plural = 'メール認証トークン'
         ordering = ['-created_at']
     
-    def save(self, *args, **kwargs):
+    def save(self, *args: object, **kwargs: object) -> None:
         # 有効期限が設定されていない場合、作成から24時間後に設定
         if not self.expires_at:
             self.expires_at = timezone.now() + timedelta(hours=24)
         super().save(*args, **kwargs)
-    
-    def is_valid(self):
+
+    def is_valid(self) -> bool:
         """トークンが有効かどうかをチェック"""
         return not self.is_verified and timezone.now() < self.expires_at
-    
-    def __str__(self):
+
+    def __str__(self) -> str:
         return f'{self.user.username} - {self.token}'

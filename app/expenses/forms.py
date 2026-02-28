@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Optional
 from django import forms
 from django.utils import timezone
 from .models import Transaction, PaymentMethod, Category, RecurringPayment
@@ -25,8 +26,8 @@ class TransactionForm(forms.ModelForm):
             'major_category': forms.Select(attrs={'class': 'form-control'}),
         }
 
-    def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)  # 'user' キーワード引数を取得
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        user: Optional[object] = kwargs.pop('user', None)  # 'user' キーワード引数を取得
         super(TransactionForm, self).__init__(*args, **kwargs)
         
         # 新規作成時はデフォルトで今日の日付を設定（日本時間）
@@ -60,7 +61,7 @@ class TransactionForm(forms.ModelForm):
                 normalized = amount.quantize(Decimal('0.01')).normalize()
             self.initial['amount'] = normalized
     
-    def clean_amount(self):
+    def clean_amount(self) -> Optional[Decimal]:
         amount = self.cleaned_data.get('amount')
         if amount is not None:
             if amount < 0:
@@ -76,7 +77,7 @@ class PaymentMethodForm(forms.ModelForm):
         fields = ['name']
         
     # bootstrap4対応で、classを指定
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'
@@ -86,15 +87,15 @@ class PaymentMethodForm(forms.ModelForm):
             'max_length': '上限文字数は20です。',
             'required': 'この項目は必須です。',
         }
-            
+
 
 class CategoryForm(forms.ModelForm):
     class Meta:
         model = Category
-        
+
         fields = ['name']
     # bootstrap4対応で、classを指定
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'
@@ -168,7 +169,7 @@ class RecurringPaymentForm(forms.ModelForm):
         }
 
     def __init__(self, *args: object, **kwargs: object) -> None:
-        user = kwargs.pop('user', None)
+        user: Optional[object] = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
         self.fields['month_of_year'].required = False
@@ -206,7 +207,7 @@ class RecurringPaymentForm(forms.ModelForm):
             if self.instance.days_of_month:
                 self.initial['days_of_month'] = [str(d) for d in self.instance.days_of_month]
 
-    def clean_amount(self) -> Decimal:
+    def clean_amount(self) -> Optional[Decimal]:
         amount = self.cleaned_data.get('amount')
         if amount is not None:
             if amount < 0:

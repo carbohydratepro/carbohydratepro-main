@@ -15,7 +15,7 @@ class ShoppingItemForm(forms.ModelForm):
             'memo': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         
         # すべてのフィールドに 'form-control' クラスを追加

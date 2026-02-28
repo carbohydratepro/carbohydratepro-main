@@ -1,5 +1,5 @@
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import ShoppingItemForm
@@ -8,7 +8,7 @@ from . import selectors, services
 
 
 @login_required
-def shopping_list(request):
+def shopping_list(request: HttpRequest) -> HttpResponse:
     """買うものリスト一覧表示"""
     search_query = request.GET.get('search', '')
     shopping_items = selectors.get_shopping_items(request.user, search_query)
@@ -22,7 +22,7 @@ def shopping_list(request):
 
 
 @login_required
-def create_shopping_item(request):
+def create_shopping_item(request: HttpRequest) -> HttpResponse:
     """買うものリスト新規作成"""
     if request.method == 'POST':
         form = ShoppingItemForm(request.POST)
@@ -43,7 +43,7 @@ def create_shopping_item(request):
 
 
 @login_required
-def edit_shopping_item(request, item_id):
+def edit_shopping_item(request: HttpRequest, item_id: int) -> HttpResponse:
     """買うものリスト編集"""
     shopping_item = get_object_or_404(ShoppingItem, id=item_id, user=request.user)
 
@@ -64,7 +64,7 @@ def edit_shopping_item(request, item_id):
 
 
 @login_required
-def delete_shopping_item(request, item_id):
+def delete_shopping_item(request: HttpRequest, item_id: int) -> HttpResponse:
     """買うものリスト削除"""
     shopping_item = get_object_or_404(ShoppingItem, id=item_id, user=request.user)
 
@@ -76,7 +76,7 @@ def delete_shopping_item(request, item_id):
 
 
 @login_required
-def update_shopping_count(request, item_id):
+def update_shopping_count(request: HttpRequest, item_id: int) -> JsonResponse:
     """残数・不足数の更新（Ajax用）"""
     if request.method == 'POST':
         shopping_item = get_object_or_404(ShoppingItem, id=item_id, user=request.user)

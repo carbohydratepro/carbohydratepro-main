@@ -12,7 +12,7 @@ class LoginForm(AuthenticationForm):
     }
 
     # bootstrap4対応
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'
@@ -32,20 +32,19 @@ class SignupForm(UserCreationForm):
         model = get_user_model()
         fields = ('username', 'email')
 
-    def __init__(self, *args, **kwargs):
-
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'
-            field.widget.attrs['required'] = '' # 全フィールドを入力必須      
+            field.widget.attrs['required'] = '' # 全フィールドを入力必須
 
-    def clean_username(self):
+    def clean_username(self) -> str:
         username = self.cleaned_data.get('username')
         if get_user_model().objects.filter(username=username).exists():
             raise forms.ValidationError(self.error_messages['duplicate_username'], code='duplicate_username')
         return username
 
-    def clean_email(self):
+    def clean_email(self) -> str:
         email = self.cleaned_data.get('email')
         if get_user_model().objects.filter(email=email).exists():
             raise forms.ValidationError(self.error_messages['duplicate_email'], code='duplicate_email')
@@ -55,13 +54,13 @@ class SignupForm(UserCreationForm):
 class UserUpdateForm(forms.ModelForm):
     username = forms.CharField(label="ユーザー名")
     email = forms.EmailField(label="メールアドレス")
-    
+
     class Meta:
         model = get_user_model()
         fields = ('username', 'email')
 
     # bootstrap4対応
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'
@@ -72,7 +71,7 @@ class UserUpdateForm(forms.ModelForm):
 class MyPasswordChangeForm(PasswordChangeForm):
 
     # bootstrap4対応で、classを指定
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'
@@ -81,8 +80,8 @@ class MyPasswordChangeForm(PasswordChangeForm):
 '''パスワードリセット申請フォーム'''
 class MyPasswordResetForm(PasswordResetForm):
     email = forms.EmailField(label="メールアドレス")
-    
-    def __init__(self, *args, **kwargs):
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'
@@ -100,7 +99,7 @@ class MySetPasswordForm(SetPasswordForm):
         widget=forms.PasswordInput
     )
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'

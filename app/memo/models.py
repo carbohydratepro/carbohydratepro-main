@@ -11,7 +11,7 @@ class MemoType(models.Model):
         unique_together = ('user', 'name')
         ordering = ['name']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -24,7 +24,7 @@ class Memo(models.Model):
     created_date = models.DateTimeField(auto_now_add=True, verbose_name="登録日")
     updated_date = models.DateTimeField(auto_now=True, verbose_name="更新日")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.title} - {self.memo_type.name}"
 
     class Meta:

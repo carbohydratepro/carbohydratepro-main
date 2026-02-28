@@ -7,12 +7,12 @@ from decimal import Decimal
 register = template.Library()
 
 @register.filter(name='add_class')
-def add_class(value, arg):
+def add_class(value: object, arg: str) -> object:
     return value.as_widget(attrs={'class': arg})
 
 
 @register.filter(name='highlight')
-def highlight(text, search):
+def highlight(text: object, search: str) -> str:
     """検索キーワードをハイライト表示するフィルター"""
     if not search:
         return escape(text)
@@ -32,7 +32,7 @@ def highlight(text, search):
 
 
 @register.filter(name='comma_format')
-def comma_format(value):
+def comma_format(value: object) -> str:
     """数値を三桁区切りでフォーマットするフィルター"""
     if value is None:
         return '0'
@@ -63,7 +63,7 @@ def comma_format(value):
 
 
 @register.filter(name='darker')
-def darker(color, factor=0.7):
+def darker(color: str, factor: float = 0.7) -> str:
     """色を暗くするフィルター"""
     if not color:
         return color

@@ -14,7 +14,7 @@ import re
 class Command(BaseCommand):
     help = 'セキュリティログを監視し、過去1分間に新しいログがあればメール通知を送信'
 
-    def handle(self, *args, **options):
+    def handle(self, *args: object, **options: object) -> None:
         # セキュリティログファイルのパス
         log_file_path = os.path.join(settings.BASE_DIR, 'security.log')
         
@@ -64,7 +64,7 @@ class Command(BaseCommand):
         else:
             self.stdout.write(self.style.SUCCESS('過去1分間に新しいセキュリティログはありません'))
     
-    def send_security_alert(self, logs, start_time, end_time):
+    def send_security_alert(self, logs: list[str], start_time: datetime, end_time: datetime) -> None:
         """セキュリティアラートメールを送信"""
         
         # ログの種類を分類

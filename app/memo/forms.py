@@ -1,3 +1,4 @@
+from typing import Optional
 from django import forms
 from django.db import models
 from .models import Memo, MemoType
@@ -24,8 +25,8 @@ class MemoForm(forms.ModelForm):
             'is_favorite': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
-    def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        user: Optional[object] = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
         # メモ種別をユーザー専用＋共通で絞り込み

@@ -14,7 +14,7 @@ import re
 class Command(BaseCommand):
     help = 'django_debug.logを監視し、過去5分間にエラーログがあればメール通知を送信'
 
-    def handle(self, *args, **options):
+    def handle(self, *args: object, **options: object) -> None:
         # django_debug.logファイルのパス
         log_file_path = os.path.join(settings.BASE_DIR, 'django_debug.log')
         
@@ -112,7 +112,7 @@ class Command(BaseCommand):
         else:
             self.stdout.write(self.style.SUCCESS('過去5分間に新しいエラーログはありません'))
     
-    def send_debug_log_alert(self, criticals, errors, warnings, tracebacks, start_time, end_time):
+    def send_debug_log_alert(self, criticals: list[str], errors: list[str], warnings: list[str], tracebacks: list[str], start_time: datetime, end_time: datetime) -> None:
         """デバッグログアラートメールを送信"""
         
         total_logs = len(criticals) + len(errors) + len(warnings) + len(tracebacks)

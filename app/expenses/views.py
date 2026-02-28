@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.http import JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import CategoryForm, PaymentMethodForm, RecurringPaymentForm, TransactionForm
@@ -9,7 +9,7 @@ from . import selectors, services
 
 
 @login_required
-def expenses_list(request):
+def expenses_list(request: HttpRequest) -> HttpResponse:
     target_date_str = request.GET.get('target_date')
     search_query = request.GET.get('search', '')
     per_page_raw = request.GET.get('per_page', '20')
@@ -75,7 +75,7 @@ def expenses_list(request):
 
 
 @login_required
-def create_expenses(request):
+def create_expenses(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         form = TransactionForm(request.POST, user=request.user)
         if form.is_valid():
@@ -95,7 +95,7 @@ def create_expenses(request):
 
 
 @login_required
-def expenses_settings(request):
+def expenses_settings(request: HttpRequest) -> HttpResponse:
     payments = selectors.get_payment_methods(request.user)
     purposes = selectors.get_categories(request.user)
 
@@ -162,7 +162,7 @@ def expenses_settings(request):
 
 
 @login_required
-def edit_expenses(request, transaction_id):
+def edit_expenses(request: HttpRequest, transaction_id: int) -> HttpResponse:
     transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
     if request.method == 'POST':
         form = TransactionForm(request.POST, instance=transaction, user=request.user)
@@ -181,7 +181,7 @@ def edit_expenses(request, transaction_id):
 
 
 @login_required
-def delete_expenses(request, transaction_id):
+def delete_expenses(request: HttpRequest, transaction_id: int) -> HttpResponse:
     transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
     if request.method == 'POST':
         transaction.delete()
@@ -189,14 +189,14 @@ def delete_expenses(request, transaction_id):
 
 
 @login_required
-def recurring_payment_list(request):
+def recurring_payment_list(request: HttpRequest) -> HttpResponse:
     return render(request, 'app/expenses/recurring_list.html', {
         'recurring_payments': selectors.get_recurring_payments(request.user),
     })
 
 
 @login_required
-def create_recurring_payment(request):
+def create_recurring_payment(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         form = RecurringPaymentForm(request.POST, user=request.user)
         if form.is_valid():
@@ -214,7 +214,7 @@ def create_recurring_payment(request):
 
 
 @login_required
-def edit_recurring_payment(request, recurring_id):
+def edit_recurring_payment(request: HttpRequest, recurring_id: int) -> HttpResponse:
     recurring = get_object_or_404(RecurringPayment, id=recurring_id, user=request.user)
     if request.method == 'POST':
         form = RecurringPaymentForm(request.POST, instance=recurring, user=request.user)
@@ -232,7 +232,7 @@ def edit_recurring_payment(request, recurring_id):
 
 
 @login_required
-def delete_recurring_payment(request, recurring_id):
+def delete_recurring_payment(request: HttpRequest, recurring_id: int) -> HttpResponse:
     recurring = get_object_or_404(RecurringPayment, id=recurring_id, user=request.user)
     if request.method == 'POST':
         recurring.delete()
@@ -240,7 +240,7 @@ def delete_recurring_payment(request, recurring_id):
 
 
 @login_required
-def toggle_recurring_payment(request, recurring_id):
+def toggle_recurring_payment(request: HttpRequest, recurring_id: int) -> HttpResponse:
     recurring = get_object_or_404(RecurringPayment, id=recurring_id, user=request.user)
     if request.method == 'POST':
         recurring.is_active = not recurring.is_active

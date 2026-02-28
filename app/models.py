@@ -26,6 +26,6 @@ class ContactMessage(models.Model):
         verbose_name = "お問い合わせ"
         verbose_name_plural = "お問い合わせ"
     
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.get_inquiry_type_display()} - {self.subject} ({self.user.email})"
 

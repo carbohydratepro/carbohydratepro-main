@@ -137,22 +137,3 @@ class RecurringPayment(models.Model):
 
         return False
 
-    def execute(self, target_date: 'date') -> 'Transaction':
-        """定期支払いを実行し、Transactionを作成する"""
-        from django.utils.timezone import make_aware
-        from datetime import datetime
-
-        transaction = Transaction.objects.create(
-            user=self.user,
-            amount=self.amount,
-            date=make_aware(datetime.combine(target_date, datetime.min.time())),
-            transaction_type=self.transaction_type,
-            payment_method=self.payment_method,
-            purpose=self.purpose,
-            major_category=self.major_category,
-            category=self.category,
-            purpose_description=self.purpose_description or f'定期支払い（{self.get_frequency_display()}）',
-        )
-        self.last_executed = target_date
-        self.save(update_fields=['last_executed'])
-        return transaction

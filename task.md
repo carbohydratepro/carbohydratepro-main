@@ -6,12 +6,6 @@
   完了したタスクは自動的に done.md に移動されます。
 -->
 
-1. [ ] Service + Selector パターン導入: expenses
-    - app/expenses/services.py を作成し、ビジネスロジックをビューから切り出す
-    - app/expenses/selectors.py を作成し、クエリロジックをビューから切り出す
-    - RecurringPaymentService を作成し、モデルのビジネスロジックを移動する
-    - views.py を薄くし、サービス・セレクターを呼び出す形に変更する
-
 1. [ ] Service + Selector パターン導入: tasks
     - app/task/services.py を作成し、タスク作成・更新・削除ロジックを分離する
     - app/task/selectors.py を作成し、タスク一覧取得・フィルタリングクエリを分離する

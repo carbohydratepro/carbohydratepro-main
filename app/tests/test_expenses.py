@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from app.expenses.models import Category, PaymentMethod, Transaction, RecurringPayment
 from app.expenses.forms import TransactionForm, PaymentMethodForm, CategoryForm, RecurringPaymentForm
+from app.expenses import services
 from tests.factories import UserFactory, PaymentMethodFactory, CategoryFactory, TransactionFactory, RecurringPaymentFactory
 
 
@@ -714,7 +715,7 @@ class RecurringPaymentModelTest(TestCase):
         """実行時にTransactionが作成されるテスト"""
         recurring = self._create_recurring()
         target = date(2025, 3, 15)
-        transaction = recurring.execute(target)
+        transaction = services.execute_recurring_payment(recurring, target)
 
         self.assertEqual(transaction.user, self.user)
         self.assertEqual(transaction.amount, Decimal('5000.00'))
@@ -731,7 +732,7 @@ class RecurringPaymentModelTest(TestCase):
         """実行後にlast_executedが更新されるテスト"""
         recurring = self._create_recurring()
         target = date(2025, 3, 15)
-        recurring.execute(target)
+        services.execute_recurring_payment(recurring, target)
 
         recurring.refresh_from_db()
         self.assertEqual(recurring.last_executed, target)

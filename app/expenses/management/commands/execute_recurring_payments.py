@@ -3,6 +3,7 @@ from datetime import date
 from django.core.management.base import BaseCommand
 
 from app.expenses.models import RecurringPayment
+from app.expenses import services
 
 
 class Command(BaseCommand):
@@ -29,7 +30,7 @@ class Command(BaseCommand):
         executed_count = 0
         for recurring in recurring_payments:
             if recurring.should_execute_on(target_date):
-                recurring.execute(target_date)
+                services.execute_recurring_payment(recurring, target_date)
                 executed_count += 1
                 self.stdout.write(
                     f'  実行: {recurring.user.username} - {recurring.purpose} (¥{recurring.amount})'

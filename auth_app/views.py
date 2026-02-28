@@ -18,6 +18,7 @@ from django.utils.encoding import force_bytes
 from django.contrib import messages
 
 from project.utils import send_html_email, strip_html_tags
+from . import services
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,9 @@ class Signup(generic.CreateView):
         user.is_active = True  # アカウント自体はアクティブだが、メール未認証
         user.is_email_verified = False  # メールアドレスは未認証
         user.save()
+
+        # デフォルトデータを生成
+        services.create_default_user_data(user)
 
         # メール認証トークンを生成
         token = EmailVerificationToken.objects.create(user=user)

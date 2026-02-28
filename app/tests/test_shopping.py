@@ -3,25 +3,19 @@
 """
 from decimal import Decimal
 
-from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.urls import reverse
 
 from app.shopping.models import ShoppingItem
 from app.shopping.forms import ShoppingItemForm
+from tests.factories import UserFactory
 
 
 class ShoppingItemModelTest(TestCase):
     """買い物アイテムモデルのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
+        self.user = UserFactory()
 
     def test_create_shopping_item(self) -> None:
         """買い物アイテムの作成テスト"""
@@ -201,14 +195,8 @@ class ShoppingViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.client.login(username='test@example.com', password='testpass123')
+        self.user = UserFactory()
+        self.client.login(username=self.user.email, password='testpass123')
 
     def test_shopping_list_requires_login(self) -> None:
         """買い物リスト一覧に認証が必要であることをテスト"""
@@ -304,13 +292,7 @@ class ShoppingViewTest(TestCase):
 
     def test_edit_shopping_item_other_user_forbidden(self) -> None:
         """他ユーザーの買い物アイテム編集が禁止されることをテスト"""
-        User = get_user_model()
-        other_user = User.objects.create_user(
-            email='other@example.com',
-            username='otheruser',
-            password='testpass123',
-            is_email_verified=True,
-        )
+        other_user = UserFactory()
         other_item = ShoppingItem.objects.create(
             user=other_user,
             title='他ユーザー商品',
@@ -412,14 +394,8 @@ class ShoppingAjaxViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.client.login(username='test@example.com', password='testpass123')
+        self.user = UserFactory()
+        self.client.login(username=self.user.email, password='testpass123')
 
     def test_create_shopping_item_ajax_success(self) -> None:
         """AJAX経由での買い物アイテム作成テスト（成功）"""

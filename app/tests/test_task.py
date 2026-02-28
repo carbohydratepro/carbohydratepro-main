@@ -3,26 +3,20 @@
 """
 from datetime import timedelta
 
-from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
 
 from app.task.models import Task, TaskLabel
 from app.task.forms import TaskForm, TaskLabelForm
+from tests.factories import UserFactory, TaskLabelFactory
 
 
 class TaskLabelModelTest(TestCase):
     """タスクラベルモデルのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
+        self.user = UserFactory()
 
     def test_create_task_label(self) -> None:
         """タスクラベルの作成テスト"""
@@ -54,17 +48,8 @@ class TaskModelTest(TestCase):
     """タスクモデルのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.label = TaskLabel.objects.create(
-            user=self.user,
-            name='仕事'
-        )
+        self.user = UserFactory()
+        self.label = TaskLabelFactory(user=self.user)
 
     def test_create_basic_task(self) -> None:
         """基本的なタスクの作成テスト"""
@@ -89,7 +74,7 @@ class TaskModelTest(TestCase):
             status='in_progress'
         )
         self.assertEqual(task.label, self.label)
-        self.assertEqual(task.label.name, '仕事')
+        self.assertEqual(task.label.name, self.label.name)
 
     def test_create_task_with_dates(self) -> None:
         """日時付きタスクの作成テスト"""
@@ -221,14 +206,8 @@ class TaskFormTest(TestCase):
     """タスクフォームのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.label = TaskLabel.objects.create(user=self.user, name='テスト')
+        self.user = UserFactory()
+        self.label = TaskLabelFactory(user=self.user)
 
     def test_valid_basic_form(self) -> None:
         """有効な基本フォームのテスト"""
@@ -348,15 +327,9 @@ class TaskViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.label = TaskLabel.objects.create(user=self.user, name='テスト')
-        self.client.login(username='test@example.com', password='testpass123')
+        self.user = UserFactory()
+        self.label = TaskLabelFactory(user=self.user)
+        self.client.login(username=self.user.email, password='testpass123')
 
     def test_task_list_requires_login(self) -> None:
         """タスク一覧に認証が必要であることをテスト"""
@@ -471,13 +444,7 @@ class TaskViewTest(TestCase):
 
     def test_edit_task_other_user_forbidden(self) -> None:
         """他ユーザーのタスク編集が禁止されることをテスト"""
-        User = get_user_model()
-        other_user = User.objects.create_user(
-            email='other@example.com',
-            username='otheruser',
-            password='testpass123',
-            is_email_verified=True,
-        )
+        other_user = UserFactory()
         other_task = Task.objects.create(
             user=other_user,
             title='他ユーザータスク',
@@ -556,14 +523,8 @@ class TaskAjaxViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.client.login(username='test@example.com', password='testpass123')
+        self.user = UserFactory()
+        self.client.login(username=self.user.email, password='testpass123')
 
     def test_create_task_ajax_success(self) -> None:
         """AJAX経由でのタスク作成テスト（成功）"""
@@ -611,13 +572,7 @@ class RecurringTaskTest(TestCase):
     """繰り返しタスクの詳細テスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
+        self.user = UserFactory()
 
     def test_recurring_task_creates_child_tasks(self) -> None:
         """繰り返しタスクが子タスクを正しく生成するかのテスト"""
@@ -772,13 +727,7 @@ class TaskFormEdgeCaseTest(TestCase):
     """タスクフォームのエッジケーステスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
+        self.user = UserFactory()
 
     def test_end_date_before_start_date_invalid(self) -> None:
         """終了日時が開始日時より前の場合が無効であることをテスト"""
@@ -845,13 +794,7 @@ class TempTaskBoardViewTest(TestCase):
     """一時タスクボードビューのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='board_test@example.com',
-            username='boardtestuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
+        self.user = UserFactory()
         self.client = Client()
 
     def test_board_view_requires_login(self) -> None:

@@ -20,6 +20,10 @@
 - **実装内容**: `project/settings.py` を `project/settings/` ディレクトリに分割。`base.py`（全環境共通）・`development.py`（開発用: DEBUG=True, SITE_PROTOCOL=http）・`production.py`（本番用: DEBUG=False, セキュリティヘッダー有効）・`test.py`（テスト用: locmemメール, MD5パスワードハッシュで高速化）の4ファイル構成に変更。旧 settings.py の LOGGING 重複定義（django.core.mail）を修正。`manage.py` のデフォルトを `project.settings.development`、`wsgi.py` のデフォルトを `project.settings.production` に更新。`docker-compose-dev.yml` の gunicorn・cron サービスに `DJANGO_SETTINGS_MODULE=project.settings.development` を明示設定。テストは `python manage.py test --settings=project.settings.test` で実行可能。全 293 件のテスト通過を確認。
 - **実装日時**: 2026-02-27 22:40
 
+## factory_boy の導入（テストデータ管理の統一）
+- **実装内容**: `requirements.txt` に `factory-boy` を追加。`tests/factories.py` を新規作成し、UserFactory・LoginHistoryFactory・EmailVerificationTokenFactory・PaymentMethodFactory・CategoryFactory・TransactionFactory・RecurringPaymentFactory・TaskLabelFactory・TaskFactory・MemoTypeFactory・MemoFactory・ShoppingItemFactory・ContactMessageFactory の全13クラスを定義。`tests/__init__.py` を追加。全5テストファイル（test_auth.py・test_expenses.py・test_task.py・test_memo.py・test_shopping.py）の setUp() を Factory 記述に移行。`get_user_model()` を使った手書きユーザー生成を `UserFactory()` に置換。他ユーザー生成も `UserFactory()` に簡略化。`client.login(username='test@example.com', ...)` を `client.login(username=self.user.email, ...)` に修正。ハードコードされたメールアドレスのアサーション（`assertIn('test@example.com', str(...))`）を `self.user.email` 参照に修正。全 293 件のテスト通過を確認。
+- **実装日時**: 2026-02-28 19:00
+
 ## 家計簿：定期的支払いの自動化
 - **実装内容**: RecurringPaymentモデルの追加（毎日・毎週・毎月・毎年の頻度設定、曜日・日・月の指定、有効/無効切り替え、実行日追跡）。定期支払いの一覧表示・新規作成・編集・削除・有効/無効切り替え・手動実行のビューとテンプレートを実装。バリデーション付きフォーム（頻度に応じた必須フィールドの制御）。管理コマンド`execute_recurring_payments`による自動実行対応。家計簿一覧画面に定期支払い管理画面へのリンクを追加。テスト77件全てパス。
 - **実装日時**: 2026-02-10 01:39

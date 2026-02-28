@@ -4,26 +4,20 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
 
 from app.expenses.models import Category, PaymentMethod, Transaction, RecurringPayment
 from app.expenses.forms import TransactionForm, PaymentMethodForm, CategoryForm, RecurringPaymentForm
+from tests.factories import UserFactory, PaymentMethodFactory, CategoryFactory, TransactionFactory, RecurringPaymentFactory
 
 
 class PaymentMethodModelTest(TestCase):
     """支払方法モデルのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
+        self.user = UserFactory()
 
     def test_create_payment_method(self) -> None:
         """支払方法の作成テスト"""
@@ -47,13 +41,7 @@ class CategoryModelTest(TestCase):
     """カテゴリモデルのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
+        self.user = UserFactory()
 
     def test_create_category(self) -> None:
         """カテゴリの作成テスト"""
@@ -69,21 +57,9 @@ class TransactionModelTest(TestCase):
     """取引モデルのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.payment_method = PaymentMethod.objects.create(
-            user=self.user,
-            name='現金'
-        )
-        self.category = Category.objects.create(
-            user=self.user,
-            name='食費'
-        )
+        self.user = UserFactory()
+        self.payment_method = PaymentMethodFactory(user=self.user)
+        self.category = CategoryFactory(user=self.user)
 
     def test_create_expense_transaction(self) -> None:
         """支出取引の作成テスト"""
@@ -100,7 +76,7 @@ class TransactionModelTest(TestCase):
         )
         self.assertEqual(transaction.transaction_type, 'expense')
         self.assertEqual(transaction.amount, Decimal('1000.00'))
-        self.assertIn('test@example.com', str(transaction))
+        self.assertIn(self.user.email, str(transaction))
 
     def test_create_income_transaction(self) -> None:
         """収入取引の作成テスト"""
@@ -129,21 +105,9 @@ class TransactionFormTest(TestCase):
     """取引フォームのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.payment_method = PaymentMethod.objects.create(
-            user=self.user,
-            name='現金'
-        )
-        self.category = Category.objects.create(
-            user=self.user,
-            name='食費'
-        )
+        self.user = UserFactory()
+        self.payment_method = PaymentMethodFactory(user=self.user)
+        self.category = CategoryFactory(user=self.user)
 
     def test_valid_form(self) -> None:
         """有効なフォームデータのテスト"""
@@ -228,22 +192,10 @@ class ExpensesViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.payment_method = PaymentMethod.objects.create(
-            user=self.user,
-            name='現金'
-        )
-        self.category = Category.objects.create(
-            user=self.user,
-            name='食費'
-        )
-        self.client.login(username='test@example.com', password='testpass123')
+        self.user = UserFactory()
+        self.payment_method = PaymentMethodFactory(user=self.user)
+        self.category = CategoryFactory(user=self.user)
+        self.client.login(username=self.user.email, password='testpass123')
 
     def test_expense_list_requires_login(self) -> None:
         """支出一覧に認証が必要であることをテスト"""
@@ -397,26 +349,7 @@ class ExpensesViewTest(TestCase):
 
     def test_edit_expenses_other_user_forbidden(self) -> None:
         """他ユーザーの支出編集が禁止されることをテスト"""
-        User = get_user_model()
-        other_user = User.objects.create_user(
-            email='other@example.com',
-            username='otheruser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        other_payment = PaymentMethod.objects.create(user=other_user, name='現金')
-        other_category = Category.objects.create(user=other_user, name='食費')
-        other_transaction = Transaction.objects.create(
-            user=other_user,
-            amount=Decimal('1000.00'),
-            date=timezone.now(),
-            transaction_type='expense',
-            payment_method=other_payment,
-            purpose='他ユーザー取引',
-            major_category='variable',
-            category=other_category,
-            purpose_description='説明'
-        )
+        other_transaction = TransactionFactory()
         response = self.client.get(reverse('edit_expenses', kwargs={'transaction_id': other_transaction.id}))
         self.assertEqual(response.status_code, 404)
 
@@ -513,22 +446,10 @@ class ExpensesAjaxViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.payment_method = PaymentMethod.objects.create(
-            user=self.user,
-            name='現金'
-        )
-        self.category = Category.objects.create(
-            user=self.user,
-            name='食費'
-        )
-        self.client.login(username='test@example.com', password='testpass123')
+        self.user = UserFactory()
+        self.payment_method = PaymentMethodFactory(user=self.user)
+        self.category = CategoryFactory(user=self.user)
+        self.client.login(username=self.user.email, password='testpass123')
 
     def test_create_expenses_ajax_success(self) -> None:
         """AJAX経由での支出作成テスト（成功）"""
@@ -603,22 +524,10 @@ class ExpensesChartDataTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.payment_method = PaymentMethod.objects.create(
-            user=self.user,
-            name='現金'
-        )
-        self.category = Category.objects.create(
-            user=self.user,
-            name='食費'
-        )
-        self.client.login(username='test@example.com', password='testpass123')
+        self.user = UserFactory()
+        self.payment_method = PaymentMethodFactory(user=self.user)
+        self.category = CategoryFactory(user=self.user)
+        self.client.login(username=self.user.email, password='testpass123')
 
     def test_chart_data_with_transactions(self) -> None:
         """取引がある場合のグラフデータテスト"""
@@ -683,15 +592,9 @@ class RecurringPaymentModelTest(TestCase):
     """定期支払いモデルのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.payment_method = PaymentMethod.objects.create(user=self.user, name='現金')
-        self.category = Category.objects.create(user=self.user, name='光熱費')
+        self.user = UserFactory()
+        self.payment_method = PaymentMethodFactory(user=self.user)
+        self.category = CategoryFactory(user=self.user)
 
     def _create_recurring(self, **kwargs: object) -> RecurringPayment:
         defaults = {
@@ -838,15 +741,9 @@ class RecurringPaymentFormTest(TestCase):
     """定期支払いフォームのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.payment_method = PaymentMethod.objects.create(user=self.user, name='現金')
-        self.category = Category.objects.create(user=self.user, name='光熱費')
+        self.user = UserFactory()
+        self.payment_method = PaymentMethodFactory(user=self.user)
+        self.category = CategoryFactory(user=self.user)
 
     def test_valid_monthly_form(self) -> None:
         """毎月の有効なフォームデータのテスト"""
@@ -1006,16 +903,10 @@ class RecurringPaymentViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.payment_method = PaymentMethod.objects.create(user=self.user, name='現金')
-        self.category = Category.objects.create(user=self.user, name='光熱費')
-        self.client.login(username='test@example.com', password='testpass123')
+        self.user = UserFactory()
+        self.payment_method = PaymentMethodFactory(user=self.user)
+        self.category = CategoryFactory(user=self.user)
+        self.client.login(username=self.user.email, password='testpass123')
 
     def _create_recurring(self, **kwargs: object) -> RecurringPayment:
         defaults = {
@@ -1100,26 +991,7 @@ class RecurringPaymentViewTest(TestCase):
 
     def test_edit_other_user_forbidden(self) -> None:
         """他ユーザーの定期支払い編集が禁止されることをテスト"""
-        User = get_user_model()
-        other_user = User.objects.create_user(
-            email='other@example.com',
-            username='otheruser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        other_payment = PaymentMethod.objects.create(user=other_user, name='現金')
-        other_category = Category.objects.create(user=other_user, name='光熱費')
-        other_recurring = RecurringPayment.objects.create(
-            user=other_user,
-            purpose='他ユーザー支払い',
-            amount=Decimal('1000.00'),
-            transaction_type='expense',
-            major_category='fixed',
-            category=other_category,
-            payment_method=other_payment,
-            frequency='monthly',
-            days_of_month=[1],
-        )
+        other_recurring = RecurringPaymentFactory()
         response = self.client.get(
             reverse('edit_recurring_payment', kwargs={'recurring_id': other_recurring.id})
         )

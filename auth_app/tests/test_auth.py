@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from auth_app.models import EmailVerificationToken, LoginHistory
+from tests.factories import UserFactory, EmailVerificationTokenFactory
 
 
 @override_settings(
@@ -77,12 +78,7 @@ class EmailVerificationTokenTest(TestCase):
     """メール認証トークンモデルのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123'
-        )
+        self.user = UserFactory()
 
     def test_create_token(self) -> None:
         """トークンの作成テスト"""
@@ -122,12 +118,7 @@ class LoginHistoryModelTest(TestCase):
     """ログイン履歴モデルのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123'
-        )
+        self.user = UserFactory()
 
     def test_create_login_history(self) -> None:
         """ログイン履歴の作成テスト"""
@@ -164,14 +155,8 @@ class LoginViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
         self.password = 'testpass123'
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password=self.password,
-            is_email_verified=True,
-        )
+        self.user = UserFactory()
 
     def test_login_page_loads(self) -> None:
         """ログインページの表示テスト"""
@@ -217,12 +202,7 @@ class SignupViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.existing_user = User.objects.create_user(
-            email='existing@example.com',
-            username='existinguser',
-            password='testpass123',
-        )
+        self.existing_user = UserFactory()
 
     def test_signup_page_loads(self) -> None:
         """サインアップページの表示テスト"""
@@ -292,14 +272,8 @@ class EmailVerificationViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=False,
-        )
-        self.token = EmailVerificationToken.objects.create(user=self.user)
+        self.user = UserFactory(is_email_verified=False)
+        self.token = EmailVerificationTokenFactory(user=self.user)
 
     def test_verify_email_success(self) -> None:
         """メール認証成功テスト"""
@@ -347,13 +321,7 @@ class ResendVerificationViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=False,
-        )
+        self.user = UserFactory(is_email_verified=False)
 
     def test_resend_verification_page_loads(self) -> None:
         """再送信ページの表示テスト"""
@@ -393,13 +361,7 @@ class PasswordResetViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
+        self.user = UserFactory()
 
     def test_password_reset_page_loads(self) -> None:
         """パスワードリセットページの表示テスト"""
@@ -437,14 +399,8 @@ class MyPageViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.client.login(username='test@example.com', password='testpass123')
+        self.user = UserFactory()
+        self.client.login(username=self.user.email, password='testpass123')
 
     def test_my_page_requires_login(self) -> None:
         """マイページに認証が必要であることをテスト"""
@@ -459,13 +415,7 @@ class MyPageViewTest(TestCase):
 
     def test_my_page_other_user_forbidden(self) -> None:
         """他ユーザーのマイページアクセスが禁止されることをテスト"""
-        User = get_user_model()
-        other_user = User.objects.create_user(
-            email='other@example.com',
-            username='otheruser',
-            password='testpass123',
-            is_email_verified=True,
-        )
+        other_user = UserFactory()
         response = self.client.get(reverse('my_page', kwargs={'pk': other_user.pk}))
         self.assertEqual(response.status_code, 403)
 
@@ -482,14 +432,8 @@ class PasswordChangeViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.client.login(username='test@example.com', password='testpass123')
+        self.user = UserFactory()
+        self.client.login(username=self.user.email, password='testpass123')
 
     def test_password_change_page_loads(self) -> None:
         """パスワード変更ページの表示テスト"""
@@ -533,14 +477,8 @@ class CsrfProtectionTest(TestCase):
     """
 
     def setUp(self) -> None:
-        User = get_user_model()
         self.password = 'testpass123'
-        self.user = User.objects.create_user(
-            email='csrf_test@example.com',
-            username='csrftestuser',
-            password=self.password,
-            is_email_verified=True,
-        )
+        self.user = UserFactory()
 
     def test_login_without_csrf_token_fails(self) -> None:
         """CSRF トークンなしの POST が 403 になること"""

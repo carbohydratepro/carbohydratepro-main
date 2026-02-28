@@ -1,25 +1,19 @@
 """
 メモ機能のテスト
 """
-from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.urls import reverse
 
 from app.memo.models import Memo, MemoType
 from app.memo.forms import MemoForm, MemoTypeForm
+from tests.factories import UserFactory, MemoTypeFactory
 
 
 class MemoTypeModelTest(TestCase):
     """メモ種別モデルのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
+        self.user = UserFactory()
 
     def test_create_memo_type(self) -> None:
         """メモ種別の作成テスト"""
@@ -65,14 +59,8 @@ class MemoModelTest(TestCase):
     """メモモデルのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.memo_type = MemoType.objects.create(user=self.user, name='個人')
+        self.user = UserFactory()
+        self.memo_type = MemoTypeFactory(user=self.user)
 
     def test_create_memo(self) -> None:
         """メモの作成テスト"""
@@ -83,7 +71,7 @@ class MemoModelTest(TestCase):
             content='牛乳、卵、パン',
             is_favorite=False
         )
-        self.assertEqual(str(memo), '買い物リスト - 個人')
+        self.assertEqual(str(memo), f'買い物リスト - {self.memo_type.name}')
         self.assertFalse(memo.is_favorite)
         self.assertEqual(memo.content, '牛乳、卵、パン')
 
@@ -130,14 +118,8 @@ class MemoFormTest(TestCase):
     """メモフォームのテスト"""
 
     def setUp(self) -> None:
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.memo_type = MemoType.objects.create(user=self.user, name='一般')
+        self.user = UserFactory()
+        self.memo_type = MemoTypeFactory(user=self.user)
 
     def test_valid_form(self) -> None:
         """有効なフォームのテスト"""
@@ -168,14 +150,8 @@ class MemoFormTest(TestCase):
 
     def test_form_filters_memo_types_by_user(self) -> None:
         """フォームがユーザーのメモ種別のみを表示することをテスト"""
-        User = get_user_model()
-        other_user = User.objects.create_user(
-            email='other@example.com',
-            username='otheruser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        other_type = MemoType.objects.create(user=other_user, name='他ユーザー種別')
+        other_user = UserFactory()
+        other_type = MemoTypeFactory(user=other_user)
 
         form = MemoForm(user=self.user)
         queryset = form.fields['memo_type'].queryset
@@ -207,15 +183,9 @@ class MemoViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.memo_type = MemoType.objects.create(user=self.user, name='テスト')
-        self.client.login(username='test@example.com', password='testpass123')
+        self.user = UserFactory()
+        self.memo_type = MemoTypeFactory(user=self.user)
+        self.client.login(username=self.user.email, password='testpass123')
 
     def test_memo_list_requires_login(self) -> None:
         """メモ一覧に認証が必要であることをテスト"""
@@ -306,14 +276,8 @@ class MemoViewTest(TestCase):
 
     def test_edit_memo_other_user_forbidden(self) -> None:
         """他ユーザーのメモ編集が禁止されることをテスト"""
-        User = get_user_model()
-        other_user = User.objects.create_user(
-            email='other@example.com',
-            username='otheruser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        other_type = MemoType.objects.create(user=other_user, name='他ユーザー')
+        other_user = UserFactory()
+        other_type = MemoTypeFactory(user=other_user)
         other_memo = Memo.objects.create(
             user=other_user,
             title='他ユーザーメモ',
@@ -386,15 +350,9 @@ class MemoAjaxViewTest(TestCase):
 
     def setUp(self) -> None:
         self.client = Client()
-        User = get_user_model()
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            is_email_verified=True,
-        )
-        self.memo_type = MemoType.objects.create(user=self.user, name='テスト')
-        self.client.login(username='test@example.com', password='testpass123')
+        self.user = UserFactory()
+        self.memo_type = MemoTypeFactory(user=self.user)
+        self.client.login(username=self.user.email, password='testpass123')
 
     def test_create_memo_ajax_success(self) -> None:
         """AJAX経由でのメモ作成テスト（成功）"""

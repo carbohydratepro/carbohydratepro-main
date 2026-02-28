@@ -6,11 +6,6 @@
   完了したタスクは自動的に done.md に移動されます。
 -->
 
-1. [ ] factory_boy の導入（テストデータ管理の統一）
-    - requirements.txt に factory_boy を追加する
-    - 各アプリの主要モデルに対応する Factory クラスを作成する
-    - 既存のテストの setUp() を Factory を使った記述に順次移行する
-
 1. [ ] Service + Selector パターン導入: expenses
     - app/expenses/services.py を作成し、ビジネスロジックをビューから切り出す
     - app/expenses/selectors.py を作成し、クエリロジックをビューから切り出す

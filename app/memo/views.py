@@ -1,49 +1,35 @@
-from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
-from django.db import models
 from django.core.paginator import Paginator
 from django.http import JsonResponse
-from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect, render
+
 from .forms import MemoForm, MemoTypeForm
 from .models import Memo, MemoType
+from . import selectors, services
 
 
 @login_required
 def memo_list(request):
     """メモ一覧表示（ページネーション付き）"""
-    ensure_default_memo_types(request.user)
+    services.ensure_default_memo_types()
     memo_type_filter = request.GET.get('memo_type', '')
     search_query = request.GET.get('search', '')
     favorite_filter = request.GET.get('favorite', '')
     per_page_raw = request.GET.get('per_page', '20')
     per_page_options = ['10', '20', '50', '100']
     per_page = int(per_page_raw) if per_page_raw in per_page_options else 20
-    
-    memo_types = MemoType.objects.filter(models.Q(user=request.user) | models.Q(user__isnull=True)).order_by('name')
-    memos = Memo.objects.filter(user=request.user).select_related('memo_type')
-    
-    if memo_type_filter:
-        memos = memos.filter(memo_type_id=memo_type_filter)
-    if search_query:
-        memos = memos.filter(
-            Q(title__icontains=search_query) | 
-            Q(content__icontains=search_query)
-        )
-    if favorite_filter == 'true':
-        memos = memos.filter(is_favorite=True)
-    
-    # ページネーション
+
+    memos = selectors.get_memos(request.user, memo_type_filter, search_query, favorite_filter)
     paginator = Paginator(memos, per_page)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
+    page_obj = paginator.get_page(request.GET.get('page'))
+
     return render(request, 'app/memo/list.html', {
         'page_obj': page_obj,
         'memo_type_filter': memo_type_filter,
         'search_query': search_query,
         'favorite_filter': favorite_filter,
-        'memo_type_choices': memo_types,
+        'memo_type_choices': selectors.get_memo_types(request.user),
         'per_page': per_page,
         'per_page_options': per_page_options,
     })
@@ -52,7 +38,7 @@ def memo_list(request):
 @login_required
 def create_memo(request):
     """メモ新規作成"""
-    ensure_default_memo_types(request.user)
+    services.ensure_default_memo_types()
     if request.method == 'POST':
         form = MemoForm(request.POST, user=request.user)
         if form.is_valid():
@@ -67,7 +53,7 @@ def create_memo(request):
                 return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = MemoForm(user=request.user)
-    
+
     return render(request, 'app/memo/create_modal.html', {'form': form})
 
 
@@ -75,8 +61,8 @@ def create_memo(request):
 def edit_memo(request, memo_id):
     """メモ編集"""
     memo = get_object_or_404(Memo, id=memo_id, user=request.user)
-    ensure_default_memo_types(request.user)
-    
+    services.ensure_default_memo_types()
+
     if request.method == 'POST':
         form = MemoForm(request.POST, instance=memo, user=request.user)
         if form.is_valid():
@@ -89,7 +75,7 @@ def edit_memo(request, memo_id):
                 return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = MemoForm(instance=memo, user=request.user)
-    
+
     return render(request, 'app/memo/edit_modal.html', {'form': form, 'memo': memo})
 
 
@@ -97,11 +83,11 @@ def edit_memo(request, memo_id):
 def delete_memo(request, memo_id):
     """メモ削除"""
     memo = get_object_or_404(Memo, id=memo_id, user=request.user)
-    
+
     if request.method == 'POST':
         memo.delete()
         return redirect('memo_list')
-    
+
     return redirect('memo_list')
 
 
@@ -113,27 +99,16 @@ def toggle_memo_favorite(request, memo_id):
         memo.is_favorite = not memo.is_favorite
         memo.save()
         return JsonResponse({
-            'success': True, 
+            'success': True,
             'is_favorite': memo.is_favorite
         })
     return JsonResponse({'success': False})
 
 
-def ensure_default_memo_types(user):
-    """Ensure default memo types exist (shared)"""
-    defaults = [
-        ('メモ', '#007bff'),
-        ('アイデア', '#28a745'),
-        ('その他', '#6c757d'),
-    ]
-    for name, color in defaults:
-        MemoType.objects.get_or_create(user=None, name=name, defaults={'color': color})
-
-
 @login_required
 def memo_settings(request):
-    ensure_default_memo_types(request.user)
-    memo_types = MemoType.objects.filter(models.Q(user=request.user) | models.Q(user__isnull=True)).order_by('user', 'name')
+    services.ensure_default_memo_types()
+    memo_types = selectors.get_memo_types(request.user).order_by('user', 'name')
     if request.method == 'POST':
         # 作成
         if 'create_memo_type' in request.POST:

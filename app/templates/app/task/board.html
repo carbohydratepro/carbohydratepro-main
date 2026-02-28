@@ -70,10 +70,37 @@
         </div>
     </div>
 
-    <!-- ゴミ箱エリア -->
-    <div class="kanban-trash" id="trashArea">
-        <i class="fas fa-trash-alt"></i>
-        <span class="trash-label">ここにドラッグして削除</span>
+    <p class="kanban-hint">
+        <i class="fas fa-info-circle"></i>
+        タスクをドラッグすると状態を変更できます。ダブルクリックで編集。
+    </p>
+</div>
+
+<!-- ドラッグオーバーレイ（5ゾーン） -->
+<div class="drag-overlay" id="dragOverlay">
+    <div class="drag-zones-row">
+        <div class="drag-zone todo-zone" data-action="todo">
+            <i class="fas fa-circle"></i>
+            <span>未着手</span>
+        </div>
+        <div class="drag-zone doing-zone" data-action="doing">
+            <i class="fas fa-spinner"></i>
+            <span>進行中</span>
+        </div>
+        <div class="drag-zone done-zone" data-action="done">
+            <i class="fas fa-check-circle"></i>
+            <span>終了</span>
+        </div>
+    </div>
+    <div class="drag-zones-row">
+        <div class="drag-zone delete-zone" data-action="delete">
+            <i class="fas fa-trash"></i>
+            <span>削除</span>
+        </div>
+        <div class="drag-zone cancel-zone" data-action="cancel">
+            <i class="fas fa-times-circle"></i>
+            <span>キャンセル</span>
+        </div>
     </div>
 </div>
 

@@ -1,5 +1,5 @@
 "use strict";
-// 一時タスク管理（カンバンボード）用 JavaScript
+// 一時タスク管理（カンバンボード）用 TypeScript
 const TEMP_TASK_KEY = 'temp_tasks_v1';
 let draggedTaskId = null;
 let dragSourceEl = null;
@@ -9,7 +9,12 @@ const touch = {
     startY: 0,
     cloneEl: null,
     sourceEl: null,
+    isDragging: false,
 };
+// ダブルタップ検出用
+let lastTapTime = 0;
+let lastTapTaskId = null;
+const DRAG_THRESHOLD = 8; // px
 function loadTasks() {
     try {
         return JSON.parse(localStorage.getItem(TEMP_TASK_KEY) || '[]');
@@ -46,6 +51,15 @@ function addTask(status) {
 function deleteTask(id) {
     saveTasks(loadTasks().filter(t => t.id !== id));
     renderAll();
+}
+function updateTask(id, newTitle) {
+    const tasks = loadTasks();
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+        task.title = newTitle;
+        saveTasks(tasks);
+        renderAll();
+    }
 }
 function moveTask(id, newStatus) {
     const tasks = loadTasks();
@@ -103,14 +117,124 @@ function createTaskCard(task) {
         e.stopPropagation();
         deleteTask(task.id);
     });
+    // ダブルクリックで編集（PC）
+    card.addEventListener('dblclick', (e) => {
+        if (e.target.closest('.kanban-task-delete'))
+            return;
+        startEdit(task, card);
+    });
     // PC: HTML5 Drag & Drop
     card.addEventListener('dragstart', handleDragStart);
     card.addEventListener('dragend', handleDragEnd);
     // モバイル: タッチイベント
     card.addEventListener('touchstart', handleTouchStart, { passive: false });
     card.addEventListener('touchmove', handleTouchMove, { passive: false });
-    card.addEventListener('touchend', handleTouchEnd, { passive: false });
+    card.addEventListener('touchend', (e) => {
+        handleTouchEnd(e, task, card);
+    }, { passive: false });
     return card;
+}
+// =========================================================
+// インライン編集
+// =========================================================
+function startEdit(task, card) {
+    const textEl = card.querySelector('.kanban-task-text');
+    if (!textEl)
+        return;
+    card.draggable = false;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = task.title;
+    input.className = 'kanban-task-edit-input';
+    let committed = false;
+    function commit() {
+        if (committed)
+            return;
+        committed = true;
+        const newTitle = input.value.trim();
+        if (newTitle && newTitle !== task.title) {
+            updateTask(task.id, newTitle);
+        }
+        else {
+            renderAll();
+        }
+    }
+    function cancel() {
+        if (committed)
+            return;
+        committed = true;
+        renderAll();
+    }
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            commit();
+        }
+        else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancel();
+        }
+    });
+    textEl.replaceWith(input);
+    input.focus();
+    input.select();
+}
+// =========================================================
+// ドラッグオーバーレイ
+// =========================================================
+function showDragOverlay() {
+    const overlay = document.getElementById('dragOverlay');
+    if (overlay)
+        overlay.classList.add('active');
+}
+function hideDragOverlay() {
+    const overlay = document.getElementById('dragOverlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+        overlay.querySelectorAll('.drag-zone').forEach(z => z.classList.remove('drag-zone-hover'));
+    }
+}
+function executeDragAction(action, taskId) {
+    switch (action) {
+        case 'todo':
+        case 'doing':
+        case 'done':
+            moveTask(taskId, action);
+            break;
+        case 'delete':
+            deleteTask(taskId);
+            break;
+        default:
+            renderAll();
+    }
+}
+function initializeDragOverlay() {
+    const overlay = document.getElementById('dragOverlay');
+    if (!overlay)
+        return;
+    overlay.querySelectorAll('.drag-zone').forEach(zone => {
+        zone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer)
+                e.dataTransfer.dropEffect = 'move';
+            overlay.querySelectorAll('.drag-zone').forEach(z => z.classList.remove('drag-zone-hover'));
+            zone.classList.add('drag-zone-hover');
+        });
+        zone.addEventListener('dragleave', (e) => {
+            if (zone.contains(e.relatedTarget))
+                return;
+            zone.classList.remove('drag-zone-hover');
+        });
+        zone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const action = zone.dataset.action || '';
+            if (draggedTaskId) {
+                executeDragAction(action, draggedTaskId);
+            }
+            hideDragOverlay();
+        });
+    });
 }
 // =========================================================
 // PC ドラッグ & ドロップ
@@ -123,50 +247,20 @@ function handleDragStart(e) {
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', draggedTaskId || '');
     }
+    // ドラッグ画像キャプチャ後にオーバーレイ表示
+    requestAnimationFrame(showDragOverlay);
 }
 function handleDragEnd(_e) {
     if (dragSourceEl)
         dragSourceEl.classList.remove('dragging');
     dragSourceEl = null;
     draggedTaskId = null;
-    clearAllDragOver();
-}
-function handleDropZoneDragOver(e) {
-    e.preventDefault();
-    if (e.dataTransfer)
-        e.dataTransfer.dropEffect = 'move';
-    const target = e.currentTarget;
-    target.classList.add('drag-over');
-}
-function handleDropZoneDragLeave(e) {
-    const target = e.currentTarget;
-    // 子要素へのmoveは無視する
-    if (target.contains(e.relatedTarget))
-        return;
-    target.classList.remove('drag-over');
-}
-function handleDrop(e, status) {
-    e.preventDefault();
-    const target = e.currentTarget;
-    target.classList.remove('drag-over');
-    if (draggedTaskId)
-        moveTask(draggedTaskId, status);
-}
-function handleTrashDrop(e) {
-    e.preventDefault();
-    const target = e.currentTarget;
-    target.classList.remove('drag-over');
-    if (draggedTaskId)
-        deleteTask(draggedTaskId);
-}
-function clearAllDragOver() {
-    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    hideDragOverlay();
 }
 // =========================================================
 // モバイル タッチドラッグ
 // =========================================================
 function handleTouchStart(e) {
-    // 削除ボタンのタッチは無視
     if (e.target.closest('.kanban-task-delete'))
         return;
     const t = e.touches[0];
@@ -175,69 +269,91 @@ function handleTouchStart(e) {
     touch.startX = t.clientX;
     touch.startY = t.clientY;
     touch.sourceEl = card;
-    // 少し待ってからドラッグ開始（タップと区別するため）
-    const rect = card.getBoundingClientRect();
-    const clone = card.cloneNode(true);
-    clone.className = card.className + ' touch-clone';
-    clone.style.width = rect.width + 'px';
-    clone.style.top = rect.top + 'px';
-    clone.style.left = rect.left + 'px';
-    document.body.appendChild(clone);
-    touch.cloneEl = clone;
-    card.style.opacity = '0.3';
+    touch.isDragging = false;
+    touch.cloneEl = null;
     e.preventDefault();
 }
 function handleTouchMove(e) {
-    if (!touch.cloneEl || !touch.taskId)
+    if (!touch.taskId || !touch.sourceEl)
         return;
-    e.preventDefault();
     const t = e.touches[0];
     const dx = t.clientX - touch.startX;
     const dy = t.clientY - touch.startY;
-    if (touch.cloneEl && touch.sourceEl) {
-        const rect = touch.sourceEl.getBoundingClientRect();
-        touch.cloneEl.style.left = (rect.left + dx) + 'px';
-        touch.cloneEl.style.top = (rect.top + dy) + 'px';
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (!touch.isDragging) {
+        if (dist < DRAG_THRESHOLD)
+            return;
+        touch.isDragging = true;
+        const card = touch.sourceEl;
+        const rect = card.getBoundingClientRect();
+        const clone = card.cloneNode(true);
+        clone.className = card.className + ' touch-clone';
+        clone.style.width = rect.width + 'px';
+        clone.style.top = rect.top + 'px';
+        clone.style.left = rect.left + 'px';
+        document.body.appendChild(clone);
+        touch.cloneEl = clone;
+        card.style.opacity = '0.3';
+        showDragOverlay();
     }
-    // ドロップターゲットのハイライト
-    clearAllDragOver();
-    touch.cloneEl.style.display = 'none';
-    const elBelow = document.elementFromPoint(t.clientX, t.clientY);
-    touch.cloneEl.style.display = '';
-    const dropTarget = elBelow && (elBelow.closest('.kanban-tasks') ||
-        elBelow.closest('.kanban-trash'));
-    if (dropTarget)
-        dropTarget.classList.add('drag-over');
-}
-function handleTouchEnd(e) {
-    if (!touch.cloneEl || !touch.taskId)
+    e.preventDefault();
+    if (!touch.cloneEl || !touch.sourceEl)
         return;
-    const t = e.changedTouches[0];
-    // クローン削除・透明度リセット
-    document.body.removeChild(touch.cloneEl);
-    touch.cloneEl = null;
-    if (touch.sourceEl) {
-        touch.sourceEl.style.opacity = '';
+    const rect = touch.sourceEl.getBoundingClientRect();
+    touch.cloneEl.style.left = (rect.left + dx) + 'px';
+    touch.cloneEl.style.top = (rect.top + dy) + 'px';
+    // ゾーンのハイライト
+    const overlay = document.getElementById('dragOverlay');
+    if (overlay && overlay.classList.contains('active')) {
+        overlay.querySelectorAll('.drag-zone').forEach(z => z.classList.remove('drag-zone-hover'));
+        touch.cloneEl.style.display = 'none';
+        const elBelow = document.elementFromPoint(t.clientX, t.clientY);
+        touch.cloneEl.style.display = '';
+        const zone = elBelow && elBelow.closest('.drag-zone');
+        if (zone)
+            zone.classList.add('drag-zone-hover');
+    }
+}
+function handleTouchEnd(e, task, card) {
+    if (!touch.taskId)
+        return;
+    if (touch.isDragging) {
+        if (touch.cloneEl) {
+            document.body.removeChild(touch.cloneEl);
+            touch.cloneEl = null;
+        }
+        if (touch.sourceEl) {
+            touch.sourceEl.style.opacity = '';
+            touch.sourceEl = null;
+        }
+        const t = e.changedTouches[0];
+        const elBelow = document.elementFromPoint(t.clientX, t.clientY);
+        const zone = elBelow && elBelow.closest('.drag-zone');
+        if (zone && touch.taskId) {
+            executeDragAction(zone.dataset.action || '', touch.taskId);
+        }
+        else {
+            renderAll();
+        }
+        hideDragOverlay();
+        touch.taskId = null;
+        touch.isDragging = false;
+    }
+    else {
+        // ダブルタップ検出
+        const now = Date.now();
+        if (now - lastTapTime < 300 && lastTapTaskId === task.id) {
+            startEdit(task, card);
+            lastTapTime = 0;
+            lastTapTaskId = null;
+        }
+        else {
+            lastTapTime = now;
+            lastTapTaskId = task.id;
+        }
+        touch.taskId = null;
         touch.sourceEl = null;
     }
-    clearAllDragOver();
-    // ドロップ先を判定
-    const elBelow = document.elementFromPoint(t.clientX, t.clientY);
-    if (!elBelow) {
-        touch.taskId = null;
-        return;
-    }
-    const tasksEl = elBelow.closest('.kanban-tasks');
-    const trashEl = elBelow.closest('.kanban-trash');
-    if (tasksEl) {
-        const column = tasksEl.closest('.kanban-column');
-        if (column)
-            moveTask(touch.taskId, column.dataset.status || '');
-    }
-    else if (trashEl) {
-        deleteTask(touch.taskId);
-    }
-    touch.taskId = null;
 }
 // =========================================================
 // 入力イベント
@@ -250,38 +366,15 @@ function handleInputKeypress(e) {
     }
 }
 // =========================================================
-// ドロップゾーン初期化
+// 初期化
 // =========================================================
-function initializeDropZones() {
-    document.querySelectorAll('.kanban-tasks').forEach(container => {
-        const column = container.closest('.kanban-column');
-        const status = column ? column.dataset.status || '' : '';
-        container.addEventListener('dragover', handleDropZoneDragOver);
-        container.addEventListener('dragleave', handleDropZoneDragLeave);
-        container.addEventListener('drop', (e) => handleDrop(e, status));
-    });
-    const trash = document.getElementById('trashArea');
-    if (trash) {
-        trash.addEventListener('dragover', handleDropZoneDragOver);
-        trash.addEventListener('dragleave', (e) => {
-            const target = e.currentTarget;
-            if (target.contains(e.relatedTarget))
-                return;
-            target.classList.remove('drag-over');
-        });
-        trash.addEventListener('drop', (e) => handleTrashDrop(e));
-    }
-}
 function initializeInputs() {
     document.querySelectorAll('.kanban-input').forEach(el => {
         el.addEventListener('keypress', (e) => handleInputKeypress(e));
     });
 }
-// =========================================================
-// 初期化
-// =========================================================
 document.addEventListener('DOMContentLoaded', () => {
-    initializeDropZones();
+    initializeDragOverlay();
     initializeInputs();
     renderAll();
 });

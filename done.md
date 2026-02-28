@@ -1,5 +1,9 @@
 # 完了タスク
 
+## 一時タスク画面の実装
+- **実装内容**: カンバンボード型の一時タスク画面に2つの機能を追加。①インライン編集：ダブルクリック（PC）またはダブルタップ（モバイル、300ms以内）でタスクをテキスト入力欄に切り替えて編集可能。Enterで保存、Escapeでキャンセル、フォーカス外れで保存。②5ゾーンドラッグオーバーレイ：ドラッグ開始時に全画面オーバーレイを表示し、「未着手」「進行中」「終了」「削除」「キャンセル」の5ゾーンを提示。PCはHTML5 Drag & Drop（requestAnimationFrameでドラッグ画像キャプチャ後に表示）、モバイルはタッチイベント（8px移動でドラッグ検出）に対応。既存のゴミ箱エリアを削除し、オーバーレイに集約。TypeScript/CSS/HTMLを修正し、テスト3件全通過。
+- **実装日時**: 2026-03-01 03:55
+
 ## jsファイルをts運用に変える
 - **実装内容**: 8つのJSファイル（app.js, label-settings.js, markdown-lite.js, memo.js, shopping.js, task.js, transaction.js, temp_task.js）をTypeScriptに移行。`src/ts/` をTypeScriptソースディレクトリとして新設。`tsconfig.json`（target: ES2017, module: none, strict: true）と `src/ts/globals.d.ts`（Chart.js CDN型定義・Bootstrap 4 jQuery modal拡張・Window拡張・グローバル変数宣言）を作成。全ファイルに型アノテーションを付与し、`instanceof HTMLFormElement` によるDOM型の安全な絞り込み、ジェネリクス付き `querySelectorAll<HTMLElement>()` 等のTypeScriptイディオムを適用。`npm install && npm run build` でエラーなしにコンパイル完了。`biome.json` にコンパイル済みJSを除外設定追加、`.gitignore` に `node_modules/` 追加、`CLAUDE.md` にTypeScriptコーディング規約を追記。
 - **実装日時**: 2026-03-01 02:30

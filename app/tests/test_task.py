@@ -576,7 +576,7 @@ class RecurringTaskTest(TestCase):
 
     def test_recurring_task_creates_child_tasks(self) -> None:
         """繰り返しタスクが子タスクを正しく生成するかのテスト"""
-        from app.task.views import create_recurring_tasks
+        from app.task.services import create_recurring_tasks
 
         parent_task = Task.objects.create(
             user=self.user,
@@ -604,7 +604,7 @@ class RecurringTaskTest(TestCase):
 
     def test_recurring_task_without_start_date_no_children(self) -> None:
         """開始日なしの繰り返しタスクは子タスクを生成しないテスト"""
-        from app.task.views import create_recurring_tasks
+        from app.task.services import create_recurring_tasks
 
         parent_task = Task.objects.create(
             user=self.user,
@@ -623,7 +623,7 @@ class RecurringTaskTest(TestCase):
 
     def test_delete_parent_task_deletes_children(self) -> None:
         """親タスク削除時に子タスクもカスケード削除されるテスト"""
-        from app.task.views import create_recurring_tasks
+        from app.task.services import create_recurring_tasks
 
         parent_task = Task.objects.create(
             user=self.user,
@@ -649,7 +649,7 @@ class RecurringTaskTest(TestCase):
 
     def test_update_recurring_task_regenerates_children(self) -> None:
         """繰り返しタスクの更新時に子タスクが再生成されるテスト"""
-        from app.task.views import create_recurring_tasks
+        from app.task.services import create_recurring_tasks
 
         parent_task = Task.objects.create(
             user=self.user,
@@ -679,7 +679,7 @@ class RecurringTaskTest(TestCase):
 
     def test_weekly_recurring_task_dates(self) -> None:
         """毎週繰り返しタスクの日付が正しく設定されるテスト"""
-        from app.task.views import create_recurring_tasks
+        from app.task.services import create_recurring_tasks
 
         start = timezone.now()
         parent_task = Task.objects.create(
@@ -701,7 +701,7 @@ class RecurringTaskTest(TestCase):
 
     def test_monthly_recurring_task_dates(self) -> None:
         """毎月繰り返しタスクの日付が正しく設定されるテスト"""
-        from app.task.views import create_recurring_tasks
+        from app.task.services import create_recurring_tasks
         from dateutil.relativedelta import relativedelta
 
         start = timezone.now()

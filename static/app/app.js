@@ -1,13 +1,13 @@
+"use strict";
 function getCookie(name) {
-    if (!document.cookie || document.cookie === '') return null;
+    if (!document.cookie || document.cookie === '')
+        return null;
     const found = document.cookie.split(';')
         .map(c => c.trim())
         .find(c => c.startsWith(`${name}=`));
     return found ? decodeURIComponent(found.substring(name.length + 1)) : null;
 }
-
 const csrftoken = getCookie('csrftoken');
-
 // メッセージダイアログを自動表示
 document.addEventListener('DOMContentLoaded', () => {
     const dialog = document.getElementById('messageDialog');
@@ -17,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => closeMessageDialog(), 5000);
     }
 });
-
 // ダイアログを閉じる
 function closeMessageDialog() {
     const dialog = document.getElementById('messageDialog');
@@ -26,7 +25,6 @@ function closeMessageDialog() {
         setTimeout(() => { dialog.style.display = 'none'; }, 300);
     }
 }
-
 // 背景クリックでダイアログを閉じる
 document.addEventListener('click', (e) => {
     const dialog = document.getElementById('messageDialog');
@@ -34,7 +32,6 @@ document.addEventListener('click', (e) => {
         closeMessageDialog();
     }
 });
-
 // ESCキーでダイアログを閉じる
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {

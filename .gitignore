@@ -7,3 +7,4 @@
 *.ctl
 deploy.sh
 settings.local.json
+node_modules/

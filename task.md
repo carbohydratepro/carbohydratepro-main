@@ -6,25 +6,6 @@
   完了したタスクは自動的に done.md に移動されます。
 -->
 
-1. [ ] Service + Selector パターン導入: tasks
-    - app/task/services.py を作成し、タスク作成・更新・削除ロジックを分離する
-    - app/task/selectors.py を作成し、タスク一覧取得・フィルタリングクエリを分離する
-    - views.py を薄くし、サービス・セレクターを呼び出す形に変更する
-
-1. [ ] Service + Selector パターン導入: memo / shopping
-    - app/memo/services.py、app/memo/selectors.py を作成する
-    - app/shopping/services.py、app/shopping/selectors.py を作成する
-    - 各 views.py を薄くする
-
-1. [ ] auth_app/signals.py の整理（Service 層への集約）
-    - signals.py の肥大化している処理を users/services.py に移動する
-    - シグナル経由の副作用（メール送信・デフォルトデータ生成）を明示的な関数呼び出しに変える
-
-1. [ ] jsファイルをts運用に変える
-    - すべてのjsファイルをTSに変え、型安全性を向上させる
-    - TSファイルで記載することをルールに追加する
-
-
 1. [ ] すべてのpythonファイルに型をつける
 
 1. [ ] pythonのlinter指摘を解消する

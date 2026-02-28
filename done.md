@@ -1,5 +1,9 @@
 # 完了タスク
 
+## jsファイルをts運用に変える
+- **実装内容**: 8つのJSファイル（app.js, label-settings.js, markdown-lite.js, memo.js, shopping.js, task.js, transaction.js, temp_task.js）をTypeScriptに移行。`src/ts/` をTypeScriptソースディレクトリとして新設。`tsconfig.json`（target: ES2017, module: none, strict: true）と `src/ts/globals.d.ts`（Chart.js CDN型定義・Bootstrap 4 jQuery modal拡張・Window拡張・グローバル変数宣言）を作成。全ファイルに型アノテーションを付与し、`instanceof HTMLFormElement` によるDOM型の安全な絞り込み、ジェネリクス付き `querySelectorAll<HTMLElement>()` 等のTypeScriptイディオムを適用。`npm install && npm run build` でエラーなしにコンパイル完了。`biome.json` にコンパイル済みJSを除外設定追加、`.gitignore` に `node_modules/` 追加、`CLAUDE.md` にTypeScriptコーディング規約を追記。
+- **実装日時**: 2026-03-01 02:30
+
 ## 監視スクリプトの状態確認と改善
 - **実装内容**: 監視スクリプト（check_security_log, check_debug_log）の状況を確認し、Docker環境に統合。ホスト環境にcronがインストールされておらず、監視スクリプトが過去に一度も実行されていないことを確認。crontabにセキュリティログ監視（1分ごと）とデバッグログ監視（5分ごと）を追加。SECURITY_MONITORING_SETUP.mdをDocker環境向けに全面改訂（Windows環境の記述を削除、Docker環境での手動テスト方法を追記、トラブルシューティングをDocker向けに更新）。非推奨のcheck_security.sh/batと不要なbatファイル（check_security_only.bat, check_debug_only.bat）をすべて削除。スクリプトファイルに実行権限を付与。Docker管理方式を推奨実装として確定。
 - **実装日時**: 2026-02-15 19:07
@@ -19,6 +23,18 @@
 ## 設定ファイルの分割
 - **実装内容**: `project/settings.py` を `project/settings/` ディレクトリに分割。`base.py`（全環境共通）・`development.py`（開発用: DEBUG=True, SITE_PROTOCOL=http）・`production.py`（本番用: DEBUG=False, セキュリティヘッダー有効）・`test.py`（テスト用: locmemメール, MD5パスワードハッシュで高速化）の4ファイル構成に変更。旧 settings.py の LOGGING 重複定義（django.core.mail）を修正。`manage.py` のデフォルトを `project.settings.development`、`wsgi.py` のデフォルトを `project.settings.production` に更新。`docker-compose-dev.yml` の gunicorn・cron サービスに `DJANGO_SETTINGS_MODULE=project.settings.development` を明示設定。テストは `python manage.py test --settings=project.settings.test` で実行可能。全 293 件のテスト通過を確認。
 - **実装日時**: 2026-02-27 22:40
+
+## auth_app/signals.py の整理（Service 層への集約）
+- **実装内容**: `auth_app/services.py` を新規作成し、`get_client_ip`・`get_location_from_ip` をユーティリティ関数として移動。`create_default_user_data`（デフォルトデータ生成）・`record_login_success`（ログイン成功処理）・`record_login_failure`（ログイン失敗処理）・`notify_admin_login`（管理者ログイン通知）を実装。`auth_app/signals.py` をサービス呼び出しの薄いラッパーに整理し、`create_default_payment_method_and_category` のシグナルを削除。`auth_app/views.py` の `Signup.form_valid()` で `services.create_default_user_data(user)` を明示的に呼び出す形に変更。全 293 件のテスト通過を確認。
+- **実装日時**: 2026-02-28 20:56
+
+## Service + Selector パターン導入: memo / shopping
+- **実装内容**: `app/memo/selectors.py` を新規作成（`get_memo_types`・`get_memos`）。`app/memo/services.py` を新規作成（`ensure_default_memo_types` を `views.py` から移動）。`app/memo/views.py` を薄くし不要なimport（`django.db.models`・`Q`）を削除。`app/shopping/selectors.py` を新規作成（`get_shopping_items`・`get_one_time_items`・`get_recurring_items`）。`app/shopping/services.py` を新規作成（カウント増減ロジックを `update_item_count` として `views.py` から移動）。`app/shopping/views.py` を薄くし不要なimport（`Q`）を削除。全 293 件のテスト通過を確認。
+- **実装日時**: 2026-02-28 20:51
+
+## Service + Selector パターン導入: tasks
+- **実装内容**: `app/task/selectors.py` を新規作成し、クエリ・データ生成ロジックを `task_list` ビュー（201行）から切り出し（`get_day_view_tasks`・`apply_filters`・`build_gantt_data`・`get_all_user_tasks`・`get_month_tasks`・`build_calendar_data`・`build_task_api_json`・`get_labels`）。`app/task/services.py` を新規作成し、`create_recurring_tasks` を `views.py` から移動。`views.py` を 451行→191行に圧縮し、セレクター・サービスを呼び出す薄い形に変更。`test_task.py` の `create_recurring_tasks` インポートを `views` → `services` に更新。全 293 件のテスト通過を確認。
+- **実装日時**: 2026-02-28 19:20
 
 ## Service + Selector パターン導入: expenses
 - **実装内容**: `app/expenses/selectors.py` を新規作成し、クエリ・集計・グラフデータ生成ロジックを `expenses_list` ビュー（180行）から切り出し（`get_date_range`・`get_transactions`・`get_summary`・`build_category_chart_data`・`build_major_category_chart_data`・`build_daily_chart_data`・`get_payment_methods`・`get_categories`・`get_recurring_payments`）。`app/expenses/services.py` を新規作成し、ビジネスロジックを切り出し（`PAYMENT_METHOD_LIMIT`・`CATEGORY_LIMIT` 定数、`is_payment_method_limit_reached`・`is_category_limit_reached`・`execute_recurring_payment`）。`RecurringPayment.execute()` モデルメソッドを `services.execute_recurring_payment()` に移動・削除。`views.py` を 381行→196行に圧縮し、セレクター・サービスを呼び出す薄い形に変更。管理コマンド `execute_recurring_payments` を service 呼び出しに更新。テストの `recurring.execute()` を `services.execute_recurring_payment()` に更新。全 293 件のテスト通過を確認。

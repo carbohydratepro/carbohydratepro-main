@@ -44,7 +44,8 @@
       "venv",
       "static_root/admin",
       "*.min.js",
-      "*.min.css"
+      "*.min.css",
+      "static/app/*.js"
     ]
   }
 }

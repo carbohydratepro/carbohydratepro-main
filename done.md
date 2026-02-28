@@ -1,5 +1,9 @@
 # 完了タスク
 
+## 一時タスク画面の実装
+- **実装内容**: 既存のカンバンボードを拡張。①インライン編集機能：タスクカードのダブルクリック（PC）またはダブルタップ（モバイル、300ms以内の2タップ）で編集モードに入り、Enter確定・Escキャンセル・フォーカス外れで保存。②ドラッグオーバーレイUI：ドラッグ開始時に全画面オーバーレイを表示し「未着手」「進行中」「終了」「削除」「キャンセル」の5ゾーンを提示。PC（HTML5 D&D）とモバイル（タッチ + 移動閾値10px）の両方に対応。タッチはDRAG_THRESHOLDを超えた移動でドラッグ判定（ドラッグ前はタップと区別）。HTMLからゴミ箱エリアを削除しオーバーレイの削除ゾーンに統合。CSSに`.drag-overlay`・`.drag-zone`・`.kanban-task-edit-input`を追加。TypeScriptを全面改訂（TouchState に isDragging 追加、doubleTapState による二重タップ検出）。ビルドエラーなし。既存55テスト全通過。
+- **実装日時**: 2026-03-01 02:55
+
 ## jsファイルをts運用に変える
 - **実装内容**: 8つのJSファイル（app.js, label-settings.js, markdown-lite.js, memo.js, shopping.js, task.js, transaction.js, temp_task.js）をTypeScriptに移行。`src/ts/` をTypeScriptソースディレクトリとして新設。`tsconfig.json`（target: ES2017, module: none, strict: true）と `src/ts/globals.d.ts`（Chart.js CDN型定義・Bootstrap 4 jQuery modal拡張・Window拡張・グローバル変数宣言）を作成。全ファイルに型アノテーションを付与し、`instanceof HTMLFormElement` によるDOM型の安全な絞り込み、ジェネリクス付き `querySelectorAll<HTMLElement>()` 等のTypeScriptイディオムを適用。`npm install && npm run build` でエラーなしにコンパイル完了。`biome.json` にコンパイル済みJSを除外設定追加、`.gitignore` に `node_modules/` 追加、`CLAUDE.md` にTypeScriptコーディング規約を追記。
 - **実装日時**: 2026-03-01 02:30

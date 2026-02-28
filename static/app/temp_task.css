@@ -10,7 +10,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 8px;
 }
 
 .temp-task-title {
@@ -172,6 +172,11 @@
     cursor: grabbing;
 }
 
+.kanban-task-card.editing {
+    cursor: default;
+    box-shadow: 0 0 0 2px #007bff;
+}
+
 .kanban-task-text {
     flex: 1;
     word-break: break-word;
@@ -179,6 +184,21 @@
     line-height: 1.4;
     color: #333;
     margin-right: 6px;
+}
+
+/* インライン編集入力 */
+.kanban-task-edit-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #333;
+    background: transparent;
+    padding: 0;
+    margin-right: 6px;
+    width: 100%;
 }
 
 .kanban-task-delete {
@@ -198,36 +218,6 @@
     color: #dc3545;
 }
 
-/* ゴミ箱エリア */
-.kanban-trash {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 16px;
-    padding: 14px;
-    border: 2px dashed #dee2e6;
-    border-radius: 10px;
-    color: #bbb;
-    transition: all 0.2s;
-    background: transparent;
-    cursor: default;
-}
-
-.kanban-trash .fas {
-    font-size: 1.2rem;
-}
-
-.kanban-trash.drag-over {
-    background-color: #fff5f5;
-    border-color: #dc3545;
-    color: #dc3545;
-}
-
-.trash-label {
-    font-size: 0.875rem;
-}
-
 /* クローン（タッチドラッグ用） */
 .touch-clone {
     position: fixed;
@@ -237,6 +227,77 @@
     transform: rotate(2deg) scale(1.03);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
     border-radius: 7px;
+}
+
+/* ドラッグオーバーレイ */
+.drag-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.78);
+    z-index: 1000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    backdrop-filter: blur(3px);
+}
+
+.drag-overlay.active {
+    display: flex;
+}
+
+.drag-overlay-label {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.95rem;
+    margin: 0;
+    letter-spacing: 0.03em;
+}
+
+.drag-zones {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 680px;
+    padding: 0 16px;
+}
+
+.drag-zone {
+    width: 120px;
+    height: 120px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    border: 3px solid transparent;
+    user-select: none;
+}
+
+.drag-zone i {
+    font-size: 28px;
+}
+
+.drag-zone-todo   { background: rgba(108, 117, 125, 0.85); }
+.drag-zone-doing  { background: rgba(0, 123, 255, 0.85); }
+.drag-zone-done   { background: rgba(40, 167, 69, 0.85); }
+.drag-zone-delete { background: rgba(220, 53, 69, 0.85); }
+.drag-zone-cancel { background: rgba(60, 60, 60, 0.7); border-color: rgba(255, 255, 255, 0.3); }
+
+.drag-zone.drag-over {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 3px white, 0 8px 24px rgba(0, 0, 0, 0.4);
+    border-color: white;
 }
 
 /* モバイル対応 */
@@ -259,13 +320,20 @@
         min-height: 120px;
     }
 
-    .kanban-trash {
-        margin-top: 10px;
-        padding: 12px;
+    .drag-zone {
+        width: 90px;
+        height: 90px;
+        font-size: 0.72rem;
+        border-radius: 12px;
+        gap: 7px;
     }
 
-    .trash-label {
-        font-size: 0.8rem;
+    .drag-zone i {
+        font-size: 22px;
+    }
+
+    .drag-zones {
+        gap: 10px;
     }
 }
 
@@ -289,5 +357,20 @@
 
     .kanban-task-text {
         font-size: 0.82rem;
+    }
+
+    .drag-zone {
+        width: 75px;
+        height: 75px;
+        font-size: 0.67rem;
+        border-radius: 10px;
+    }
+
+    .drag-zone i {
+        font-size: 18px;
+    }
+
+    .drag-zones {
+        gap: 8px;
     }
 }

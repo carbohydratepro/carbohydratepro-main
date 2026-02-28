@@ -14,11 +14,6 @@
         </button>
     </div>
 
-    <p class="text-muted small mb-3">
-        <i class="fas fa-info-circle"></i>
-        タスクをダブルクリック（またはダブルタップ）で編集。ドラッグしてゾーンへドロップで状態変更。
-    </p>
-
     <div class="kanban-board" id="kanbanBoard">
         <!-- やること (Todo) -->
         <div class="kanban-column" id="col-todo" data-status="todo">
@@ -74,32 +69,11 @@
             <div class="kanban-tasks" id="tasks-done" data-status="done"></div>
         </div>
     </div>
-</div>
 
-<!-- ドラッグオーバーレイ（ドラッグ中のみ表示） -->
-<div class="drag-overlay" id="dragOverlay">
-    <p class="drag-overlay-label">ドロップ先を選んでください</p>
-    <div class="drag-zones">
-        <div class="drag-zone drag-zone-todo" data-action="todo">
-            <i class="fas fa-circle"></i>
-            <span>未着手</span>
-        </div>
-        <div class="drag-zone drag-zone-doing" data-action="doing">
-            <i class="fas fa-spinner"></i>
-            <span>進行中</span>
-        </div>
-        <div class="drag-zone drag-zone-done" data-action="done">
-            <i class="fas fa-check-circle"></i>
-            <span>終了</span>
-        </div>
-        <div class="drag-zone drag-zone-delete" data-action="delete">
-            <i class="fas fa-trash"></i>
-            <span>削除</span>
-        </div>
-        <div class="drag-zone drag-zone-cancel" data-action="cancel">
-            <i class="fas fa-times"></i>
-            <span>キャンセル</span>
-        </div>
+    <!-- ゴミ箱エリア -->
+    <div class="kanban-trash" id="trashArea">
+        <i class="fas fa-trash-alt"></i>
+        <span class="trash-label">ここにドラッグして削除</span>
     </div>
 </div>
 

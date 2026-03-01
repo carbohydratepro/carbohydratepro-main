@@ -56,6 +56,10 @@
 - **実装内容**: `requirements.txt` に `factory-boy` を追加。`tests/factories.py` を新規作成し、UserFactory・LoginHistoryFactory・EmailVerificationTokenFactory・PaymentMethodFactory・CategoryFactory・TransactionFactory・RecurringPaymentFactory・TaskLabelFactory・TaskFactory・MemoTypeFactory・MemoFactory・ShoppingItemFactory・ContactMessageFactory の全13クラスを定義。`tests/__init__.py` を追加。全5テストファイル（test_auth.py・test_expenses.py・test_task.py・test_memo.py・test_shopping.py）の setUp() を Factory 記述に移行。`get_user_model()` を使った手書きユーザー生成を `UserFactory()` に置換。他ユーザー生成も `UserFactory()` に簡略化。`client.login(username='test@example.com', ...)` を `client.login(username=self.user.email, ...)` に修正。ハードコードされたメールアドレスのアサーション（`assertIn('test@example.com', str(...))`）を `self.user.email` 参照に修正。全 293 件のテスト通過を確認。
 - **実装日時**: 2026-02-28 19:00
 
+## タスク管理画面のバグ修正
+- **実装内容**: `src/ts/task.ts` を修正し以下を実装。①エラーメッセージの詳細表示：AJAXフォーム送信失敗時に、サーバーから返ったエラーをフィールド別に表示（フィールド固有エラーはフィールドの隣、非フィールドエラーはモーダル上部のアラートで表示）。関数名は `displayTaskFormErrors`（`transaction.ts` の `displayFormErrors` との重複を回避）。②時刻フィールドを5分刻みのセレクトボックスに変換：`initializeTimeSelects()` で `<input type="time">` を `<select>` に置き換え、00:00〜23:55 を5分刻みで選択可能に。③デフォルト時刻の設定：新規作成時に開始時刻=現在時刻（5分丸め）、終了時刻=1時間後をデフォルト設定（`setDefaultTimes()`）。④開始日変更時の終了日の自動連動：`handleStartDateChange()` で前回の開始日から期間差を維持したまま終了日を更新。⑤終了日ピッカーの自動オープン：開始日選択後に `showPicker()` / `focus()` で終了日入力を自動フォーカス。⑥開始日時＞終了日時の自動修正：`validateAndFixDateTimeOrder()` で開始日時が終了日時を超えた場合、終了日＝開始日・終了時刻＝開始時刻＋1時間に自動修正。TypeScriptコンパイル（`npm run build`）後、コンテナを再起動して反映。
+- **実装日時**: 2026-03-01 13:32
+
 ## 家計簿：定期的支払いの自動化
 - **実装内容**: RecurringPaymentモデルの追加（毎日・毎週・毎月・毎年の頻度設定、曜日・日・月の指定、有効/無効切り替え、実行日追跡）。定期支払いの一覧表示・新規作成・編集・削除・有効/無効切り替え・手動実行のビューとテンプレートを実装。バリデーション付きフォーム（頻度に応じた必須フィールドの制御）。管理コマンド`execute_recurring_payments`による自動実行対応。家計簿一覧画面に定期支払い管理画面へのリンクを追加。テスト77件全てパス。
 - **実装日時**: 2026-02-10 01:39

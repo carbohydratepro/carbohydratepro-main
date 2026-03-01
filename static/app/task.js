@@ -174,8 +174,42 @@ function deleteTaskFromList(taskId) {
 function serializeTaskForm(form) {
     return new URLSearchParams(new FormData(form)).toString();
 }
+// フォームのエラーメッセージを表示する
+function displayTaskFormErrors(form, errors) {
+    // 既存の動的エラーメッセージをクリア
+    form.querySelectorAll('.dynamic-form-error').forEach(el => el.remove());
+    const nonFieldErrors = [];
+    for (const [field, messages] of Object.entries(errors)) {
+        if (field === '__all__') {
+            nonFieldErrors.push(...messages);
+        }
+        else {
+            // フィールド固有のエラーをフィールドの隣に表示
+            const fieldEl = form.querySelector(`[name="${field}"], #id_${field}`);
+            if (fieldEl === null || fieldEl === void 0 ? void 0 : fieldEl.parentNode) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'text-danger small dynamic-form-error mt-1';
+                errorDiv.textContent = messages.join(' / ');
+                fieldEl.parentNode.appendChild(errorDiv);
+            }
+            else {
+                nonFieldErrors.push(...messages);
+            }
+        }
+    }
+    if (nonFieldErrors.length > 0) {
+        const modalBody = form.querySelector('.modal-body');
+        if (modalBody) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger dynamic-form-error';
+            alertDiv.innerHTML = nonFieldErrors.map(e => `<div>${e}</div>`).join('');
+            modalBody.prepend(alertDiv);
+        }
+    }
+}
 // タスクモーダルフォーム送信の共通処理
 async function submitTaskModalForm(form, modalSelector) {
+    var _a;
     try {
         const response = await fetch(form.action, {
             method: 'POST',
@@ -191,10 +225,10 @@ async function submitTaskModalForm(form, modalSelector) {
             location.reload();
         }
         else {
-            alert('エラーが発生しました。入力内容を確認してください。');
+            displayTaskFormErrors(form, (_a = data.errors) !== null && _a !== void 0 ? _a : {});
         }
     }
-    catch (_a) {
+    catch (_b) {
         alert('保存に失敗しました。');
     }
 }
@@ -337,8 +371,148 @@ function initializeGanttScroll() {
     const containerWidth = ganttContainer.clientWidth;
     ganttContainer.scrollLeft = Math.max(0, scrollPosition - (containerWidth / 2));
 }
+// 時刻を5分刻みで丸める
+function roundToNearest5Minutes(date) {
+    const ms = 5 * 60 * 1000;
+    return new Date(Math.round(date.getTime() / ms) * ms);
+}
+// 時刻をHH:MM形式にフォーマット
+function formatTimeHHMM(date) {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+}
+// 時刻フィールドをセレクトボックス（5分刻み）に置き換える
+function initializeTimeSelects() {
+    ['id_start_time', 'id_end_time'].forEach(inputId => {
+        const inputEl = document.getElementById(inputId);
+        if (!inputEl || inputEl.tagName === 'SELECT')
+            return;
+        const input = inputEl;
+        const select = document.createElement('select');
+        select.id = input.id;
+        select.name = input.name;
+        select.className = input.className;
+        const emptyOption = document.createElement('option');
+        emptyOption.value = '';
+        emptyOption.textContent = '-- 時刻を選択 --';
+        select.appendChild(emptyOption);
+        for (let hour = 0; hour < 24; hour++) {
+            for (let minute = 0; minute < 60; minute += 5) {
+                const option = document.createElement('option');
+                const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                option.value = timeStr;
+                option.textContent = timeStr;
+                select.appendChild(option);
+            }
+        }
+        if (input.value) {
+            select.value = input.value;
+        }
+        input.replaceWith(select);
+    });
+}
+// デフォルト時刻を設定（新規作成時のみ：値が空の場合）
+function setDefaultTimes() {
+    const startTimeEl = document.getElementById('id_start_time');
+    const endTimeEl = document.getElementById('id_end_time');
+    if (!startTimeEl || !endTimeEl)
+        return;
+    const startTimeInput = startTimeEl;
+    const endTimeInput = endTimeEl;
+    if (startTimeInput.value || endTimeInput.value)
+        return;
+    const now = new Date();
+    const rounded = roundToNearest5Minutes(now);
+    const oneHourLater = new Date(rounded.getTime() + 60 * 60 * 1000);
+    startTimeInput.value = formatTimeHHMM(rounded);
+    endTimeInput.value = formatTimeHHMM(oneHourLater);
+}
+// 開始日変更時のイベント処理（終了日を同じ幅で移動・終了日ピッカーを自動オープン）
+function handleStartDateChange(event) {
+    var _a, _b, _c;
+    const startDateInput = event.target;
+    const form = startDateInput.closest('form');
+    if (!form)
+        return;
+    const endDateInput = form.querySelector('#id_end_date');
+    if (!endDateInput)
+        return;
+    const previousStartDateStr = (_a = startDateInput.dataset.previousValue) !== null && _a !== void 0 ? _a : '';
+    const currentStartDateStr = startDateInput.value;
+    if (!currentStartDateStr) {
+        startDateInput.dataset.previousValue = '';
+        return;
+    }
+    if (previousStartDateStr && endDateInput.value) {
+        // 同じ幅を保ったまま終了日を更新
+        const prevStart = new Date(previousStartDateStr);
+        const prevEnd = new Date(endDateInput.value);
+        if (!isNaN(prevStart.getTime()) && !isNaN(prevEnd.getTime())) {
+            const diffMs = prevEnd.getTime() - prevStart.getTime();
+            const newStart = new Date(currentStartDateStr);
+            const newEnd = new Date(newStart.getTime() + diffMs);
+            endDateInput.value = newEnd.toISOString().split('T')[0];
+        }
+    }
+    else if (!endDateInput.value) {
+        endDateInput.value = currentStartDateStr;
+    }
+    startDateInput.dataset.previousValue = currentStartDateStr;
+    // 終了日ピッカーを自動で開く
+    try {
+        (_c = (_b = endDateInput).showPicker) === null || _c === void 0 ? void 0 : _c.call(_b);
+    }
+    catch (_d) {
+        endDateInput.focus();
+    }
+    validateAndFixDateTimeOrder(form);
+}
+// 開始日時 > 終了日時の場合に自動修正する
+function validateAndFixDateTimeOrder(form) {
+    var _a, _b, _c;
+    const startDateInput = form.querySelector('#id_start_date');
+    const endDateInput = form.querySelector('#id_end_date');
+    const startTimeEl = form.querySelector('#id_start_time');
+    const endTimeEl = form.querySelector('#id_end_time');
+    const allDayCheckbox = form.querySelector('#id_all_day');
+    if (!startDateInput || !endDateInput)
+        return;
+    const startDateStr = startDateInput.value;
+    const endDateStr = endDateInput.value;
+    if (!startDateStr || !endDateStr)
+        return;
+    const isAllDay = (_a = allDayCheckbox === null || allDayCheckbox === void 0 ? void 0 : allDayCheckbox.checked) !== null && _a !== void 0 ? _a : false;
+    const startTimeStr = isAllDay ? '00:00' : ((_b = startTimeEl === null || startTimeEl === void 0 ? void 0 : startTimeEl.value) !== null && _b !== void 0 ? _b : '');
+    const endTimeStr = isAllDay ? '23:59' : ((_c = endTimeEl === null || endTimeEl === void 0 ? void 0 : endTimeEl.value) !== null && _c !== void 0 ? _c : '');
+    if (!isAllDay && (!startTimeStr || !endTimeStr))
+        return;
+    const startDatetime = new Date(`${startDateStr}T${startTimeStr}:00`);
+    const endDatetime = new Date(`${endDateStr}T${endTimeStr}:00`);
+    if (isNaN(startDatetime.getTime()) || isNaN(endDatetime.getTime()))
+        return;
+    if (startDatetime > endDatetime) {
+        // 終了日を開始日に合わせる
+        endDateInput.value = startDateStr;
+        if (!isAllDay && startTimeEl && endTimeEl) {
+            // 終了時刻を開始時刻の1時間後に設定
+            const parts = startTimeStr.split(':');
+            const startHour = parseInt(parts[0]);
+            const startMinute = parseInt(parts[1]);
+            const endHour = startHour + 1;
+            if (endHour >= 24) {
+                endTimeEl.value = '23:55';
+            }
+            else {
+                endTimeEl.value = `${String(endHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}`;
+            }
+        }
+    }
+}
 // タスクフォーム制御の初期化
 function initializeTaskFormControls() {
+    // 時刻フィールドをセレクトボックスに変換（他の処理より先に行う）
+    initializeTimeSelects();
     const allDayCheckbox = document.querySelector('#id_all_day');
     if (allDayCheckbox) {
         toggleTimeFields();
@@ -348,6 +522,24 @@ function initializeTaskFormControls() {
     if (frequencySelect) {
         toggleRepeatFields();
         frequencySelect.addEventListener('change', toggleRepeatFields);
+    }
+    // デフォルト時刻を設定（新規作成時のみ）
+    setDefaultTimes();
+    // 開始日変更イベントを設定
+    const startDateInput = document.querySelector('#id_start_date');
+    if (startDateInput) {
+        startDateInput.dataset.previousValue = startDateInput.value;
+        startDateInput.addEventListener('change', handleStartDateChange);
+    }
+    // 日時の整合性チェックイベントを設定
+    const form = document.querySelector('#createTaskForm, #editTaskForm');
+    if (form) {
+        ['#id_end_date', '#id_start_time', '#id_end_time'].forEach(selector => {
+            var _a;
+            (_a = form.querySelector(selector)) === null || _a === void 0 ? void 0 : _a.addEventListener('change', () => {
+                validateAndFixDateTimeOrder(form);
+            });
+        });
     }
 }
 // 時間フィールドの表示/非表示を切り替え
@@ -359,9 +551,9 @@ function toggleTimeFields() {
         timeFields.forEach(field => {
             field.style.display = isAllDay ? 'none' : 'block';
             if (isAllDay) {
-                const input = field.querySelector('input[type="time"]');
-                if (input)
-                    input.value = '';
+                const timeControl = field.querySelector('input[type="time"], select');
+                if (timeControl)
+                    timeControl.value = '';
             }
         });
     }

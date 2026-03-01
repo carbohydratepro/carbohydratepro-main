@@ -221,9 +221,24 @@ function createLineChartConfig(
             responsive: true,
             maintainAspectRatio: false,
             animation: { duration: 2000, easing: 'easeInOutQuart' },
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
             plugins: {
                 title: { display: true, text: '日別収支推移' },
                 legend: { display: true, position: 'bottom' },
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        label: (ctx: ChartTooltipContext) => {
+                            if (ctx.dataset.label === '基準線 (0円)') return '';
+                            const value = ctx.parsed.y;
+                            const formatted = value.toLocaleString('ja-JP');
+                            return `${ctx.dataset.label ?? ''}: ${formatted}円`;
+                        },
+                    },
+                },
             },
             scales: {
                 x: {

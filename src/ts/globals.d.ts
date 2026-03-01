@@ -23,13 +23,38 @@ interface ChartScaleOptions {
   beginAtZero?: boolean;
 }
 
+interface ChartTooltipCallbacks {
+  label?: (context: ChartTooltipContext) => string;
+  title?: (items: ChartTooltipContext[]) => string;
+}
+
+interface ChartTooltipContext {
+  dataset: ChartDataset;
+  datasetIndex: number;
+  dataIndex: number;
+  parsed: { x: number; y: number };
+  formattedValue: string;
+  label: string;
+}
+
 interface ChartOptions {
   responsive?: boolean;
   maintainAspectRatio?: boolean;
   animation?: { duration?: number; easing?: string };
+  interaction?: {
+    mode?: 'index' | 'nearest' | 'point' | 'dataset' | 'x' | 'y';
+    intersect?: boolean;
+    axis?: 'x' | 'y' | 'xy';
+  };
   plugins?: {
     title?: { display?: boolean; text?: string };
     legend?: { display?: boolean; position?: string };
+    tooltip?: {
+      enabled?: boolean;
+      mode?: string;
+      intersect?: boolean;
+      callbacks?: ChartTooltipCallbacks;
+    };
   };
   scales?: {
     x?: ChartScaleOptions;

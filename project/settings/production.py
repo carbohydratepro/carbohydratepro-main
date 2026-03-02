@@ -10,6 +10,9 @@ SITE_PROTOCOL = 'https'
 # Django 4.0+ の CSRF 検証で必要（Origin ヘッダーの許可リスト）
 CSRF_TRUSTED_ORIGINS = [f'{SITE_PROTOCOL}://{SITE_DOMAIN}']
 
+# CloudFront / ロードバランサー経由の HTTPS を Django に伝える
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # 本番環境では管理サイトをデフォルト無効化
 ADMIN_ENABLED = env.bool('ADMIN_ENABLED', default=False)  # noqa: F405
 

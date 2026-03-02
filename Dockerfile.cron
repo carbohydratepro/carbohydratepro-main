@@ -35,4 +35,6 @@ RUN chmod 0644 /etc/cron.d/recurring-payments
 RUN touch /var/log/cron.log
 
 # cronデーモンを起動し、ログを出力
-CMD cron && tail -f /var/log/cron.log
+# Docker の環境変数を /etc/environment に書き出すことで、
+# cron ジョブが PAM 経由で環境変数（DJANGO_SETTINGS_MODULE 等）を取得できるようにする
+CMD printenv >> /etc/environment && cron && tail -f /var/log/cron.log

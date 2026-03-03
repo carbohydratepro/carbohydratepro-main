@@ -2,9 +2,32 @@ from collections.abc import Callable
 from django.http import Http404, HttpRequest, HttpResponse
 from django.conf import settings
 from django.urls import resolve
+from django.shortcuts import render
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+class MaintenanceModeMiddleware:
+    """
+    メンテナンスモード中はメンテナンスページを表示するミドルウェア。
+    スタッフユーザーはメンテナンスページをバイパスできる。
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        if getattr(settings, 'MAINTENANCE_MODE', False):
+            # スタッフユーザーはメンテナンスページをスキップ
+            if request.user.is_authenticated and request.user.is_staff:
+                return self.get_response(request)
+            # 静的ファイルとメンテナンスページ自体はスルー
+            if request.path.startswith('/static/') or request.path.startswith('/media/'):
+                return self.get_response(request)
+            return render(request, 'maintenance.html', status=503)
+
+        return self.get_response(request)
 
 class AdminSecurityMiddleware:
     """

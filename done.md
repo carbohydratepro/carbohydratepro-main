@@ -1,5 +1,9 @@
 # 完了タスク
 
+## メンテナンスモードを実装する
+- **実装内容**: `MaintenanceModeMiddleware` を `project/middleware.py` に追加。`MAINTENANCE_MODE` 環境変数（デフォルト `False`）が `True` の場合、スタッフ以外のすべてのリクエストに HTTP 503 でメンテナンスページを返す。静的ファイルはメンテナンス中でも通過する。メンテナンスページ（`templates/maintenance.html`）はスタンドアロン HTML でFont Awesome アイコン・アニメーション・ユーモアのあるコメント付き。`project/settings/base.py` の `MIDDLEWARE` に追加。テスト4件を `project/tests/test_middleware.py` に追加。
+- **実装日時**: 2026-03-03 10:30
+
 ## 家計簿グラフの折れ線グラフのホバーアクションを有効にする
 - **実装内容**: Chart.js v4 の折れ線グラフ（日別収支推移）にホバーアクションを実装。`interaction: { mode: 'index', intersect: false }` を追加することで、ポイント非表示（pointRadius: 0）の状態でもマウスホバー時にツールチップが表示されるように修正。`plugins.tooltip.callbacks.label` をカスタマイズして「ラベル: ¥金額円」形式で表示し、基準線（0円）はツールチップから除外。`globals.d.ts` に `interaction`・`ChartTooltipCallbacks`・`ChartTooltipContext` の型定義を追加。PC/モバイル両グラフに適用。
 - **実装日時**: 2026-03-01 06:00

@@ -44,9 +44,13 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'project.middleware.AdminSecurityMiddleware',  # 管理サイトセキュリティ
+    'project.middleware.MaintenanceModeMiddleware',    # メンテナンスモード
+    'project.middleware.AdminSecurityMiddleware',      # 管理サイトセキュリティ
     'auth_app.middleware.EmailVerificationMiddleware',  # メール認証チェック
 ]
+
+# メンテナンスモード（True にするとメンテナンスページを表示）
+MAINTENANCE_MODE = env.bool('MAINTENANCE_MODE', default=False)
 
 ROOT_URLCONF = 'project.urls'
 

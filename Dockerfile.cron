@@ -31,6 +31,9 @@ COPY crontab /etc/cron.d/recurring-payments
 # cron設定ファイルのパーミッションを設定
 RUN chmod 0644 /etc/cron.d/recurring-payments
 
+# Windows 環境でファイルが CRLF になる場合に備えて LF に変換
+RUN sed -i 's/\r//g' /etc/cron.d/recurring-payments
+
 # cronログファイルを作成
 RUN touch /var/log/cron.log
 

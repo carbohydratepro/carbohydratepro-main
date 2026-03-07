@@ -5,6 +5,7 @@ from .expenses.models import PaymentMethod, Category, Transaction
 from .memo.models import Memo
 from .shopping.models import ShoppingItem
 from .task.models import TaskLabel, Task
+from .habit.models import Habit, HabitRecord
 
 class ContactMessage(models.Model):
     INQUIRY_TYPE_CHOICES = [

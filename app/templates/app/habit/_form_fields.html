@@ -1,0 +1,44 @@
+{% comment %}prefix: "add" または "edit"{% endcomment %}
+<div class="form-group">
+  <label class="small">習慣名</label>
+  <input type="text" name="title" id="{{ prefix }}Title" class="form-control" maxlength="100" placeholder="例: 読書、運動..." required>
+</div>
+<div class="form-group">
+  <label class="small d-block mb-1">種別</label>
+  <div class="row no-gutters">
+    <div class="col-6 pr-1">
+      <div class="habit-modal-positive selected" id="{{ prefix }}PositiveBtn" onclick="habitSelectPositive('{{ prefix }}', true)">
+        <i class="fas fa-leaf text-success"></i><br>
+        <small class="text-success font-weight-bold">良い習慣（緑）</small>
+      </div>
+    </div>
+    <div class="col-6 pl-1">
+      <div class="habit-modal-negative" id="{{ prefix }}NegativeBtn" onclick="habitSelectPositive('{{ prefix }}', false)">
+        <i class="fas fa-exclamation-triangle text-danger"></i><br>
+        <small class="text-danger font-weight-bold">悪い習慣（赤）</small>
+      </div>
+    </div>
+  </div>
+  <input type="hidden" name="is_positive" id="{{ prefix }}IsPositive" value="true">
+</div>
+<div class="form-group">
+  <label class="small">頻度</label>
+  <select name="frequency" id="{{ prefix }}Frequency" class="form-control" onchange="habitFreqChanged('{{ prefix }}')">
+    <option value="daily">毎日</option>
+    <option value="weekly">毎週</option>
+    <option value="monthly">毎月</option>
+  </select>
+</div>
+<div class="form-group">
+  <label class="small">係数（1〜10）: <span id="{{ prefix }}CoeffVal">1</span></label>
+  <input type="range" name="coefficient" id="{{ prefix }}Coefficient" class="form-control-range" min="1" max="10" step="1" value="1"
+    oninput="document.getElementById('{{ prefix }}CoeffVal').textContent = this.value">
+</div>
+<div class="form-group goal-field hidden" id="{{ prefix }}WeeklyGoalField">
+  <label class="small">週の目標回数（0=目標なし）</label>
+  <input type="number" name="weekly_goal" id="{{ prefix }}WeeklyGoal" class="form-control" min="0" max="7" value="0">
+</div>
+<div class="form-group goal-field hidden" id="{{ prefix }}MonthlyGoalField">
+  <label class="small">月の目標回数（0=目標なし）</label>
+  <input type="number" name="monthly_goal" id="{{ prefix }}MonthlyGoal" class="form-control" min="0" max="31" value="0">
+</div>

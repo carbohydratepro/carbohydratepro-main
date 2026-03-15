@@ -7,7 +7,9 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
 
-from app.task.models import Task, TaskLabel
+import json
+
+from app.task.models import Task, TaskLabel, TempTaskItem
 from app.task.forms import TaskForm, TaskLabelForm
 from tests.factories import UserFactory, TaskLabelFactory
 
@@ -814,3 +816,116 @@ class TempTaskBoardViewTest(TestCase):
         self.client.force_login(self.user)
         response = self.client.get(reverse('temp_task_board'))
         self.assertTemplateUsed(response, 'app/task/board.html')
+
+
+class TempTaskApiTest(TestCase):
+    """一時タスク API のテスト"""
+
+    def setUp(self) -> None:
+        self.user = UserFactory()
+        self.other_user = UserFactory()
+        self.client = Client()
+
+    def test_api_requires_login(self) -> None:
+        """未ログイン時はリダイレクトされることを確認"""
+        response = self.client.get(reverse('temp_task_api'))
+        self.assertIn(response.status_code, [301, 302])
+
+    def test_get_tasks_returns_empty_list(self) -> None:
+        """タスクなし時に空リストが返ることを確認"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('temp_task_api'))
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data['tasks'], [])
+
+    def test_create_task(self) -> None:
+        """タスク作成APIのテスト"""
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('temp_task_api'),
+            data=json.dumps({'title': 'テストタスク', 'status': 'todo'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 201)
+        data = json.loads(response.content)
+        self.assertEqual(data['title'], 'テストタスク')
+        self.assertEqual(data['status'], 'todo')
+        self.assertTrue(TempTaskItem.objects.filter(user=self.user, title='テストタスク').exists())
+
+    def test_create_task_invalid_status(self) -> None:
+        """不正なステータスで作成失敗することを確認"""
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('temp_task_api'),
+            data=json.dumps({'title': 'タスク', 'status': 'invalid'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_create_task_empty_title(self) -> None:
+        """空タイトルで作成失敗することを確認"""
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('temp_task_api'),
+            data=json.dumps({'title': '', 'status': 'todo'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_get_tasks_returns_only_own_tasks(self) -> None:
+        """自分のタスクのみ返ることを確認"""
+        TempTaskItem.objects.create(user=self.user, title='自分のタスク', status='todo')
+        TempTaskItem.objects.create(user=self.other_user, title='他人のタスク', status='todo')
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('temp_task_api'))
+        data = json.loads(response.content)
+        self.assertEqual(len(data['tasks']), 1)
+        self.assertEqual(data['tasks'][0]['title'], '自分のタスク')
+
+    def test_update_task(self) -> None:
+        """タスク更新APIのテスト"""
+        task = TempTaskItem.objects.create(user=self.user, title='元のタイトル', status='todo')
+        self.client.force_login(self.user)
+        response = self.client.put(
+            reverse('temp_task_detail_api', args=[task.id]),
+            data=json.dumps({'title': '新しいタイトル', 'status': 'doing'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        task.refresh_from_db()
+        self.assertEqual(task.title, '新しいタイトル')
+        self.assertEqual(task.status, 'doing')
+
+    def test_update_other_users_task_returns_404(self) -> None:
+        """他人のタスクを更新できないことを確認"""
+        task = TempTaskItem.objects.create(user=self.other_user, title='他人のタスク', status='todo')
+        self.client.force_login(self.user)
+        response = self.client.put(
+            reverse('temp_task_detail_api', args=[task.id]),
+            data=json.dumps({'title': '書き換え'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_delete_task(self) -> None:
+        """タスク削除APIのテスト"""
+        task = TempTaskItem.objects.create(user=self.user, title='削除するタスク', status='todo')
+        self.client.force_login(self.user)
+        response = self.client.delete(reverse('temp_task_detail_api', args=[task.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(TempTaskItem.objects.filter(id=task.id).exists())
+
+    def test_clear_all_tasks(self) -> None:
+        """全削除APIのテスト"""
+        TempTaskItem.objects.create(user=self.user, title='タスク1', status='todo')
+        TempTaskItem.objects.create(user=self.user, title='タスク2', status='doing')
+        TempTaskItem.objects.create(user=self.other_user, title='他人のタスク', status='todo')
+
+        self.client.force_login(self.user)
+        response = self.client.delete(reverse('temp_task_clear_api'))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(TempTaskItem.objects.filter(user=self.user).exists())
+        # 他人のタスクは削除されない
+        self.assertTrue(TempTaskItem.objects.filter(user=self.other_user).exists())

@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 
 from django.contrib import messages
@@ -7,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.timezone import make_aware
 
 from .forms import TaskForm, TaskLabelForm
-from .models import Task, TaskLabel
+from .models import Task, TaskLabel, TempTaskItem
 from . import selectors, services
 
 
@@ -148,8 +149,79 @@ def get_day_tasks(request: HttpRequest, date: str) -> JsonResponse:
 
 @login_required
 def temp_task_board(request: HttpRequest) -> HttpResponse:
-    """一時タスク管理ボード（LocalStorage使用）"""
+    """一時タスク管理ボード"""
     return render(request, 'app/task/board.html')
+
+
+@login_required
+def temp_task_api(request: HttpRequest) -> JsonResponse:
+    """一時タスク一覧取得・新規作成 API"""
+    if request.method == 'GET':
+        tasks = TempTaskItem.objects.filter(user=request.user)
+        data = [{'id': t.id, 'title': t.title, 'status': t.status, 'order': t.order} for t in tasks]
+        return JsonResponse({'tasks': data})
+
+    if request.method == 'POST':
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': '不正なリクエストです'}, status=400)
+
+        title = body.get('title', '').strip()
+        status = body.get('status', 'todo')
+
+        if not title:
+            return JsonResponse({'error': 'タイトルは必須です'}, status=400)
+        if status not in ('todo', 'doing', 'done'):
+            return JsonResponse({'error': '不正なステータスです'}, status=400)
+
+        order = TempTaskItem.objects.filter(user=request.user).count()
+        task = TempTaskItem.objects.create(user=request.user, title=title, status=status, order=order)
+        return JsonResponse({'id': task.id, 'title': task.title, 'status': task.status, 'order': task.order}, status=201)
+
+    return JsonResponse({'error': 'メソッドが許可されていません'}, status=405)
+
+
+@login_required
+def temp_task_detail_api(request: HttpRequest, task_id: int) -> JsonResponse:
+    """一時タスク更新・削除 API"""
+    task = get_object_or_404(TempTaskItem, id=task_id, user=request.user)
+
+    if request.method == 'PUT':
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': '不正なリクエストです'}, status=400)
+
+        if 'title' in body:
+            title = body['title'].strip()
+            if not title:
+                return JsonResponse({'error': 'タイトルは必須です'}, status=400)
+            task.title = title
+
+        if 'status' in body:
+            status = body['status']
+            if status not in ('todo', 'doing', 'done'):
+                return JsonResponse({'error': '不正なステータスです'}, status=400)
+            task.status = status
+
+        task.save()
+        return JsonResponse({'id': task.id, 'title': task.title, 'status': task.status, 'order': task.order})
+
+    if request.method == 'DELETE':
+        task.delete()
+        return JsonResponse({'success': True})
+
+    return JsonResponse({'error': 'メソッドが許可されていません'}, status=405)
+
+
+@login_required
+def temp_task_clear_api(request: HttpRequest) -> JsonResponse:
+    """一時タスク全削除 API"""
+    if request.method == 'DELETE':
+        TempTaskItem.objects.filter(user=request.user).delete()
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'メソッドが許可されていません'}, status=405)
 
 
 @login_required

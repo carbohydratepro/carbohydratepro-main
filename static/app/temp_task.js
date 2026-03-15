@@ -1,10 +1,11 @@
 "use strict";
 // 一時タスク管理（カンバンボード）用 TypeScript
-const TEMP_TASK_KEY = 'temp_tasks_v1';
-let draggedTaskId = null;
+// サーバー側（DB）に非同期保存する実装
+// ドラッグ状態管理
+let draggedLocalId = null;
 let dragSourceEl = null;
 const touch = {
-    taskId: null,
+    localId: null,
     startX: 0,
     startY: 0,
     cloneEl: null,
@@ -13,26 +14,81 @@ const touch = {
 };
 // ダブルタップ検出用
 let lastTapTime = 0;
-let lastTapTaskId = null;
+let lastTapLocalId = null;
 const DRAG_THRESHOLD = 8; // px
-function loadTasks() {
-    try {
-        return JSON.parse(localStorage.getItem(TEMP_TASK_KEY) || '[]');
-    }
-    catch (_a) {
-        return [];
-    }
+// =========================================================
+// ローカル状態管理
+// =========================================================
+let tasks = [];
+function generateLocalId() {
+    return 'local_' + Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
-function saveTasks(tasks) {
-    localStorage.setItem(TEMP_TASK_KEY, JSON.stringify(tasks));
-}
-function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2);
+function getTaskByLocalId(localId) {
+    return tasks.find(t => t.localId === localId);
 }
 // =========================================================
-// タスク操作
+// API ユーティリティ
 // =========================================================
-function addTask(status) {
+function tempTaskApiHeaders() {
+    return {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken') || '',
+    };
+}
+function getApiBaseUrl() {
+    const container = document.getElementById('tempTaskContainer');
+    return (container === null || container === void 0 ? void 0 : container.dataset.apiUrl) || '';
+}
+function getApiClearUrl() {
+    const container = document.getElementById('tempTaskContainer');
+    return (container === null || container === void 0 ? void 0 : container.dataset.apiClearUrl) || '';
+}
+async function apiFetch(url, options) {
+    return fetch(url, Object.assign(Object.assign({}, options), { headers: tempTaskApiHeaders() }));
+}
+async function apiGetTasks() {
+    const res = await fetch(getApiBaseUrl());
+    if (!res.ok)
+        throw new Error('タスク取得失敗');
+    const data = await res.json();
+    return data.tasks;
+}
+async function apiCreateTask(title, status) {
+    const res = await apiFetch(getApiBaseUrl(), {
+        method: 'POST',
+        body: JSON.stringify({ title, status }),
+    });
+    if (!res.ok)
+        throw new Error('タスク作成失敗');
+    return res.json();
+}
+async function apiUpdateTask(serverId, updates) {
+    const res = await apiFetch(`${getApiBaseUrl()}${serverId}/`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+    });
+    if (!res.ok)
+        throw new Error('タスク更新失敗');
+    return res.json();
+}
+async function apiDeleteTask(serverId) {
+    const res = await apiFetch(`${getApiBaseUrl()}${serverId}/`, {
+        method: 'DELETE',
+    });
+    if (!res.ok)
+        throw new Error('タスク削除失敗');
+}
+async function apiClearTasks() {
+    const res = await apiFetch(getApiClearUrl(), {
+        method: 'DELETE',
+    });
+    if (!res.ok)
+        throw new Error('全削除失敗');
+}
+// =========================================================
+// タスク操作（楽観的UI更新 + 非同期保存）
+// =========================================================
+async function addTask(status) {
     const input = document.getElementById(`input-${status}`);
     if (!input)
         return;
@@ -41,40 +97,143 @@ function addTask(status) {
         input.focus();
         return;
     }
-    const tasks = loadTasks();
-    tasks.push({ id: generateId(), title, status, createdAt: new Date().toISOString() });
-    saveTasks(tasks);
+    // 楽観的UI更新: 即座に未保存状態でリスト追加
+    const localId = generateLocalId();
+    const newTask = {
+        localId,
+        serverId: null,
+        title,
+        status,
+        order: tasks.length,
+        savedState: 'saving',
+    };
+    tasks.push(newTask);
     input.value = '';
     renderAll();
     input.focus();
+    // サーバーへ非同期保存
+    try {
+        const saved = await apiCreateTask(title, status);
+        const task = getTaskByLocalId(localId);
+        if (task) {
+            task.serverId = saved.id;
+            task.savedState = 'saved';
+            updateCardSavedState(localId);
+        }
+    }
+    catch (_a) {
+        const task = getTaskByLocalId(localId);
+        if (task) {
+            task.savedState = 'error';
+            updateCardSavedState(localId);
+        }
+    }
 }
-function deleteTask(id) {
-    saveTasks(loadTasks().filter(t => t.id !== id));
+async function deleteTask(localId) {
+    const task = getTaskByLocalId(localId);
+    if (!task)
+        return;
+    const serverId = task.serverId;
+    tasks = tasks.filter(t => t.localId !== localId);
     renderAll();
-}
-function updateTask(id, newTitle) {
-    const tasks = loadTasks();
-    const task = tasks.find(t => t.id === id);
-    if (task) {
-        task.title = newTitle;
-        saveTasks(tasks);
-        renderAll();
+    // サーバーへ非同期削除（サーバーIDがある場合のみ）
+    if (serverId !== null) {
+        try {
+            await apiDeleteTask(serverId);
+        }
+        catch (_a) {
+            // 削除失敗は無視（UIからは消えている）
+        }
     }
 }
-function moveTask(id, newStatus) {
-    const tasks = loadTasks();
-    const task = tasks.find(t => t.id === id);
-    if (task && task.status !== newStatus) {
-        task.status = newStatus;
-        saveTasks(tasks);
+async function updateTask(localId, newTitle) {
+    const task = getTaskByLocalId(localId);
+    if (!task || !newTitle || newTitle === task.title) {
         renderAll();
+        return;
+    }
+    task.title = newTitle;
+    task.savedState = 'saving';
+    renderAll();
+    if (task.serverId !== null) {
+        try {
+            await apiUpdateTask(task.serverId, { title: newTitle });
+            const t = getTaskByLocalId(localId);
+            if (t) {
+                t.savedState = 'saved';
+                updateCardSavedState(localId);
+            }
+        }
+        catch (_a) {
+            const t = getTaskByLocalId(localId);
+            if (t) {
+                t.savedState = 'error';
+                updateCardSavedState(localId);
+            }
+        }
     }
 }
-function clearAllTasks() {
+async function moveTask(localId, newStatus) {
+    const task = getTaskByLocalId(localId);
+    if (!task || task.status === newStatus)
+        return;
+    task.status = newStatus;
+    task.savedState = 'saving';
+    renderAll();
+    if (task.serverId !== null) {
+        try {
+            await apiUpdateTask(task.serverId, { status: newStatus });
+            const t = getTaskByLocalId(localId);
+            if (t) {
+                t.savedState = 'saved';
+                updateCardSavedState(localId);
+            }
+        }
+        catch (_a) {
+            const t = getTaskByLocalId(localId);
+            if (t) {
+                t.savedState = 'error';
+                updateCardSavedState(localId);
+            }
+        }
+    }
+}
+async function clearAllTasks() {
     if (!confirm('すべてのタスクを削除してもよろしいですか？'))
         return;
-    saveTasks([]);
+    const hasServerTasks = tasks.some(t => t.serverId !== null);
+    tasks = [];
     renderAll();
+    if (hasServerTasks) {
+        try {
+            await apiClearTasks();
+        }
+        catch (_a) {
+            // 失敗は無視
+        }
+    }
+}
+// =========================================================
+// 初期ロード（サーバーからデータ取得）
+// =========================================================
+async function loadFromServer() {
+    try {
+        const serverTasks = await apiGetTasks();
+        tasks = serverTasks.map(st => ({
+            localId: generateLocalId(),
+            serverId: st.id,
+            title: st.title,
+            status: st.status,
+            order: st.order,
+            savedState: 'saved',
+        }));
+        renderAll();
+    }
+    catch (_a) {
+        // サーバー取得失敗時は空の状態を表示
+        tasks = [];
+        renderAll();
+    }
 }
 // =========================================================
 // レンダリング
@@ -89,33 +248,54 @@ function renderColumn(status) {
     const countEl = document.getElementById(`count-${status}`);
     if (!container)
         return;
-    const tasks = loadTasks().filter(t => t.status === status);
+    const columnTasks = tasks.filter(t => t.status === status);
     container.innerHTML = '';
-    tasks.forEach(task => container.appendChild(createTaskCard(task)));
+    columnTasks.forEach(task => container.appendChild(createTaskCard(task)));
     if (countEl)
-        countEl.textContent = String(tasks.length);
+        countEl.textContent = String(columnTasks.length);
 }
 function renderAll() {
     renderColumn('todo');
     renderColumn('doing');
     renderColumn('done');
 }
+function updateCardSavedState(localId) {
+    const card = document.querySelector(`[data-local-id="${CSS.escape(localId)}"]`);
+    const task = getTaskByLocalId(localId);
+    if (!card || !task)
+        return;
+    card.classList.remove('saving', 'save-error');
+    if (task.savedState === 'saving') {
+        card.classList.add('saving');
+    }
+    else if (task.savedState === 'error') {
+        card.classList.add('save-error');
+    }
+}
 function createTaskCard(task) {
     var _a;
     const card = document.createElement('div');
     card.className = 'kanban-task-card';
-    card.dataset.taskId = task.id;
+    if (task.savedState === 'saving')
+        card.classList.add('saving');
+    if (task.savedState === 'error')
+        card.classList.add('save-error');
+    card.dataset.localId = task.localId;
     card.draggable = true;
+    const unsavedIndicator = task.savedState !== 'saved'
+        ? `<span class="kanban-task-unsaved-dot" title="${task.savedState === 'error' ? '保存失敗' : '保存中...'}"></span>`
+        : '';
     card.innerHTML = `
         <span class="kanban-task-text">${escapeHtml(task.title)}</span>
-        <button class="kanban-task-delete" title="削除" data-id="${task.id}">
+        ${unsavedIndicator}
+        <button class="kanban-task-delete" title="削除" data-local-id="${task.localId}">
             <i class="fas fa-times"></i>
         </button>
     `;
     // 削除ボタン
     (_a = card.querySelector('.kanban-task-delete')) === null || _a === void 0 ? void 0 : _a.addEventListener('click', (e) => {
         e.stopPropagation();
-        deleteTask(task.id);
+        void deleteTask(task.localId);
     });
     // ダブルクリックで編集（PC）
     card.addEventListener('dblclick', (e) => {
@@ -153,7 +333,7 @@ function startEdit(task, card) {
         committed = true;
         const newTitle = input.value.trim();
         if (newTitle && newTitle !== task.title) {
-            updateTask(task.id, newTitle);
+            void updateTask(task.localId, newTitle);
         }
         else {
             renderAll();
@@ -195,15 +375,15 @@ function hideDragOverlay() {
         overlay.querySelectorAll('.drag-zone').forEach(z => z.classList.remove('drag-zone-hover'));
     }
 }
-function executeDragAction(action, taskId) {
+function executeDragAction(action, localId) {
     switch (action) {
         case 'todo':
         case 'doing':
         case 'done':
-            moveTask(taskId, action);
+            void moveTask(localId, action);
             break;
         case 'delete':
-            deleteTask(taskId);
+            void deleteTask(localId);
             break;
         default:
             renderAll();
@@ -229,8 +409,8 @@ function initializeDragOverlay() {
         zone.addEventListener('drop', (e) => {
             e.preventDefault();
             const action = zone.dataset.action || '';
-            if (draggedTaskId) {
-                executeDragAction(action, draggedTaskId);
+            if (draggedLocalId) {
+                executeDragAction(action, draggedLocalId);
             }
             hideDragOverlay();
         });
@@ -241,20 +421,19 @@ function initializeDragOverlay() {
 // =========================================================
 function handleDragStart(e) {
     dragSourceEl = e.currentTarget;
-    draggedTaskId = dragSourceEl.dataset.taskId || null;
+    draggedLocalId = dragSourceEl.dataset.localId || null;
     dragSourceEl.classList.add('dragging');
     if (e.dataTransfer) {
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', draggedTaskId || '');
+        e.dataTransfer.setData('text/plain', draggedLocalId || '');
     }
-    // ドラッグ画像キャプチャ後にオーバーレイ表示
     requestAnimationFrame(showDragOverlay);
 }
 function handleDragEnd(_e) {
     if (dragSourceEl)
         dragSourceEl.classList.remove('dragging');
     dragSourceEl = null;
-    draggedTaskId = null;
+    draggedLocalId = null;
     hideDragOverlay();
 }
 // =========================================================
@@ -265,7 +444,7 @@ function handleTouchStart(e) {
         return;
     const t = e.touches[0];
     const card = e.currentTarget;
-    touch.taskId = card.dataset.taskId || null;
+    touch.localId = card.dataset.localId || null;
     touch.startX = t.clientX;
     touch.startY = t.clientY;
     touch.sourceEl = card;
@@ -274,7 +453,7 @@ function handleTouchStart(e) {
     e.preventDefault();
 }
 function handleTouchMove(e) {
-    if (!touch.taskId || !touch.sourceEl)
+    if (!touch.localId || !touch.sourceEl)
         return;
     const t = e.touches[0];
     const dx = t.clientX - touch.startX;
@@ -300,9 +479,8 @@ function handleTouchMove(e) {
     if (!touch.cloneEl || !touch.sourceEl)
         return;
     const rect = touch.sourceEl.getBoundingClientRect();
-    touch.cloneEl.style.left = (rect.left + dx) + 'px';
-    touch.cloneEl.style.top = (rect.top + dy) + 'px';
-    // ゾーンのハイライト
+    touch.cloneEl.style.left = (rect.left + (t.clientX - touch.startX)) + 'px';
+    touch.cloneEl.style.top = (rect.top + (t.clientY - touch.startY)) + 'px';
     const overlay = document.getElementById('dragOverlay');
     if (overlay && overlay.classList.contains('active')) {
         overlay.querySelectorAll('.drag-zone').forEach(z => z.classList.remove('drag-zone-hover'));
@@ -315,7 +493,7 @@ function handleTouchMove(e) {
     }
 }
 function handleTouchEnd(e, task, card) {
-    if (!touch.taskId)
+    if (!touch.localId)
         return;
     if (touch.isDragging) {
         if (touch.cloneEl) {
@@ -329,29 +507,29 @@ function handleTouchEnd(e, task, card) {
         const t = e.changedTouches[0];
         const elBelow = document.elementFromPoint(t.clientX, t.clientY);
         const zone = elBelow && elBelow.closest('.drag-zone');
-        if (zone && touch.taskId) {
-            executeDragAction(zone.dataset.action || '', touch.taskId);
+        if (zone && touch.localId) {
+            executeDragAction(zone.dataset.action || '', touch.localId);
         }
         else {
             renderAll();
         }
         hideDragOverlay();
-        touch.taskId = null;
+        touch.localId = null;
         touch.isDragging = false;
     }
     else {
         // ダブルタップ検出
         const now = Date.now();
-        if (now - lastTapTime < 300 && lastTapTaskId === task.id) {
+        if (now - lastTapTime < 300 && lastTapLocalId === task.localId) {
             startEdit(task, card);
             lastTapTime = 0;
-            lastTapTaskId = null;
+            lastTapLocalId = null;
         }
         else {
             lastTapTime = now;
-            lastTapTaskId = task.id;
+            lastTapLocalId = task.localId;
         }
-        touch.taskId = null;
+        touch.localId = null;
         touch.sourceEl = null;
     }
 }
@@ -362,7 +540,51 @@ function handleInputKeypress(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
         const input = e.currentTarget;
-        addTask(input.dataset.status || '');
+        void addTask(input.dataset.status || '');
+    }
+}
+// =========================================================
+// リトライ
+// =========================================================
+const RETRY_INTERVAL_MS = 30000; // 30秒ごと
+async function retryFailedTasks() {
+    const failedTasks = tasks.filter(t => t.savedState === 'error');
+    if (failedTasks.length === 0)
+        return;
+    for (const task of failedTasks) {
+        // 既にローカル状態から消えていたらスキップ
+        if (!getTaskByLocalId(task.localId))
+            continue;
+        task.savedState = 'saving';
+        updateCardSavedState(task.localId);
+        try {
+            if (task.serverId === null) {
+                // 作成失敗のリトライ
+                const saved = await apiCreateTask(task.title, task.status);
+                const t = getTaskByLocalId(task.localId);
+                if (t) {
+                    t.serverId = saved.id;
+                    t.savedState = 'saved';
+                    updateCardSavedState(t.localId);
+                }
+            }
+            else {
+                // 更新失敗のリトライ（現在の title/status を再送）
+                await apiUpdateTask(task.serverId, { title: task.title, status: task.status });
+                const t = getTaskByLocalId(task.localId);
+                if (t) {
+                    t.savedState = 'saved';
+                    updateCardSavedState(t.localId);
+                }
+            }
+        }
+        catch (_a) {
+            const t = getTaskByLocalId(task.localId);
+            if (t) {
+                t.savedState = 'error';
+                updateCardSavedState(t.localId);
+            }
+        }
     }
 }
 // =========================================================
@@ -376,5 +598,15 @@ function initializeInputs() {
 document.addEventListener('DOMContentLoaded', () => {
     initializeDragOverlay();
     initializeInputs();
-    renderAll();
+    void loadFromServer();
+    // 定期リトライ（30秒ごと）
+    setInterval(() => { void retryFailedTasks(); }, RETRY_INTERVAL_MS);
+    // ネットワーク復帰時に即リトライ
+    window.addEventListener('online', () => { void retryFailedTasks(); });
+    // タブ再表示時に即リトライ
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            void retryFailedTasks();
+        }
+    });
 });

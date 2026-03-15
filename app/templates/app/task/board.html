@@ -6,7 +6,10 @@
 {% endblock %}
 
 {% block content %}
-<div class="temp-task-container">
+<div class="temp-task-container"
+     data-api-url="{% url 'temp_task_api' %}"
+     data-api-clear-url="{% url 'temp_task_clear_api' %}"
+     id="tempTaskContainer">
     <div class="temp-task-header">
         <h2 class="temp-task-title">一時タスク</h2>
         <button class="btn btn-outline-danger btn-sm" onclick="clearAllTasks()">

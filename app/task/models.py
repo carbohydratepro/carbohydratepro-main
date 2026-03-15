@@ -58,3 +58,27 @@ class Task(models.Model):
 
     class Meta:
         ordering = ['-created_date']
+
+
+class TempTaskItem(models.Model):
+    """一時タスク（サーバー永続化）モデル"""
+    STATUS_CHOICES = [
+        ('todo', 'やること'),
+        ('doing', 'やってる'),
+        ('done', 'できた'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='temp_task_items')
+    title = models.CharField(max_length=200, verbose_name="タイトル")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='todo', verbose_name="ステータス")
+    order = models.IntegerField(default=0, verbose_name="表示順")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="作成日時")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新日時")
+
+    def __str__(self) -> str:
+        return f"{self.title} ({self.get_status_display()})"
+
+    class Meta:
+        ordering = ['order', 'created_at']
+        verbose_name = '一時タスク'
+        verbose_name_plural = '一時タスク'

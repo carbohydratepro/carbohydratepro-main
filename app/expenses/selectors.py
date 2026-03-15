@@ -38,6 +38,14 @@ def get_date_range(year_month: str | None) -> tuple[datetime, datetime, list[str
     return start_date, end_date, date_range
 
 
+_SORT_FIELD_MAP: dict[str, tuple[str, ...]] = {
+    'date_desc': ('-date', '-id'),
+    'date_asc': ('date', 'id'),
+    'amount_desc': ('-amount', '-date'),
+    'amount_asc': ('amount', '-date'),
+}
+
+
 def get_transactions(
     user: AbstractBaseUser,
     start_date: datetime,
@@ -48,12 +56,14 @@ def get_transactions(
     major_category: str = '',
     category_id: str = '',
     payment_method_id: str = '',
+    sort_by: str = 'date_desc',
 ) -> QuerySet:
     """フィルタリング済みの取引クエリセットを返す。"""
+    order_fields = _SORT_FIELD_MAP.get(sort_by, _SORT_FIELD_MAP['date_desc'])
     qs = (
         Transaction.objects.filter(user=user, date__range=(start_date, end_date))
         .select_related('payment_method', 'category')
-        .order_by('-date', '-id')
+        .order_by(*order_fields)
     )
     if search:
         qs = qs.filter(
@@ -156,6 +166,43 @@ def build_daily_chart_data(transactions_qs: QuerySet, date_range: list[str]) -> 
         'datasets': [{'label': '所持金', 'data': balance_data, 'fill': False, 'borderColor': CHART_COLORS['balance_line']}],
     })
     return expense_json, balance_json
+
+
+def get_year_date_range(year_str: str | None) -> tuple[datetime, datetime, int]:
+    """指定年の開始日・終了日・年を返す。"""
+    try:
+        year = int(year_str) if year_str else datetime.now().year
+    except (ValueError, TypeError):
+        year = datetime.now().year
+    start_date = make_aware(datetime(year, 1, 1, 0, 0, 0))
+    end_date = make_aware(datetime(year, 12, 31, 23, 59, 59))
+    return start_date, end_date, year
+
+
+def build_monthly_chart_data(transactions_qs: QuerySet, year: int) -> str:
+    """月別収入・支出グラフデータ（JSON文字列）を返す。"""
+    month_labels = [f'{m}月' for m in range(1, 13)]
+    income_data: list[float] = []
+    expense_data: list[float] = []
+    for m in range(1, 13):
+        monthly_income = float(
+            transactions_qs.filter(date__month=m, transaction_type='income')
+            .aggregate(Sum('amount'))['amount__sum'] or 0
+        )
+        monthly_expense = float(
+            transactions_qs.filter(date__month=m, transaction_type='expense')
+            .aggregate(Sum('amount'))['amount__sum'] or 0
+        )
+        income_data.append(monthly_income)
+        expense_data.append(monthly_expense)
+
+    return json.dumps({
+        'labels': month_labels,
+        'datasets': [
+            {'label': '収入', 'data': income_data, 'backgroundColor': 'rgba(54, 162, 235, 0.7)'},
+            {'label': '支出', 'data': expense_data, 'backgroundColor': CHART_COLORS['expense_bar']},
+        ],
+    })
 
 
 def get_payment_methods(user: AbstractBaseUser) -> QuerySet:

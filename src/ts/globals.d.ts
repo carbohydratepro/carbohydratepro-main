@@ -109,3 +109,4 @@ declare const categoryData: ChartData | undefined;
 declare const expenseData: ChartData | undefined;
 declare const balanceData: ChartData | undefined;
 declare const majorCategoryData: ChartData | undefined;
+declare const monthlyData: ChartData | undefined;

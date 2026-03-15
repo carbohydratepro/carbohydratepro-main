@@ -10,56 +10,93 @@ from . import selectors, services
 
 @login_required
 def expenses_list(request: HttpRequest) -> HttpResponse:
+    from datetime import datetime as dt
+    view_mode = request.GET.get('view_mode', 'month')
     target_date_str = request.GET.get('target_date')
     search_query = request.GET.get('search', '')
     per_page_raw = request.GET.get('per_page', '20')
     per_page_options = ['10', '20', '50', '100']
     per_page = int(per_page_raw) if per_page_raw in per_page_options else 20
+    sort_by = request.GET.get('sort_by', 'date_desc')
 
     filter_transaction_type = request.GET.get('transaction_type', '')
     filter_major_category = request.GET.get('major_category', '')
     filter_category = request.GET.get('category', '')
     filter_payment_method = request.GET.get('payment_method', '')
 
+    common_filter_kwargs = {
+        'search': search_query,
+        'transaction_type': filter_transaction_type,
+        'major_category': filter_major_category,
+        'category_id': filter_category,
+        'payment_method_id': filter_payment_method,
+        'sort_by': sort_by,
+    }
+
+    if view_mode == 'year':
+        start_date, end_date, current_year = selectors.get_year_date_range(target_date_str)
+        transactions_qs = selectors.get_transactions(request.user, start_date, end_date, **common_filter_kwargs)
+        transactions_count = transactions_qs.count()
+        paginator = Paginator(transactions_qs, per_page)
+        transactions_page = paginator.get_page(request.GET.get('page'))
+        summary = selectors.get_summary(transactions_qs)
+        monthly_chart_data_json = selectors.build_monthly_chart_data(transactions_qs, current_year)
+        current_month_str = dt.now().strftime('%Y-%m')
+
+        return render(request, 'app/expenses/list.html', {
+            'view_mode': 'year',
+            'current_year': current_year,
+            'monthly_chart_data_json': monthly_chart_data_json,
+            'transactions_page': transactions_page,
+            'transactions_count': transactions_count,
+            'total_income': summary['total_income'],
+            'total_expense': summary['total_expense'],
+            'net_balance': summary['net_balance'],
+            'total_income_formatted': '{:,.0f}'.format(float(summary['total_income'])),
+            'total_expense_formatted': '{:,.0f}'.format(float(summary['total_expense'])),
+            'net_balance_formatted': '{:,.0f}'.format(float(summary['net_balance'])),
+            'target_month': f'{current_year}年',
+            'search_query': search_query,
+            'user_categories': selectors.get_categories(request.user),
+            'user_payment_methods': selectors.get_payment_methods(request.user),
+            'filter_transaction_type': filter_transaction_type,
+            'filter_major_category': filter_major_category,
+            'filter_category': filter_category,
+            'filter_payment_method': filter_payment_method,
+            'default_target_date': str(current_year),
+            'per_page': per_page,
+            'per_page_options': per_page_options,
+            'sort_by': sort_by,
+            'year_for_toggle': current_year,
+            'month_for_toggle': current_month_str,
+        })
+
+    # 月表示モード
     start_date, end_date, date_range = selectors.get_date_range(target_date_str)
-
-    transactions_qs = selectors.get_transactions(
-        request.user,
-        start_date,
-        end_date,
-        search=search_query,
-        transaction_type=filter_transaction_type,
-        major_category=filter_major_category,
-        category_id=filter_category,
-        payment_method_id=filter_payment_method,
-    )
-
+    transactions_qs = selectors.get_transactions(request.user, start_date, end_date, **common_filter_kwargs)
     transactions_count = transactions_qs.count()
     paginator = Paginator(transactions_qs, per_page)
     transactions_page = paginator.get_page(request.GET.get('page'))
-
     summary = selectors.get_summary(transactions_qs)
-    total_income = summary['total_income']
-    total_expense = summary['total_expense']
-    net_balance = summary['net_balance']
 
     category_data_json = selectors.build_category_chart_data(transactions_qs)
     major_category_data_json = selectors.build_major_category_chart_data(transactions_qs)
     expense_data_json, balance_data_json = selectors.build_daily_chart_data(transactions_qs, date_range)
 
     return render(request, 'app/expenses/list.html', {
+        'view_mode': 'month',
         'transactions_page': transactions_page,
         'transactions_count': transactions_count,
         'category_data_json': category_data_json,
         'major_category_data_json': major_category_data_json,
         'expense_data_json': expense_data_json,
         'balance_data_json': balance_data_json,
-        'total_income': total_income,
-        'total_expense': total_expense,
-        'net_balance': net_balance,
-        'total_income_formatted': '{:,.0f}'.format(float(total_income)),
-        'total_expense_formatted': '{:,.0f}'.format(float(total_expense)),
-        'net_balance_formatted': '{:,.0f}'.format(float(net_balance)),
+        'total_income': summary['total_income'],
+        'total_expense': summary['total_expense'],
+        'net_balance': summary['net_balance'],
+        'total_income_formatted': '{:,.0f}'.format(float(summary['total_income'])),
+        'total_expense_formatted': '{:,.0f}'.format(float(summary['total_expense'])),
+        'net_balance_formatted': '{:,.0f}'.format(float(summary['net_balance'])),
         'target_month': start_date.strftime('%Y年%m月'),
         'search_query': search_query,
         'user_categories': selectors.get_categories(request.user),
@@ -71,6 +108,9 @@ def expenses_list(request: HttpRequest) -> HttpResponse:
         'default_target_date': start_date.strftime('%Y-%m'),
         'per_page': per_page,
         'per_page_options': per_page_options,
+        'sort_by': sort_by,
+        'year_for_toggle': start_date.year,
+        'month_for_toggle': start_date.strftime('%Y-%m'),
     })
 
 

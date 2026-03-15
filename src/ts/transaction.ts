@@ -393,23 +393,70 @@ function initializeExpenseCharts(): void {
     initializeLineChart('balanceLineChartMobile', balanceData, 8, 4, 8, 4);
 }
 
+// 年ビュー: 月別収支グラフを描画
+function initializeYearlyCharts(): void {
+    if (typeof monthlyData === 'undefined') return;
+
+    const canvas = document.getElementById('monthlyBarChart') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: monthlyData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: { display: true, text: '月別収支グラフ' },
+                legend: { display: true, position: 'bottom' },
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        label: (ctx: ChartTooltipContext) => {
+                            const value = ctx.parsed.y;
+                            return `${ctx.dataset.label ?? ''}: ¥${value.toLocaleString('ja-JP')}`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: { type: 'category' },
+                y: {
+                    beginAtZero: true,
+                    ticks: { autoSkip: true, maxTicksLimit: 6 },
+                },
+            },
+        },
+    });
+}
+
 // フィルター変更時の処理
 function initializeExpenseFilters(): void {
-    const filterForm = document.getElementById('filterForm');
+    const filterForm = document.getElementById('filterForm') as HTMLFormElement | null;
     if (filterForm) {
         filterForm.addEventListener('change', () => {
             const currentUrl = new URL(window.location.href);
             const targetDateInput = document.getElementById('target_date') as HTMLInputElement | null;
+            const viewModeInput = filterForm.querySelector<HTMLInputElement>('input[name="view_mode"]');
             if (targetDateInput) {
                 currentUrl.searchParams.set('target_date', targetDateInput.value);
-                window.location.href = currentUrl.toString();
             }
+            if (viewModeInput) {
+                currentUrl.searchParams.set('view_mode', viewModeInput.value);
+            }
+            window.location.href = currentUrl.toString();
         });
     }
 }
 
 // ページ読み込み後にグラフとフィルターを初期化
 document.addEventListener('DOMContentLoaded', () => {
-    initializeExpenseCharts();
+    if (typeof monthlyData !== 'undefined') {
+        initializeYearlyCharts();
+    } else {
+        initializeExpenseCharts();
+    }
     initializeExpenseFilters();
 });

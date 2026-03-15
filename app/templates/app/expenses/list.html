@@ -19,13 +19,28 @@
         </button>
     </div>
 
-    <!-- 月選択フォーム -->
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <form id="filterForm" class="form-inline">
-                <input type="month" id="target_date" name="target_date" class="form-control" value="{{ default_target_date }}">
-            </form>
+    <!-- 表示モードと日付選択 -->
+    <div class="d-flex align-items-center mb-3 flex-wrap" style="gap: 8px;">
+        <div class="btn-group btn-group-sm">
+            <a href="?view_mode=month&target_date={{ month_for_toggle }}"
+               class="btn btn-{% if view_mode == 'month' %}primary{% else %}outline-primary{% endif %}">
+                <i class="fas fa-calendar-alt"></i> 月
+            </a>
+            <a href="?view_mode=year&target_date={{ year_for_toggle }}"
+               class="btn btn-{% if view_mode == 'year' %}primary{% else %}outline-primary{% endif %}">
+                <i class="fas fa-calendar"></i> 年
+            </a>
         </div>
+        <form id="filterForm" class="form-inline">
+            <input type="hidden" name="view_mode" value="{{ view_mode }}">
+            {% if view_mode == 'year' %}
+            <input type="number" id="target_date" name="target_date" class="form-control form-control-sm"
+                   value="{{ current_year }}" min="2000" max="2099" style="width: 100px;">
+            {% else %}
+            <input type="month" id="target_date" name="target_date" class="form-control form-control-sm"
+                   value="{{ default_target_date }}">
+            {% endif %}
+        </form>
     </div>
 
     <!-- 検索・絞り込み機能 -->
@@ -39,7 +54,8 @@
             <div class="card-body py-2">
                 <form method="GET">
                     <input type="hidden" name="target_date" value="{{ default_target_date }}">
-                    
+                    <input type="hidden" name="view_mode" value="{{ view_mode }}">
+
                     <!-- 検索 -->
                     <div class="row mb-2">
                         <div class="col-12">
@@ -53,7 +69,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- 絞り込み -->
                     <div class="row">
                         <div class="col-6 col-md-3">
@@ -89,19 +105,28 @@
                             </select>
                         </div>
                     </div>
-                    
+
+                    <!-- 並べ替え・表示件数 -->
                     <div class="row mt-1">
-                        <div class="col-md-6 col-12 mt-2 d-flex align-items-center">
-                            <label for="per_page" class="form-label small mb-0 mr-2">表示件数</label>
-                            <select name="per_page" id="per_page" class="form-control form-control-sm" onchange="this.form.submit()" style="max-width: 120px;">
+                        <div class="col-6 col-md-3 mt-1">
+                            <select name="sort_by" class="form-control form-control-sm">
+                                <option value="date_desc" {% if sort_by == 'date_desc' %}selected{% endif %}>日付（新しい順）</option>
+                                <option value="date_asc" {% if sort_by == 'date_asc' %}selected{% endif %}>日付（古い順）</option>
+                                <option value="amount_desc" {% if sort_by == 'amount_desc' %}selected{% endif %}>金額（高い順）</option>
+                                <option value="amount_asc" {% if sort_by == 'amount_asc' %}selected{% endif %}>金額（低い順）</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3 mt-1 d-flex align-items-center">
+                            <label for="per_page" class="form-label small mb-0 mr-2">件数</label>
+                            <select name="per_page" id="per_page" class="form-control form-control-sm" onchange="this.form.submit()" style="max-width: 100px;">
                                 {% for size in per_page_options %}
                                 <option value="{{ size }}" {% if per_page|stringformat:"s" == size %}selected{% endif %}>{{ size }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-6 col-12 mt-2">
+                        <div class="col-12 col-md-6 mt-2">
                             <button type="submit" class="btn btn-primary btn-sm">絞り込み</button>
-                            <a href="?target_date={{ default_target_date }}" class="btn btn-outline-secondary btn-sm ml-1">クリア</a>
+                            <a href="?target_date={{ default_target_date }}&view_mode={{ view_mode }}" class="btn btn-outline-secondary btn-sm ml-1">クリア</a>
                         </div>
                     </div>
                 </form>
@@ -109,7 +134,7 @@
         </div>
     </div>
 
-    <!-- 月次サマリー表示 -->
+    <!-- 月次/年次サマリー表示 -->
     <div class="row mb-3">
         <div class="col-md-12">
             <div class="card">
@@ -140,55 +165,56 @@
         </div>
     </div>
 
-    <!-- グラフ表示エリア -->
+    {% if view_mode == 'year' %}
+    <!-- 年ビュー: 月別収支グラフ -->
     <div class="row mb-3">
-        <!-- モバイル: 円グラフを横並び、PC: 左上にカテゴリ -->
+        <div class="col-12">
+            <div style="height: 260px;">
+                <canvas id="monthlyBarChart" class="chart-canvas"></canvas>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- 月ビュー: グラフ表示エリア -->
+    <div class="row mb-3">
         <div class="col-md-3 col-6 mb-3">
             <div style="height: 200px;">
                 <canvas id="categoryPieChart" class="chart-canvas"></canvas>
             </div>
         </div>
-        <!-- モバイル: 円グラフを横並び、PC: 右上に棒グラフ -->
         <div class="col-md-9 col-6 mb-3">
             <div class="d-md-block d-none" style="height: 200px;">
                 <canvas id="expenseBarChart" class="chart-canvas"></canvas>
             </div>
-            <!-- モバイル: メインカテゴリ円グラフ -->
             <div class="d-md-none" style="height: 200px;">
                 <canvas id="majorCategoryChart" class="chart-canvas"></canvas>
             </div>
         </div>
     </div>
-    
-    <!-- PC用下段、モバイル用棒グラフ・折れ線グラフ -->
+
     <div class="row mb-3">
-        <!-- PC: 左下にメインカテゴリ -->
         <div class="col-md-3 d-none d-md-block mb-3">
             <div style="height: 200px;">
                 <canvas id="majorCategoryChartPC" class="chart-canvas"></canvas>
             </div>
         </div>
-        <!-- PC: 右下に折れ線グラフ -->
         <div class="col-md-9 d-none d-md-block mb-3">
             <div style="height: 200px;">
                 <canvas id="balanceLineChart" class="chart-canvas"></canvas>
             </div>
         </div>
-        
-        <!-- モバイル: 棒グラフ（全幅） -->
         <div class="col-12 d-md-none mb-2">
             <div style="height: 250px; position: relative;">
                 <canvas id="expenseBarChartMobile" class="chart-canvas" style="height: 300px !important;"></canvas>
             </div>
         </div>
-        
-        <!-- モバイル: 折れ線グラフ（全幅） -->
         <div class="col-12 d-md-none mb-2">
             <div style="height: 250px; position: relative;">
                 <canvas id="balanceLineChartMobile" class="chart-canvas" style="height: 250px !important;"></canvas>
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- 取引一覧 -->
     {% if search_query or filter_transaction_type or filter_major_category or filter_category or filter_payment_method %}
@@ -196,7 +222,7 @@
         <i class="fas fa-filter"></i> 絞り込み結果: {{ transactions_count }}件
     </div>
     {% endif %}
-    
+
     <div class="row">
         {% for transaction in transactions_page %}
         <div class="col-md-6 col-lg-4 mb-2">
@@ -209,10 +235,10 @@
                         </h6>
                         <small class="text-muted">{{ transaction.date|date:"m/d" }}</small>
                     </div>
-                    
+
                     <!-- 2行目: 金額（左）と支払方法ラベル（右） -->
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <h6 class="mb-0 
+                        <h6 class="mb-0
                             {% if transaction.transaction_type == 'income' %}text-primary
                             {% elif transaction.transaction_type == 'expense' %}text-danger
                             {% else %}text-secondary{% endif %}">
@@ -222,7 +248,7 @@
                             <i class="fas fa-credit-card"></i> {{ transaction.payment_method|truncatechars:10 }}
                         </small>
                     </div>
-                    
+
                     <!-- 3行目: カテゴリ・費用タイプ・取引タイプ（左）と編集・削除アイコン（右） -->
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <div class="small text-muted">
@@ -247,7 +273,7 @@
                             </form>
                         </div>
                     </div>
-                    
+
                     <!-- 詳細（オプション） -->
                     {% if transaction.purpose_description %}
                     <div class="small text-muted mt-1">
@@ -264,7 +290,7 @@
                 {% if search_query or filter_transaction_type or filter_major_category or filter_category or filter_payment_method %}
                     検索・絞り込み条件に一致する取引がありません。
                 {% else %}
-                    この月の取引はありません。
+                    この期間の取引はありません。
                 {% endif %}
             </div>
         </div>
@@ -276,10 +302,10 @@
         <ul class="pagination justify-content-center">
             {% if transactions_page.has_previous %}
             <li class="page-item">
-                <a class="page-link" href="?page=1&target_date={{ default_target_date }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">&laquo; 最初</a>
+                <a class="page-link" href="?page=1&target_date={{ default_target_date }}&view_mode={{ view_mode }}&sort_by={{ sort_by }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">&laquo; 最初</a>
             </li>
             <li class="page-item">
-                <a class="page-link" href="?page={{ transactions_page.previous_page_number }}&target_date={{ default_target_date }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">前へ</a>
+                <a class="page-link" href="?page={{ transactions_page.previous_page_number }}&target_date={{ default_target_date }}&view_mode={{ view_mode }}&sort_by={{ sort_by }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">前へ</a>
             </li>
             {% endif %}
 
@@ -287,16 +313,16 @@
                 {% if transactions_page.number == num %}
                 <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                 {% elif num > transactions_page.number|add:'-3' and num < transactions_page.number|add:'3' %}
-                <li class="page-item"><a class="page-link" href="?page={{ num }}&target_date={{ default_target_date }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">{{ num }}</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ num }}&target_date={{ default_target_date }}&view_mode={{ view_mode }}&sort_by={{ sort_by }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">{{ num }}</a></li>
                 {% endif %}
             {% endfor %}
 
             {% if transactions_page.has_next %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ transactions_page.next_page_number }}&target_date={{ default_target_date }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">次へ</a>
+                <a class="page-link" href="?page={{ transactions_page.next_page_number }}&target_date={{ default_target_date }}&view_mode={{ view_mode }}&sort_by={{ sort_by }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">次へ</a>
             </li>
             <li class="page-item">
-                <a class="page-link" href="?page={{ transactions_page.paginator.num_pages }}&target_date={{ default_target_date }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">最後 &raquo;</a>
+                <a class="page-link" href="?page={{ transactions_page.paginator.num_pages }}&target_date={{ default_target_date }}&view_mode={{ view_mode }}&sort_by={{ sort_by }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_transaction_type %}&transaction_type={{ filter_transaction_type }}{% endif %}{% if filter_major_category %}&major_category={{ filter_major_category }}{% endif %}{% if filter_category %}&category={{ filter_category }}{% endif %}{% if filter_payment_method %}&payment_method={{ filter_payment_method }}{% endif %}{% if per_page %}&per_page={{ per_page }}{% endif %}">最後 &raquo;</a>
             </li>
             {% endif %}
         </ul>
@@ -316,17 +342,22 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{% static 'app/transaction.js' %}"></script>
 <script>
-    // データをwindowオブジェクトに設定（グローバルスコープに配置）
+    {% if view_mode == 'year' %}
+    window.monthlyData = JSON.parse('{{ monthly_chart_data_json|escapejs }}');
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeYearlyCharts();
+        initializeExpenseFilters();
+    });
+    {% else %}
     window.categoryData = JSON.parse('{{ category_data_json|escapejs }}');
     window.expenseData = JSON.parse('{{ expense_data_json|escapejs }}');
     window.balanceData = JSON.parse('{{ balance_data_json|escapejs }}');
     window.majorCategoryData = JSON.parse('{{ major_category_data_json|escapejs }}');
-
-    // ページ読み込み後にグラフとフィルターを初期化
     document.addEventListener('DOMContentLoaded', function() {
         initializeExpenseCharts();
         initializeExpenseFilters();
     });
+    {% endif %}
 </script>
 
 <!-- 編集モーダル -->

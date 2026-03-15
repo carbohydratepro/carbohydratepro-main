@@ -53,6 +53,52 @@
     </table>
   {% endif %}
 
+  <!-- 各画面の設定 -->
+  <div class="row mt-4">
+    <div class="col"><h4>■ 各画面の設定</h4></div>
+  </div>
+  <div class="row">
+    <div class="col-md-4 mb-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <h6 class="card-title"><i class="fas fa-yen-sign"></i> 家計簿</h6>
+          <p class="card-text text-muted small">支払方法・使用用途の管理</p>
+          <a href="{% url 'expenses_settings' %}" class="btn btn-sm btn-outline-primary">設定を開く</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <h6 class="card-title"><i class="fas fa-tasks"></i> タスク管理</h6>
+          <p class="card-text text-muted small">週の開始曜日・ラベルの管理</p>
+          <a href="{% url 'task_settings' %}" class="btn btn-sm btn-outline-primary">設定を開く</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="card h-100">
+        <div class="card-body">
+          <h6 class="card-title"><i class="fas fa-sticky-note"></i> メモ</h6>
+          <p class="card-text text-muted small">メモ種別の管理</p>
+          <a href="{% url 'memo_settings' %}" class="btn btn-sm btn-outline-primary">設定を開く</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- お問い合わせ -->
+  <div class="row mt-4">
+    <div class="col"><h4>■ お問い合わせ</h4></div>
+  </div>
+  <div class="card mb-4">
+    <div class="card-body">
+      <p class="card-text text-muted small mb-2">バグ報告・機能要望・ご質問などはお問い合わせフォームからお送りください。</p>
+      <a href="{% url 'contact' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="fas fa-envelope"></i> お問い合わせフォームへ
+      </a>
+    </div>
+  </div>
 
 </div>
 {% endblock %}

@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.timezone import make_aware
@@ -18,13 +17,6 @@ def task_list(request: HttpRequest) -> HttpResponse:
     view_mode = request.GET.get('view_mode', 'month')
     target_date_str = request.GET.get('target_date', None)
     week_start = request.session.get('task_week_start', 'sunday')
-    per_page_raw = request.GET.get('per_page', '20')
-    per_page_options = ['10', '20', '50', '100']
-    per_page = int(per_page_raw) if per_page_raw in per_page_options else 20
-
-    status_filter = request.GET.get('status', '')
-    priority_filter = request.GET.get('priority', '')
-    search_query = request.GET.get('search', '')
 
     if target_date_str:
         if view_mode == 'day':
@@ -43,64 +35,35 @@ def task_list(request: HttpRequest) -> HttpResponse:
         day_end = make_aware(datetime(target_date.year, target_date.month, target_date.day, 23, 59, 59))
 
         tasks_qs = selectors.get_day_view_tasks(request.user, day_start, day_end)
-        tasks_qs = selectors.apply_filters(tasks_qs, status_filter, priority_filter, search_query)
         tasks_qs = tasks_qs.order_by('start_date', 'priority')
 
-        tasks_count = tasks_qs.count()
-        paginator = Paginator(tasks_qs, per_page)
-        tasks_page = paginator.get_page(request.GET.get('page'))
         gantt_data = selectors.build_gantt_data(tasks_qs, day_start, day_end)
 
         return render(request, 'app/task/list.html', {
             'view_mode': 'day',
-            'tasks_page': tasks_page,
-            'tasks_count': tasks_count,
+            'tasks_count': tasks_qs.count(),
             'gantt_data': gantt_data,
             'target_date': target_date.strftime('%Y-%m-%d'),
             'target_date_display': target_date.strftime('%Y年%m月%d日'),
-            'status_filter': status_filter,
-            'priority_filter': priority_filter,
-            'search_query': search_query,
-            'status_choices': Task.STATUS_CHOICES,
-            'priority_choices': Task.PRIORITY_CHOICES,
             'week_start': week_start,
-            'per_page': per_page,
-            'per_page_options': per_page_options,
         })
 
     # 月表示モード
     start_date = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     end_date = (start_date + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0) - timedelta(microseconds=1)
 
-    all_tasks = selectors.get_all_user_tasks(request.user)
     month_tasks = selectors.get_month_tasks(request.user, start_date, end_date)
-    filtered_tasks = selectors.apply_filters(all_tasks, status_filter, priority_filter, search_query)
-
-    tasks_count = filtered_tasks.count()
-    paginator = Paginator(filtered_tasks, per_page)
-    tasks_page = paginator.get_page(request.GET.get('page'))
-
     calendar_data, weekday_labels = selectors.build_calendar_data(
         month_tasks, target_date.year, target_date.month, week_start
     )
 
     return render(request, 'app/task/list.html', {
         'view_mode': 'month',
-        'tasks': filtered_tasks,
-        'status_filter': status_filter,
-        'priority_filter': priority_filter,
-        'search_query': search_query,
-        'status_choices': Task.STATUS_CHOICES,
-        'priority_choices': Task.PRIORITY_CHOICES,
         'target_month': target_date.strftime('%Y年%m月'),
         'default_target_date': target_date.strftime('%Y-%m'),
         'calendar_data': calendar_data,
         'weekday_labels': weekday_labels,
         'week_start': week_start,
-        'tasks_page': tasks_page,
-        'tasks_count': tasks_count,
-        'per_page': per_page,
-        'per_page_options': per_page_options,
     })
 
 

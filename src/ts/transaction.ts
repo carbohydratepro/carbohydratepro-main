@@ -432,28 +432,14 @@ function initializeYearlyCharts(): void {
     });
 }
 
-// フィルター変更時の処理
+// フィルター変更時の処理（filterFormはonchange="this.form.submit()"で処理するため不要）
 function initializeExpenseFilters(): void {
-    const filterForm = document.getElementById('filterForm') as HTMLFormElement | null;
-    if (filterForm) {
-        filterForm.addEventListener('change', () => {
-            const currentUrl = new URL(window.location.href);
-            const targetDateInput = document.getElementById('target_date') as HTMLInputElement | null;
-            const viewModeInput = filterForm.querySelector<HTMLInputElement>('input[name="view_mode"]');
-            if (targetDateInput) {
-                currentUrl.searchParams.set('target_date', targetDateInput.value);
-            }
-            if (viewModeInput) {
-                currentUrl.searchParams.set('view_mode', viewModeInput.value);
-            }
-            window.location.href = currentUrl.toString();
-        });
-    }
+    // filterForm は HTML 側の onchange で直接サブミットするため処理なし
 }
 
 // ページ読み込み後にグラフとフィルターを初期化
 document.addEventListener('DOMContentLoaded', () => {
-    if (typeof monthlyData !== 'undefined') {
+    if (document.getElementById('monthlyBarChart')) {
         initializeYearlyCharts();
     } else {
         initializeExpenseCharts();

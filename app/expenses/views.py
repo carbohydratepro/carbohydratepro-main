@@ -42,10 +42,12 @@ def expenses_list(request: HttpRequest) -> HttpResponse:
         summary = selectors.get_summary(transactions_qs)
         monthly_chart_data_json = selectors.build_monthly_chart_data(transactions_qs, current_year)
         current_month_str = dt.now().strftime('%Y-%m')
+        year_range = list(range(current_year - 5, current_year + 3))
 
         return render(request, 'app/expenses/list.html', {
             'view_mode': 'year',
             'current_year': current_year,
+            'year_range': year_range,
             'monthly_chart_data_json': monthly_chart_data_json,
             'transactions_page': transactions_page,
             'transactions_count': transactions_count,

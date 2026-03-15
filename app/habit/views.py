@@ -64,6 +64,7 @@ def habit_dashboard(request: HttpRequest) -> HttpResponse:
         'week_data': week_data,
         'week_dates': [d.isoformat() for d in week_dates],
         'week_dates_display': [f'{d.month}/{d.day}' for d in week_dates],
+        'week_header_data': [{'display': f'{d.month}/{d.day}', 'date': d.isoformat()} for d in week_dates],
     })
 
 
@@ -136,19 +137,28 @@ def toggle_habit(request: HttpRequest) -> JsonResponse:
 
 @login_required
 def habit_status_json(request: HttpRequest) -> JsonResponse:
-    """指定日の習慣状態を返す AJAX エンドポイント（過去7日のみ）。"""
+    """指定日の習慣状態を返す AJAX エンドポイント。週/年ビューの詳細表示にも使用するため過去全日付に対応。"""
     today = date.today()
-    min_date = today - timedelta(days=6)
     date_str = request.GET.get('date', today.isoformat())
     try:
         target_date = date.fromisoformat(date_str)
-        if target_date > today or target_date < min_date:
+        if target_date > today:
             return JsonResponse({'error': 'invalid date'}, status=400)
     except ValueError:
         return JsonResponse({'error': 'invalid date'}, status=400)
 
     status = selectors.get_today_status(request.user, target_date)
     return JsonResponse({'status': status, 'date': date_str})
+
+
+@login_required
+def habit_list(request: HttpRequest) -> HttpResponse:
+    """習慣管理一覧ページ。"""
+    habits = selectors.get_habits(request.user)
+    return render(request, 'app/habit/list.html', {
+        'habits': habits,
+        'form': HabitForm(),
+    })
 
 
 @login_required

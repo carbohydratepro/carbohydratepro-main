@@ -86,11 +86,13 @@ function renderHeatmap(data: Record<string, number>, todayStr: string, year: num
       if (d === 0) {
         const m = cellDate.getMonth();
         if (m !== prevMonth && cellDate <= endDate) {
-          // 指定年モードでは1月の年表示を追加
-          const label = (year !== null && m === 0)
-            ? `${String(year)}/${MONTHS_JA[m]}`
-            : MONTHS_JA[m];
-          monthLabels.push({ col: colIndex, label });
+          // 年指定モードでは対象年のセルのみラベルを記録（前年12月分をスキップ）
+          if (year === null || cellDate.getFullYear() === year) {
+            const label = (year !== null && m === 0)
+              ? `${String(year)}/${MONTHS_JA[m]}`
+              : MONTHS_JA[m];
+            monthLabels.push({ col: colIndex, label });
+          }
           prevMonth = m;
         }
       }
@@ -120,6 +122,7 @@ function renderHeatmap(data: Record<string, number>, todayStr: string, year: num
       cell.title = `${formatDateLabel(dateStr)}${scoreLabel}`;
       cell.dataset['date'] = dateStr;
       cell.dataset['score'] = String(scoreVal);
+      cell.dataset['hasRecord'] = score !== undefined ? '1' : '0';
 
       weekDiv.appendChild(cell);
     }
@@ -164,6 +167,66 @@ function updateHeatmapCell(dateStr: string, newScore: number, hasRecord: boolean
   cell.title = `${formatDateLabel(dateStr)}${scoreLabel}`;
 }
 
+/** トグル後にヒートマップセルをスコア差分で更新する */
+function applyHeatmapDelta(dateStr: string, scoreDelta: number, nowCompleted: boolean): void {
+  const cell = document.querySelector<HTMLElement>(`.heatmap-cell[data-date="${dateStr}"]`);
+  if (!cell) return;
+
+  const prevScore = parseFloat(cell.dataset['score'] ?? '0');
+  const newScore = prevScore + scoreDelta;
+  // レコードがあるかどうか: 今回達成 or 既存レコードがある
+  const prevHasRecord = cell.dataset['hasRecord'] === '1';
+  const hasRecord = nowCompleted || prevHasRecord;
+  if (nowCompleted) cell.dataset['hasRecord'] = '1';
+
+  updateHeatmapCell(dateStr, newScore, hasRecord);
+}
+
+/** 週ビューのセル（ドット）と達成数バッジをトグル後に更新する */
+function updateWeekCell(habitId: string, dateStr: string, completed: boolean, color: string): void {
+  const row = document.querySelector<HTMLElement>(`tr[data-habit-id="${habitId}"]`);
+  if (!row) return;
+
+  const headers = Array.from(document.querySelectorAll<HTMLElement>('th[data-week-date]'));
+  const colIndex = headers.findIndex(h => h.dataset['weekDate'] === dateStr);
+  if (colIndex < 0) return;
+
+  // セル: +1 は習慣名列の分
+  const cells = row.querySelectorAll('td');
+  const cell = cells[colIndex + 1];
+  if (!cell) return;
+
+  const dot = cell.querySelector<HTMLElement>('.week-dot');
+  if (!dot) return;
+
+  if (completed) {
+    dot.classList.add('done');
+    dot.style.background = color;
+    dot.style.border = 'none';
+  } else {
+    dot.classList.remove('done');
+    dot.style.background = '';
+    dot.style.border = '';
+  }
+
+  // 達成数バッジを更新
+  const allDots = Array.from(row.querySelectorAll('.week-dot'));
+  const doneCount = allDots.filter(d => d.classList.contains('done')).length;
+  const badge = row.querySelector<HTMLElement>('.week-goal-badge');
+  if (badge) {
+    const currentText = badge.textContent?.trim() ?? '';
+    const slash = currentText.indexOf('/');
+    if (slash >= 0) {
+      const goal = currentText.slice(slash + 1);
+      badge.textContent = `${doneCount}/${goal}`;
+      const goalNum = parseInt(goal, 10);
+      badge.className = `week-goal-badge badge ${goalNum > 0 && doneCount >= goalNum ? 'badge-success' : 'badge-secondary'}`;
+    } else {
+      badge.textContent = String(doneCount);
+    }
+  }
+}
+
 // ---- AJAX トグル ----
 
 async function doToggle(habitId: string, dateStr: string, coefficient: string): Promise<{ completed: boolean; score_delta: number } | null> {
@@ -204,6 +267,9 @@ function moveCard(card: HTMLElement, toCompleted: boolean): void {
 // ---- カードスワイプ ----
 
 const SWIPE_THRESHOLD = 60;
+
+// カードが横スワイプ中かどうかを示すフラグ（パネル切替の誤作動防止）
+let isCardDragging = false;
 
 function getCardCoefficient(card: HTMLElement): string {
   const slider = card.querySelector<HTMLInputElement>('.coeff-slider');
@@ -258,7 +324,10 @@ function attachCardSwipe(card: HTMLElement): void {
     if (completed && dx > 0) return;
     if (!completed && dx < 0) return;
 
-    if (!isDragging && absDx > 8) isDragging = true;
+    if (!isDragging && absDx > 8) {
+      isDragging = true;
+      isCardDragging = true; // パネル切替の誤作動防止
+    }
     if (!isDragging) return;
 
     card.style.transform = `translateX(${dx}px)`;
@@ -285,19 +354,15 @@ function attachCardSwipe(card: HTMLElement): void {
       const res = await doToggle(card.dataset['habitId'] ?? '', dateStr, coeff);
       if (res) {
         moveCard(card, true);
-        const prevScore = parseFloat(card.dataset['score'] ?? '0');
-        const newScore = prevScore + res.score_delta;
-        card.dataset['score'] = String(newScore);
-        if (dateStr === habitToday) updateHeatmapCell(dateStr, newScore, true);
+        applyHeatmapDelta(dateStr, res.score_delta, true);
+        updateWeekCell(card.dataset['habitId'] ?? '', dateStr, true, card.dataset['color'] ?? '');
       }
     } else if (shouldUncomplete && completed) {
       const res = await doToggle(card.dataset['habitId'] ?? '', dateStr, coeff);
       if (res) {
         moveCard(card, false);
-        const prevScore = parseFloat(card.dataset['score'] ?? '0');
-        const newScore = prevScore + res.score_delta;
-        card.dataset['score'] = String(newScore);
-        if (dateStr === habitToday) updateHeatmapCell(dateStr, newScore, newScore !== 0);
+        applyHeatmapDelta(dateStr, res.score_delta, false);
+        updateWeekCell(card.dataset['habitId'] ?? '', dateStr, false, card.dataset['color'] ?? '');
       }
     }
   }
@@ -370,7 +435,10 @@ function attachPanelSwipe(): void {
   let dragging = false;
 
   wrap.addEventListener('touchstart', (e: TouchEvent) => {
-    startX = e.touches[0].clientX; startY = e.touches[0].clientY; dragging = false;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    dragging = false;
+    isCardDragging = false; // 新しいタッチ開始時にフラグをリセット
   }, { passive: true });
   wrap.addEventListener('touchmove', (e: TouchEvent) => {
     const dx = e.touches[0].clientX - startX;
@@ -378,7 +446,8 @@ function attachPanelSwipe(): void {
     if (!dragging && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) dragging = true;
   }, { passive: true });
   wrap.addEventListener('touchend', (e: TouchEvent) => {
-    if (!dragging) return;
+    // カードスワイプ中はパネル切替しない
+    if (!dragging || isCardDragging) return;
     const dx = e.changedTouches[0].clientX - startX;
     if (dx < -50) switchPanel(currentPanel + 1);
     else if (dx > 50) switchPanel(currentPanel - 1);
@@ -471,6 +540,54 @@ async function loadYearHeatmap(year: number | null): Promise<void> {
   } catch (err) {
     console.error('loadYearHeatmap error:', err);
   }
+}
+
+// ---- 日付詳細表示（週/年ビューのクリック） ----
+
+async function showDayDetail(dateStr: string): Promise<void> {
+  const section = document.getElementById('dayDetailSection');
+  const content = document.getElementById('dayDetailContent');
+  const titleEl = document.getElementById('dayDetailDate');
+  if (!section || !content) return;
+
+  try {
+    const resp = await fetch(`/carbohydratepro/habits/status/?date=${dateStr}`);
+    if (!resp.ok) return;
+    const json = await resp.json() as { status: Array<Record<string, unknown>>; date: string; error?: string };
+    if (json.error) return;
+
+    if (titleEl) titleEl.textContent = formatDateLabel(dateStr);
+    content.innerHTML = '';
+
+    if (json.status.length === 0) {
+      content.innerHTML = '<p class="text-muted small mb-0">習慣が登録されていません。</p>';
+    } else {
+      for (const item of json.status) {
+        const completed = item['completed'] as boolean;
+        const color = item['color'] as string;
+        const row = document.createElement('div');
+        row.className = 'day-detail-row';
+        row.innerHTML = `
+          <span class="day-detail-dot" style="background:${color};"></span>
+          <span class="day-detail-title">${String(item['title'])}</span>
+          <span class="day-detail-status ${completed ? 'done' : 'undone'}">
+            <i class="fas ${completed ? 'fa-check' : 'fa-times'}"></i>
+          </span>
+        `;
+        content.appendChild(row);
+      }
+    }
+
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (err) {
+    console.error('showDayDetail error:', err);
+  }
+}
+
+function closeDayDetail(): void {
+  const section = document.getElementById('dayDetailSection');
+  if (section) section.style.display = 'none';
 }
 
 // ---- モーダル（追加/編集） ----
@@ -572,4 +689,21 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   });
+
+  // 週ビュー: 日付ヘッダークリックで詳細表示
+  document.querySelectorAll<HTMLElement>('[data-week-date]').forEach(el => {
+    el.addEventListener('click', () => {
+      const d = el.dataset['weekDate'] ?? '';
+      if (d) showDayDetail(d);
+    });
+  });
+
+  // 年ビュー: ヒートマップセルクリックで詳細表示（イベント委譲）
+  const heatmapContainer = document.getElementById('habitHeatmap');
+  if (heatmapContainer) {
+    heatmapContainer.addEventListener('click', (e: Event) => {
+      const cell = (e.target as HTMLElement).closest<HTMLElement>('.heatmap-cell[data-date]');
+      if (cell && cell.dataset['date']) showDayDetail(cell.dataset['date']);
+    });
+  }
 });

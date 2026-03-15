@@ -28,19 +28,19 @@
 .habit-section-title {
   font-size: 0.78rem; font-weight: 600; color: #888;
   text-transform: uppercase; letter-spacing: 0.05em;
-  padding: 4px 0 6px; margin-bottom: 4px;
+  padding: 2px 0 4px; margin-bottom: 4px;
   border-bottom: 1px solid #f0f0f0;
 }
 .habit-card-list { margin-bottom: 12px; }
 .habit-card {
   position: relative; overflow: hidden;
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px; border-radius: 10px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-radius: 8px;
   background: #fff; border: 1px solid #e9ecef;
-  margin-bottom: 8px; touch-action: pan-y; user-select: none;
+  margin-bottom: 6px; touch-action: pan-y; user-select: none;
   transition: transform 0.15s, box-shadow 0.15s; flex-direction: column;
 }
-.habit-card-main { display: flex; align-items: center; gap: 10px; width: 100%; }
+.habit-card-main { display: flex; align-items: center; gap: 8px; width: 100%; }
 .habit-card-swipe-hint {
   position: absolute; top: 0; bottom: 0; width: 60px;
   display: flex; align-items: center; justify-content: center;
@@ -48,24 +48,26 @@
 }
 .habit-card-swipe-hint.left { left: 0; background: linear-gradient(to right, #dc354533, transparent); color: #dc3545; }
 .habit-card-swipe-hint.right { right: 0; background: linear-gradient(to left, #28a74533, transparent); color: #28a745; }
-.habit-card-indicator { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.habit-card-indicator { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .habit-card-body { flex: 1; min-width: 0; }
-.habit-card-title { font-weight: 500; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.habit-card-meta { font-size: 0.75rem; color: #999; margin-top: 2px; }
+.habit-card-title { font-weight: 500; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.habit-card-meta { font-size: 0.72rem; color: #999; }
 .habit-card.done { background: #f8fff9; border-color: #c3e6cb; }
 .habit-card.done .habit-card-title { color: #155724; }
-.done-icon { color: #28a745; font-size: 1.1rem; flex-shrink: 0; }
+.done-icon { color: #28a745; font-size: 1rem; flex-shrink: 0; }
 
 /* 係数スライダー（カード内） */
-.coeff-slider-wrap { width: 100%; padding: 0 2px 4px; display: flex; align-items: center; gap: 8px; }
+.coeff-slider-wrap { width: 100%; padding: 0 2px 2px; display: flex; align-items: center; gap: 8px; }
 .coeff-slider { flex: 1; }
-.coeff-slider-label { font-size: 0.72rem; color: #666; white-space: nowrap; min-width: 40px; }
+.coeff-slider-label { font-size: 0.7rem; color: #666; white-space: nowrap; min-width: 40px; }
 
 /* ---- 週ビュー ---- */
 .week-grid { overflow-x: auto; }
 .week-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
 .week-table th { padding: 4px 6px; text-align: center; color: #888; font-weight: normal; }
 .week-table td { padding: 4px 6px; text-align: center; }
+.week-day-header { cursor: pointer; }
+.week-day-header:hover { color: #764ba2; }
 .week-dot { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 1px solid #dee2e6; background: #f8f9fa; vertical-align: middle; }
 .week-dot.done { border: none; }
 .week-goal-badge { font-size: 0.7rem; padding: 1px 5px; border-radius: 10px; }
@@ -80,7 +82,7 @@
 .heatmap-month-label { display: flex; align-items: center; overflow: hidden; white-space: nowrap; }
 .heatmap-grid { display: flex; gap: 3px; align-items: flex-start; }
 .heatmap-week { display: flex; flex-direction: column; gap: 3px; }
-.heatmap-cell { width: 13px; height: 13px; border-radius: 2px; background: #ebedf0; cursor: default; flex-shrink: 0; }
+.heatmap-cell { width: 13px; height: 13px; border-radius: 2px; background: #ebedf0; cursor: pointer; flex-shrink: 0; }
 .heatmap-cell.score-p1 { background: #9be9a8; }
 .heatmap-cell.score-p2 { background: #40c463; }
 .heatmap-cell.score-p3 { background: #30a14e; }
@@ -91,13 +93,21 @@
 .heatmap-cell.score-n4 { background: #b22222; }
 .heatmap-cell.score-zero { background: #fffde7; }
 .heatmap-cell.today { outline: 2px solid #764ba2; outline-offset: 1px; }
-.heatmap-cell.future { background: transparent; }
+.heatmap-cell.future { background: transparent; cursor: default; }
 .heatmap-legend { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: #888; margin-top: 6px; flex-wrap: wrap; }
 .legend-cell { width: 13px; height: 13px; border-radius: 2px; display: inline-block; }
 
-/* ---- 習慣管理リスト ---- */
-.habit-mgmt-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 6px; background: #fff; }
-.habit-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+/* ---- 日付詳細セクション ---- */
+.day-detail-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 0; border-bottom: 1px solid #f0f0f0;
+  font-size: 0.88rem;
+}
+.day-detail-row:last-child { border-bottom: none; }
+.day-detail-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.day-detail-title { flex: 1; }
+.day-detail-status.done { color: #28a745; }
+.day-detail-status.undone { color: #dc3545; }
 
 /* ---- モーダル共通 ---- */
 .habit-modal-positive { background: #e8f5e9; border-radius: 6px; padding: 8px; cursor: pointer; text-align: center; border: 2px solid transparent; transition: border-color 0.15s; }
@@ -113,7 +123,10 @@
 
 {% block content %}
 <div class="habit-page">
-  <h5 class="mb-3"><i class="fas fa-seedling"></i> 習慣トラッカー</h5>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0"><i class="fas fa-seedling"></i> 習慣トラッカー</h5>
+    <a href="{% url 'habit_list' %}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-list"></i> 習慣を管理</a>
+  </div>
 
   <!-- タブ -->
   <div class="habit-tabs" id="habitTabs">
@@ -200,13 +213,10 @@
           </div>
 
           {% if not today_status %}
-          <p class="text-muted small mt-2">習慣が登録されていません。<br>下のボタンから追加してください。</p>
+          <p class="text-muted small mt-2">習慣が登録されていません。<br>「習慣を管理」から追加してください。</p>
           {% endif %}
         </div>
         <div class="swipe-hint"><i class="fas fa-arrow-right"></i> 右スワイプで達成 &nbsp; <i class="fas fa-arrow-left"></i> 左スワイプで未達成</div>
-        <button class="btn btn-primary btn-sm mt-3 mb-2" type="button" data-toggle="modal" data-target="#addHabitModal">
-          <i class="fas fa-plus"></i> 習慣を追加
-        </button>
       </div>
 
       <!-- 週ビュー -->
@@ -218,13 +228,13 @@
                 <thead>
                   <tr>
                     <th class="week-habit-name"></th>
-                    {% for d in week_dates_display %}<th>{{ d }}</th>{% endfor %}
+                    {% for d in week_header_data %}<th class="week-day-header" data-week-date="{{ d.date }}">{{ d.display }}</th>{% endfor %}
                     <th>達成</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for row in week_data %}
-                  <tr>
+                  <tr data-habit-id="{{ row.id }}">
                     <td class="week-habit-name" title="{{ row.title }}">
                       <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:{{ row.color }};margin-right:4px;"></span>{{ row.title }}
                     </td>
@@ -243,6 +253,7 @@
                 </tbody>
               </table>
             </div>
+            <p class="text-muted small mt-1 mb-0" style="font-size:0.72rem;"><i class="fas fa-hand-pointer"></i> 日付をクリックすると詳細を表示</p>
           </div>
         </div>
       </div>
@@ -278,6 +289,7 @@
               <span class="ml-2" style="background:#fffde7;border:1px solid #eee;display:inline-block;width:13px;height:13px;border-radius:2px;vertical-align:middle;"></span>
               <span>記録あり(±0)</span>
             </div>
+            <p class="text-muted small mt-1 mb-0" style="font-size:0.72rem;"><i class="fas fa-hand-pointer"></i> セルをクリックすると詳細を表示</p>
           </div>
         </div>
       </div>
@@ -285,56 +297,17 @@
     </div>
   </div>
 
-  <!-- 習慣一覧 -->
-  <div class="card mt-3">
+  <!-- 日付詳細セクション（週/年ビューのクリックで表示） -->
+  <div id="dayDetailSection" class="card mt-3" style="display:none;">
     <div class="card-body pb-2">
-      <h6 class="card-title">習慣一覧</h6>
-      <div class="habit-mgmt-list">
-        {% for habit in habits %}
-        <div class="habit-mgmt-item">
-          <div class="habit-color-dot" style="background:{{ habit.color }};"></div>
-          <div style="flex:1; min-width:0;">
-            <span style="font-weight:500;">{{ habit.title }}</span>
-            <span class="badge badge-light ml-1" style="font-size:0.72rem;">{{ habit.get_frequency_display }}</span>
-            <span class="small {% if habit.is_positive %}text-success{% else %}text-danger{% endif %} ml-1">
-              {% if habit.is_positive %}+{% else %}-{% endif %}{{ habit.coefficient }}
-            </span>
-            {% if habit.weekly_goal > 0 %}<span class="badge badge-info ml-1" style="font-size:0.68rem;">週{{ habit.weekly_goal }}回</span>{% endif %}
-            {% if habit.monthly_goal > 0 %}<span class="badge badge-secondary ml-1" style="font-size:0.68rem;">月{{ habit.monthly_goal }}回</span>{% endif %}
-          </div>
-          <button class="btn btn-sm btn-outline-secondary"
-            onclick="openEditHabit({{ habit.id }}, '{{ habit.title|escapejs }}', '{{ habit.frequency }}', {{ habit.coefficient }}, {{ habit.is_positive|lower }}, {{ habit.weekly_goal }}, {{ habit.monthly_goal }})"
-            type="button"><i class="fas fa-edit"></i></button>
-          <form method="post" action="{% url 'delete_habit' habit.id %}" style="margin:0;" onsubmit="return confirm('「{{ habit.title|escapejs }}」を削除しますか？');">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
-          </form>
-        </div>
-        {% empty %}
-        <p class="text-muted small">習慣がありません。</p>
-        {% endfor %}
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span style="font-size:0.85rem;font-weight:600;color:#555;"><i class="fas fa-calendar-day"></i> <span id="dayDetailDate"></span></span>
+        <button type="button" class="close" onclick="closeDayDetail()" style="font-size:1rem;">&times;</button>
       </div>
+      <div id="dayDetailContent"></div>
     </div>
   </div>
-</div>
 
-<!-- 習慣追加モーダル -->
-<div class="modal fade" id="addHabitModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-plus"></i> 習慣を追加</h5>
-        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-      </div>
-      <div class="modal-body">
-        <form method="post" action="{% url 'create_habit' %}">
-          {% csrf_token %}
-          {% include 'app/habit/_form_fields.html' with prefix="add" %}
-          <button type="submit" class="btn btn-primary btn-sm mt-2"><i class="fas fa-plus"></i> 追加</button>
-        </form>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- 習慣編集モーダル -->

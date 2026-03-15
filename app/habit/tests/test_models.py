@@ -228,3 +228,20 @@ class HabitViewTest(TestCase):
         resp = self.client.post(reverse('delete_habit', args=[self.habit.id]))
         self.assertEqual(resp.status_code, 302)
         self.assertFalse(Habit.objects.filter(id=self.habit.id).exists())
+
+    def test_habit_list_accessible(self) -> None:
+        resp = self.client.get(reverse('habit_list'))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_habit_status_json_old_date(self) -> None:
+        """habit_status_json は過去7日より古い日付にも対応すること（週/年ビュー詳細表示のため）"""
+        old_date = (date.today() - timedelta(days=30)).isoformat()
+        resp = self.client.get(reverse('habit_status_json') + f'?date={old_date}')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn('status', data)
+
+    def test_habit_status_json_rejects_future_date(self) -> None:
+        future = (date.today() + timedelta(days=1)).isoformat()
+        resp = self.client.get(reverse('habit_status_json') + f'?date={future}')
+        self.assertEqual(resp.status_code, 400)

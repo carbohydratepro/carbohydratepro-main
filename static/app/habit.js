@@ -82,11 +82,13 @@ function renderHeatmap(data, todayStr, year) {
             if (d === 0) {
                 const m = cellDate.getMonth();
                 if (m !== prevMonth && cellDate <= endDate) {
-                    // 指定年モードでは1月の年表示を追加
-                    const label = (year !== null && m === 0)
-                        ? `${String(year)}/${MONTHS_JA[m]}`
-                        : MONTHS_JA[m];
-                    monthLabels.push({ col: colIndex, label });
+                    // 年指定モードでは対象年のセルのみラベルを記録（前年12月分をスキップ）
+                    if (year === null || cellDate.getFullYear() === year) {
+                        const label = (year !== null && m === 0)
+                            ? `${String(year)}/${MONTHS_JA[m]}`
+                            : MONTHS_JA[m];
+                        monthLabels.push({ col: colIndex, label });
+                    }
                     prevMonth = m;
                 }
             }
@@ -112,6 +114,7 @@ function renderHeatmap(data, todayStr, year) {
             cell.title = `${formatDateLabel(dateStr)}${scoreLabel}`;
             cell.dataset['date'] = dateStr;
             cell.dataset['score'] = String(scoreVal);
+            cell.dataset['hasRecord'] = score !== undefined ? '1' : '0';
             weekDiv.appendChild(cell);
         }
         fragment.appendChild(weekDiv);
@@ -149,6 +152,67 @@ function updateHeatmapCell(dateStr, newScore, hasRecord) {
     const scoreInt = Math.round(newScore);
     const scoreLabel = newScore !== 0 ? `\nスコア: ${scoreInt}` : (hasRecord ? '\nスコア: 0（相殺）' : '');
     cell.title = `${formatDateLabel(dateStr)}${scoreLabel}`;
+}
+/** トグル後にヒートマップセルをスコア差分で更新する */
+function applyHeatmapDelta(dateStr, scoreDelta, nowCompleted) {
+    var _a;
+    const cell = document.querySelector(`.heatmap-cell[data-date="${dateStr}"]`);
+    if (!cell)
+        return;
+    const prevScore = parseFloat((_a = cell.dataset['score']) !== null && _a !== void 0 ? _a : '0');
+    const newScore = prevScore + scoreDelta;
+    // レコードがあるかどうか: 今回達成 or 既存レコードがある
+    const prevHasRecord = cell.dataset['hasRecord'] === '1';
+    const hasRecord = nowCompleted || prevHasRecord;
+    if (nowCompleted)
+        cell.dataset['hasRecord'] = '1';
+    updateHeatmapCell(dateStr, newScore, hasRecord);
+}
+/** 週ビューのセル（ドット）と達成数バッジをトグル後に更新する */
+function updateWeekCell(habitId, dateStr, completed, color) {
+    var _a, _b;
+    const row = document.querySelector(`tr[data-habit-id="${habitId}"]`);
+    if (!row)
+        return;
+    const headers = Array.from(document.querySelectorAll('th[data-week-date]'));
+    const colIndex = headers.findIndex(h => h.dataset['weekDate'] === dateStr);
+    if (colIndex < 0)
+        return;
+    // セル: +1 は習慣名列の分
+    const cells = row.querySelectorAll('td');
+    const cell = cells[colIndex + 1];
+    if (!cell)
+        return;
+    const dot = cell.querySelector('.week-dot');
+    if (!dot)
+        return;
+    if (completed) {
+        dot.classList.add('done');
+        dot.style.background = color;
+        dot.style.border = 'none';
+    }
+    else {
+        dot.classList.remove('done');
+        dot.style.background = '';
+        dot.style.border = '';
+    }
+    // 達成数バッジを更新
+    const allDots = Array.from(row.querySelectorAll('.week-dot'));
+    const doneCount = allDots.filter(d => d.classList.contains('done')).length;
+    const badge = row.querySelector('.week-goal-badge');
+    if (badge) {
+        const currentText = (_b = (_a = badge.textContent) === null || _a === void 0 ? void 0 : _a.trim()) !== null && _b !== void 0 ? _b : '';
+        const slash = currentText.indexOf('/');
+        if (slash >= 0) {
+            const goal = currentText.slice(slash + 1);
+            badge.textContent = `${doneCount}/${goal}`;
+            const goalNum = parseInt(goal, 10);
+            badge.className = `week-goal-badge badge ${goalNum > 0 && doneCount >= goalNum ? 'badge-success' : 'badge-secondary'}`;
+        }
+        else {
+            badge.textContent = String(doneCount);
+        }
+    }
 }
 // ---- AJAX トグル ----
 async function doToggle(habitId, dateStr, coefficient) {
@@ -191,6 +255,8 @@ function moveCard(card, toCompleted) {
 }
 // ---- カードスワイプ ----
 const SWIPE_THRESHOLD = 60;
+// カードが横スワイプ中かどうかを示すフラグ（パネル切替の誤作動防止）
+let isCardDragging = false;
 function getCardCoefficient(card) {
     const slider = card.querySelector('.coeff-slider');
     return slider ? slider.value : '1';
@@ -240,8 +306,10 @@ function attachCardSwipe(card) {
             return;
         if (!completed && dx < 0)
             return;
-        if (!isDragging && absDx > 8)
+        if (!isDragging && absDx > 8) {
             isDragging = true;
+            isCardDragging = true; // パネル切替の誤作動防止
+        }
         if (!isDragging)
             return;
         card.style.transform = `translateX(${dx}px)`;
@@ -252,7 +320,7 @@ function attachCardSwipe(card) {
             rightHint.style.opacity = dx > 0 ? String(ratio) : '0';
     }
     async function onEnd(x) {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f, _g;
         const dx = x - startX;
         card.style.transform = '';
         if (leftHint)
@@ -271,22 +339,16 @@ function attachCardSwipe(card) {
             const res = await doToggle((_b = card.dataset['habitId']) !== null && _b !== void 0 ? _b : '', dateStr, coeff);
             if (res) {
                 moveCard(card, true);
-                const prevScore = parseFloat((_c = card.dataset['score']) !== null && _c !== void 0 ? _c : '0');
-                const newScore = prevScore + res.score_delta;
-                card.dataset['score'] = String(newScore);
-                if (dateStr === habitToday)
-                    updateHeatmapCell(dateStr, newScore, true);
+                applyHeatmapDelta(dateStr, res.score_delta, true);
+                updateWeekCell((_c = card.dataset['habitId']) !== null && _c !== void 0 ? _c : '', dateStr, true, (_d = card.dataset['color']) !== null && _d !== void 0 ? _d : '');
             }
         }
         else if (shouldUncomplete && completed) {
-            const res = await doToggle((_d = card.dataset['habitId']) !== null && _d !== void 0 ? _d : '', dateStr, coeff);
+            const res = await doToggle((_e = card.dataset['habitId']) !== null && _e !== void 0 ? _e : '', dateStr, coeff);
             if (res) {
                 moveCard(card, false);
-                const prevScore = parseFloat((_e = card.dataset['score']) !== null && _e !== void 0 ? _e : '0');
-                const newScore = prevScore + res.score_delta;
-                card.dataset['score'] = String(newScore);
-                if (dateStr === habitToday)
-                    updateHeatmapCell(dateStr, newScore, newScore !== 0);
+                applyHeatmapDelta(dateStr, res.score_delta, false);
+                updateWeekCell((_f = card.dataset['habitId']) !== null && _f !== void 0 ? _f : '', dateStr, false, (_g = card.dataset['color']) !== null && _g !== void 0 ? _g : '');
             }
         }
     }
@@ -359,6 +421,7 @@ function attachPanelSwipe() {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         dragging = false;
+        isCardDragging = false; // 新しいタッチ開始時にフラグをリセット
     }, { passive: true });
     wrap.addEventListener('touchmove', (e) => {
         const dx = e.touches[0].clientX - startX;
@@ -367,7 +430,8 @@ function attachPanelSwipe() {
             dragging = true;
     }, { passive: true });
     wrap.addEventListener('touchend', (e) => {
-        if (!dragging)
+        // カードスワイプ中はパネル切替しない
+        if (!dragging || isCardDragging)
             return;
         const dx = e.changedTouches[0].clientX - startX;
         if (dx < -50)
@@ -465,6 +529,54 @@ async function loadYearHeatmap(year) {
         console.error('loadYearHeatmap error:', err);
     }
 }
+// ---- 日付詳細表示（週/年ビューのクリック） ----
+async function showDayDetail(dateStr) {
+    const section = document.getElementById('dayDetailSection');
+    const content = document.getElementById('dayDetailContent');
+    const titleEl = document.getElementById('dayDetailDate');
+    if (!section || !content)
+        return;
+    try {
+        const resp = await fetch(`/carbohydratepro/habits/status/?date=${dateStr}`);
+        if (!resp.ok)
+            return;
+        const json = await resp.json();
+        if (json.error)
+            return;
+        if (titleEl)
+            titleEl.textContent = formatDateLabel(dateStr);
+        content.innerHTML = '';
+        if (json.status.length === 0) {
+            content.innerHTML = '<p class="text-muted small mb-0">習慣が登録されていません。</p>';
+        }
+        else {
+            for (const item of json.status) {
+                const completed = item['completed'];
+                const color = item['color'];
+                const row = document.createElement('div');
+                row.className = 'day-detail-row';
+                row.innerHTML = `
+          <span class="day-detail-dot" style="background:${color};"></span>
+          <span class="day-detail-title">${String(item['title'])}</span>
+          <span class="day-detail-status ${completed ? 'done' : 'undone'}">
+            <i class="fas ${completed ? 'fa-check' : 'fa-times'}"></i>
+          </span>
+        `;
+                content.appendChild(row);
+            }
+        }
+        section.style.display = 'block';
+        section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    catch (err) {
+        console.error('showDayDetail error:', err);
+    }
+}
+function closeDayDetail() {
+    const section = document.getElementById('dayDetailSection');
+    if (section)
+        section.style.display = 'none';
+}
 // ---- モーダル（追加/編集） ----
 function habitSelectPositive(prefix, positive) {
     const posBtn = document.getElementById(`${prefix}PositiveBtn`);
@@ -560,4 +672,22 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     });
+    // 週ビュー: 日付ヘッダークリックで詳細表示
+    document.querySelectorAll('[data-week-date]').forEach(el => {
+        el.addEventListener('click', () => {
+            var _a;
+            const d = (_a = el.dataset['weekDate']) !== null && _a !== void 0 ? _a : '';
+            if (d)
+                showDayDetail(d);
+        });
+    });
+    // 年ビュー: ヒートマップセルクリックで詳細表示（イベント委譲）
+    const heatmapContainer = document.getElementById('habitHeatmap');
+    if (heatmapContainer) {
+        heatmapContainer.addEventListener('click', (e) => {
+            const cell = e.target.closest('.heatmap-cell[data-date]');
+            if (cell && cell.dataset['date'])
+                showDayDetail(cell.dataset['date']);
+        });
+    }
 });

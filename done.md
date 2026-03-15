@@ -1,5 +1,9 @@
 # 完了タスク
 
+## 習慣トラッカーの改善
+- **実装内容**: ①iPhoneでのスワイプ誤作動修正: `isCardDragging`フラグを追加し、カード横スワイプ中にパネル（日/週/年）が切り替わらないよう対策。②カード縦幅圧縮: padding/font-sizeを削減しカードを小型化。③習慣一覧を別画面(`/carbohydratepro/habits/list/`)に分離し、ダッシュボードに「習慣を管理」リンクを追加。週ビューの日付ヘッダー・年ビューのヒートマップセルクリックで達成詳細をパネル下部に表示する`showDayDetail()`機能を実装。`habit_status_json`の7日制限を撤廃し過去全日付に対応。④年表示の月ラベルバグ修正: 年指定モード時に対象年外（前年12月）のセルで月ラベルを記録しないよう修正し「De2026/Jan」のような誤表示を解消。テスト31件全通過。
+- **実装日時**: 2026-03-11 00:00
+
 ## バグ修正
 - **実装内容**: ①Django 5.2では`LogoutView`がGETリクエストを受け付けないため、両ヘッダー（`app/templates/app/_header.html`、`auth_app/templates/registration/_header.html`）のログアウトリンクを`<a href>`からCSRFトークン付きPOSTフォームに変更。②`registration/_header.html`のログイン済みメニューに「一時タスク」（`temp_task_board`）と「習慣」（`habit_dashboard`）リンクが欠落していたため追加。
 - **実装日時**: 2026-03-11 00:00

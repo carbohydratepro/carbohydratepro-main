@@ -1,0 +1,95 @@
+{% extends 'app/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+.habit-list-page { padding: 16px; max-width: 720px; margin: 0 auto; }
+.habit-mgmt-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 6px; background: #fff; }
+.habit-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.habit-modal-positive { background: #e8f5e9; border-radius: 6px; padding: 8px; cursor: pointer; text-align: center; border: 2px solid transparent; transition: border-color 0.15s; }
+.habit-modal-negative { background: #fce4e4; border-radius: 6px; padding: 8px; cursor: pointer; text-align: center; border: 2px solid transparent; transition: border-color 0.15s; }
+.habit-modal-positive.selected { border-color: #28a745; }
+.habit-modal-negative.selected { border-color: #dc3545; }
+.goal-field { transition: opacity 0.2s; }
+.goal-field.hidden { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="habit-list-page">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0"><i class="fas fa-list"></i> 習慣一覧</h5>
+    <a href="{% url 'habit_dashboard' %}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left"></i> ダッシュボードへ</a>
+  </div>
+
+  <button class="btn btn-primary btn-sm mb-3" type="button" data-toggle="modal" data-target="#addHabitModal">
+    <i class="fas fa-plus"></i> 習慣を追加
+  </button>
+
+  <div class="habit-mgmt-list">
+    {% for habit in habits %}
+    <div class="habit-mgmt-item">
+      <div class="habit-color-dot" style="background:{{ habit.color }};"></div>
+      <div style="flex:1; min-width:0;">
+        <span style="font-weight:500;">{{ habit.title }}</span>
+        <span class="badge badge-light ml-1" style="font-size:0.72rem;">{{ habit.get_frequency_display }}</span>
+        <span class="small {% if habit.is_positive %}text-success{% else %}text-danger{% endif %} ml-1">
+          {% if habit.is_positive %}+{% else %}-{% endif %}{{ habit.coefficient }}
+        </span>
+        {% if habit.weekly_goal > 0 %}<span class="badge badge-info ml-1" style="font-size:0.68rem;">週{{ habit.weekly_goal }}回</span>{% endif %}
+        {% if habit.monthly_goal > 0 %}<span class="badge badge-secondary ml-1" style="font-size:0.68rem;">月{{ habit.monthly_goal }}回</span>{% endif %}
+      </div>
+      <button class="btn btn-sm btn-outline-secondary"
+        onclick="openEditHabit({{ habit.id }}, '{{ habit.title|escapejs }}', '{{ habit.frequency }}', {{ habit.coefficient }}, {{ habit.is_positive|lower }}, {{ habit.weekly_goal }}, {{ habit.monthly_goal }})"
+        type="button"><i class="fas fa-edit"></i></button>
+      <form method="post" action="{% url 'delete_habit' habit.id %}" style="margin:0;" onsubmit="return confirm('「{{ habit.title|escapejs }}」を削除しますか？');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+      </form>
+    </div>
+    {% empty %}
+    <p class="text-muted small">習慣がありません。上のボタンから追加してください。</p>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- 習慣追加モーダル -->
+<div class="modal fade" id="addHabitModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-plus"></i> 習慣を追加</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="{% url 'create_habit' %}">
+          {% csrf_token %}
+          {% include 'app/habit/_form_fields.html' with prefix="add" %}
+          <button type="submit" class="btn btn-primary btn-sm mt-2"><i class="fas fa-plus"></i> 追加</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 習慣編集モーダル -->
+<div class="modal fade" id="editHabitModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-edit"></i> 習慣を編集</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <form id="editHabitForm" method="post">
+          {% csrf_token %}
+          {% include 'app/habit/_form_fields.html' with prefix="edit" %}
+          <button type="submit" class="btn btn-primary btn-sm mt-2">更新</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'app/habit.js' %}"></script>
+{% endblock %}

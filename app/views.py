@@ -18,7 +18,7 @@ from .expenses.views import (
 from .memo.views import memo_list, create_memo, edit_memo, delete_memo, toggle_memo_favorite, memo_settings
 from .shopping.views import shopping_list, create_shopping_item, edit_shopping_item, delete_shopping_item, update_shopping_count
 from .task.views import task_list, create_task, edit_task, delete_task, get_day_tasks, task_settings, temp_task_board
-from .habit.views import habit_dashboard, create_habit, edit_habit, delete_habit, toggle_habit, habit_status_json, habit_heatmap_json
+from .habit.views import habit_dashboard, create_habit, edit_habit, delete_habit, toggle_habit, habit_status_json, habit_heatmap_json, habit_list
 
 @login_required
 def contact(request: HttpRequest) -> HttpResponse:

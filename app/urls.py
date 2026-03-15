@@ -46,6 +46,7 @@ urlpatterns = [
     path('habits/toggle/', views.toggle_habit, name='toggle_habit'),
     path('habits/status/', views.habit_status_json, name='habit_status_json'),
     path('habits/heatmap/', views.habit_heatmap_json, name='habit_heatmap_json'),
+    path('habits/list/', views.habit_list, name='habit_list'),
     # お問い合わせ
     path('contact/', views.contact, name='contact'),
 ]

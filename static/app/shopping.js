@@ -1,12 +1,58 @@
 "use strict";
 // 買い物リスト管理用JavaScript
-// 残数・不足数の更新（+/-/+10/-10ボタン用）
-function updateCount(itemId, fieldType, action) {
+function getCsrfToken() {
     var _a;
+    return ((_a = document.querySelector('[name=csrfmiddlewaretoken]')) === null || _a === void 0 ? void 0 : _a.value) || '';
+}
+// 購入済みトグル
+async function toggleCheck(itemId) {
+    try {
+        const response = await fetch(`/carbohydratepro/shopping/toggle-check/${itemId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+        });
+        const data = await response.json();
+        if (data.success) {
+            const row = document.getElementById(`item-row-${itemId}`);
+            const icon = document.querySelector(`#check-btn-${itemId} i`);
+            const titleEl = document.getElementById(`item-title-${itemId}`);
+            if (data.is_checked) {
+                row === null || row === void 0 ? void 0 : row.classList.add('shopping-checked');
+                if (icon) {
+                    icon.classList.remove('fa-circle', 'text-muted');
+                    icon.classList.add('fa-check-circle', 'text-success');
+                }
+                if (titleEl) {
+                    titleEl.classList.add('text-muted');
+                    titleEl.style.textDecoration = 'line-through';
+                }
+            }
+            else {
+                row === null || row === void 0 ? void 0 : row.classList.remove('shopping-checked');
+                if (icon) {
+                    icon.classList.remove('fa-check-circle', 'text-success');
+                    icon.classList.add('fa-circle', 'text-muted');
+                }
+                if (titleEl) {
+                    titleEl.classList.remove('text-muted');
+                    titleEl.style.textDecoration = '';
+                }
+            }
+        }
+    }
+    catch (_a) {
+        console.error('チェック更新に失敗しました');
+    }
+}
+// 残数の更新
+function updateCount(itemId, fieldType, action) {
     fetch(`/carbohydratepro/shopping/update-count/${itemId}/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': ((_a = document.querySelector('[name=csrfmiddlewaretoken]')) === null || _a === void 0 ? void 0 : _a.value) || '',
+            'X-CSRFToken': getCsrfToken(),
             'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: `field_type=${fieldType}&action=${action}`,
@@ -14,45 +60,30 @@ function updateCount(itemId, fieldType, action) {
         .then(response => response.json())
         .then((data) => {
         if (data.success) {
-            // デスクトップ版の残数と不足数の表示を更新
-            const remainingDesktop = document.getElementById(`remaining-count-${itemId}`);
-            const thresholdDesktop = document.getElementById(`threshold-count-${itemId}`);
-            if (remainingDesktop)
-                remainingDesktop.textContent = String(data.remaining_count);
-            if (thresholdDesktop)
-                thresholdDesktop.textContent = String(data.threshold_count);
-            // モバイル版の残数と不足数の表示を更新
-            const remainingMobile = document.getElementById(`remaining-count-mobile-${itemId}`);
-            const thresholdMobile = document.getElementById(`threshold-count-mobile-${itemId}`);
-            if (remainingMobile)
-                remainingMobile.textContent = String(data.remaining_count);
-            if (thresholdMobile)
-                thresholdMobile.textContent = String(data.threshold_count);
-            // カードの枠線の色を更新
-            updateCardBorder(itemId, data.remaining_count, data.threshold_count);
+            const remainingEl = document.getElementById(`remaining-count-${itemId}`);
+            if (remainingEl)
+                remainingEl.textContent = String(data.remaining_count);
+            // ステータスバッジを更新
+            const badge = document.getElementById(`status-badge-${itemId}`);
+            if (badge) {
+                if (data.status_code === 'insufficient') {
+                    badge.className = 'badge badge-danger mr-1';
+                    badge.textContent = '不足';
+                }
+                else {
+                    badge.className = 'badge badge-success mr-1';
+                    badge.textContent = '残あり';
+                }
+            }
         }
     })
         .catch(error => console.error('Error:', error));
-}
-// カードの枠線の色を更新する共通関数
-function updateCardBorder(itemId, remainingCount, thresholdCount) {
-    var _a;
-    const card = (_a = document.getElementById(`remaining-count-${itemId}`)) === null || _a === void 0 ? void 0 : _a.closest('.shopping-item-card');
-    if (!card)
-        return;
-    card.classList.remove('border-success', 'border-danger');
-    if (thresholdCount >= 1) {
-        card.classList.add('border-danger');
-    }
-    else if (thresholdCount === 0 && remainingCount >= 1) {
-        card.classList.add('border-success');
-    }
 }
 // フォームデータをURLSearchParams形式に変換
 function serializeShoppingForm(form) {
     return new URLSearchParams(new FormData(form)).toString();
 }
-// 編集モーダル関連
+// 編集モーダル
 async function openEditShoppingModal(itemId) {
     try {
         const response = await fetch(`/carbohydratepro/shopping/edit/${itemId}/`, {
@@ -97,7 +128,7 @@ async function openEditShoppingModal(itemId) {
         alert('データの読み込みに失敗しました。');
     }
 }
-// 新規作成モーダル関連
+// 新規作成モーダル
 async function openCreateShoppingModal() {
     try {
         const response = await fetch('/carbohydratepro/shopping/create/', {
@@ -142,25 +173,12 @@ async function openCreateShoppingModal() {
         alert('データの読み込みに失敗しました。');
     }
 }
-// フィルター関連のイベント処理
-function initializeShoppingFilters() {
-    const searchForm = document.getElementById('searchForm');
-    if (searchForm) {
-        searchForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            searchForm.submit();
-        });
-    }
-    const searchInput = document.getElementById('search');
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.querySelector('input[name="search"]');
     searchInput === null || searchInput === void 0 ? void 0 : searchInput.addEventListener('keypress', (e) => {
         var _a;
         if (e.key === 'Enter') {
-            e.preventDefault();
-            (_a = document.getElementById('searchForm')) === null || _a === void 0 ? void 0 : _a.submit();
+            (_a = searchInput.closest('form')) === null || _a === void 0 ? void 0 : _a.submit();
         }
     });
-}
-// ページ読み込み時にフィルターを初期化
-document.addEventListener('DOMContentLoaded', () => {
-    initializeShoppingFilters();
 });

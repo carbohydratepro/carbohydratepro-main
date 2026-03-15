@@ -22,10 +22,10 @@ def get_shopping_items(user: AbstractBaseUser, search_query: str = '') -> QueryS
 
 
 def get_one_time_items(shopping_items: QuerySet) -> QuerySet:
-    """一回限りの買うものを取得"""
-    return shopping_items.filter(frequency='one_time').order_by('status', 'remaining_count', '-updated_date')
+    """一回限りの買うものを取得（未チェックを先に）"""
+    return shopping_items.filter(frequency='one_time').order_by('is_checked', 'created_date')
 
 
 def get_recurring_items(shopping_items: QuerySet) -> QuerySet:
-    """定期的な買うものを取得"""
-    return shopping_items.filter(frequency='recurring').order_by('status', 'remaining_count', '-updated_date')
+    """定期的な買うものを取得（不足を先に）"""
+    return shopping_items.filter(frequency='recurring').order_by('-status', 'remaining_count', '-updated_date')

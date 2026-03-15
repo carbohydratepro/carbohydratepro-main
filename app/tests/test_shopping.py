@@ -88,7 +88,7 @@ class ShoppingItemModelTest(TestCase):
         self.assertEqual(item.threshold_count, 0)
 
     def test_ordering(self) -> None:
-        """買い物アイテムの並び順テスト（ステータス順、残数少ない順）"""
+        """買い物アイテムの並び順テスト（不足を上位に、残数少ない順）"""
         item1 = ShoppingItem.objects.create(
             user=self.user,
             title='商品A',
@@ -111,14 +111,23 @@ class ShoppingItemModelTest(TestCase):
             threshold_count=2
         )
         items = ShoppingItem.objects.filter(user=self.user)
-        # ordering は ['status', 'remaining_count', '-updated_date']
-        # status のアルファベット順: 'available' < 'insufficient'
-        # item1: available, remaining_count=10
-        # item2: insufficient, remaining_count=1
+        # ordering は ['-status', 'remaining_count', '-updated_date']
+        # -status DESC: 'insufficient' > 'available' → insufficient が先
         # item3: insufficient, remaining_count=0
-        self.assertEqual(items[0], item1)  # available が先
-        self.assertEqual(items[1], item3)  # insufficient, remaining_count=0
-        self.assertEqual(items[2], item2)  # insufficient, remaining_count=1
+        # item2: insufficient, remaining_count=1
+        # item1: available, remaining_count=10
+        self.assertEqual(items[0], item3)  # insufficient, remaining_count=0
+        self.assertEqual(items[1], item2)  # insufficient, remaining_count=1
+        self.assertEqual(items[2], item1)  # available が最後
+
+    def test_is_checked_default_false(self) -> None:
+        """is_checkedのデフォルト値テスト"""
+        item = ShoppingItem.objects.create(
+            user=self.user,
+            title='チェックテスト',
+            frequency='one_time',
+        )
+        self.assertFalse(item.is_checked)
 
     def test_frequency_choices(self) -> None:
         """頻度の選択肢テスト"""
@@ -387,6 +396,68 @@ class ShoppingViewTest(TestCase):
         item.refresh_from_db()
         self.assertEqual(item.remaining_count, 2)
         self.assertEqual(item.status, 'insufficient')
+
+
+class ShoppingCheckViewTest(TestCase):
+    """購入済みチェック機能のテスト"""
+
+    def setUp(self) -> None:
+        self.client = Client()
+        self.user = UserFactory()
+        self.client.login(username=self.user.email, password='testpass123')
+
+    def test_toggle_check_shopping_item(self) -> None:
+        """購入済みトグルのテスト"""
+        item = ShoppingItem.objects.create(
+            user=self.user,
+            title='チェックテスト',
+            frequency='one_time',
+        )
+        self.assertFalse(item.is_checked)
+
+        response = self.client.post(
+            reverse('toggle_check_shopping', kwargs={'item_id': item.id}),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('success'))
+        item.refresh_from_db()
+        self.assertTrue(item.is_checked)
+
+        # もう一度トグルで戻る
+        self.client.post(reverse('toggle_check_shopping', kwargs={'item_id': item.id}))
+        item.refresh_from_db()
+        self.assertFalse(item.is_checked)
+
+    def test_toggle_check_other_user_forbidden(self) -> None:
+        """他ユーザーのアイテムはトグルできない"""
+        other_user = UserFactory()
+        other_item = ShoppingItem.objects.create(
+            user=other_user,
+            title='他ユーザー商品',
+            frequency='one_time',
+        )
+        response = self.client.post(
+            reverse('toggle_check_shopping', kwargs={'item_id': other_item.id}),
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_clear_checked_shopping_items(self) -> None:
+        """購入済み一時アイテムの一括削除テスト"""
+        checked = ShoppingItem.objects.create(
+            user=self.user, title='購入済み', frequency='one_time', is_checked=True,
+        )
+        unchecked = ShoppingItem.objects.create(
+            user=self.user, title='未購入', frequency='one_time', is_checked=False,
+        )
+        recurring_checked = ShoppingItem.objects.create(
+            user=self.user, title='定期購入済み', frequency='recurring', is_checked=True,
+        )
+
+        response = self.client.post(reverse('clear_checked_shopping'))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(ShoppingItem.objects.filter(id=checked.id).exists())
+        self.assertTrue(ShoppingItem.objects.filter(id=unchecked.id).exists())
+        self.assertTrue(ShoppingItem.objects.filter(id=recurring_checked.id).exists())
 
 
 class ShoppingAjaxViewTest(TestCase):

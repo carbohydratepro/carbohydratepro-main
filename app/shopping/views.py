@@ -12,12 +12,14 @@ def shopping_list(request: HttpRequest) -> HttpResponse:
     """買うものリスト一覧表示"""
     search_query = request.GET.get('search', '')
     shopping_items = selectors.get_shopping_items(request.user, search_query)
+    one_time_items = selectors.get_one_time_items(shopping_items)
 
     return render(request, 'app/shopping/list.html', {
-        'one_time_items': selectors.get_one_time_items(shopping_items),
+        'one_time_items': one_time_items,
         'recurring_items': selectors.get_recurring_items(shopping_items),
         'search_query': search_query,
         'total_count': shopping_items.count(),
+        'has_checked_one_time': one_time_items.filter(is_checked=True).exists(),
     })
 
 
@@ -92,3 +94,22 @@ def update_shopping_count(request: HttpRequest, item_id: int) -> JsonResponse:
         })
 
     return JsonResponse({'success': False})
+
+
+@login_required
+def toggle_check_shopping_item(request: HttpRequest, item_id: int) -> JsonResponse:
+    """購入済みトグル（Ajax用）"""
+    if request.method == 'POST':
+        item = get_object_or_404(ShoppingItem, id=item_id, user=request.user)
+        item.is_checked = not item.is_checked
+        item.save(update_fields=['is_checked'])
+        return JsonResponse({'success': True, 'is_checked': item.is_checked})
+    return JsonResponse({'success': False})
+
+
+@login_required
+def clear_checked_shopping_items(request: HttpRequest) -> HttpResponse:
+    """購入済みの一時アイテムを一括削除"""
+    if request.method == 'POST':
+        ShoppingItem.objects.filter(user=request.user, frequency='one_time', is_checked=True).delete()
+    return redirect('shopping_list')

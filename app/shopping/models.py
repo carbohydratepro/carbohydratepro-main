@@ -20,6 +20,7 @@ class ShoppingItem(models.Model):
     remaining_count = models.IntegerField(default=0, verbose_name="残数")
     threshold_count = models.IntegerField(default=0, verbose_name="不足数")  # 追加: この数以下になると不足とみなす
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='insufficient', verbose_name="ステータス")
+    is_checked = models.BooleanField(default=False, verbose_name="購入済み")
     memo = models.TextField(blank=True, verbose_name="メモ")
     created_date = models.DateTimeField(auto_now_add=True, verbose_name="登録日")
     updated_date = models.DateTimeField(auto_now=True, verbose_name="更新日")
@@ -48,4 +49,4 @@ class ShoppingItem(models.Model):
         super().save(*args, **kwargs)
 
     class Meta:
-        ordering = ['status', 'remaining_count', '-updated_date']  # 不足を上位に、その後残数が少ない順、更新日順
+        ordering = ['-status', 'remaining_count', '-updated_date']  # 不足を上位に、その後残数が少ない順、更新日順

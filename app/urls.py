@@ -38,6 +38,8 @@ urlpatterns = [
     path('shopping/edit/<int:item_id>/', views.edit_shopping_item, name='edit_shopping_item'),
     path('shopping/delete/<int:item_id>/', views.delete_shopping_item, name='delete_shopping_item'),
     path('shopping/update-count/<int:item_id>/', views.update_shopping_count, name='update_shopping_count'),
+    path('shopping/toggle-check/<int:item_id>/', views.toggle_check_shopping_item, name='toggle_check_shopping'),
+    path('shopping/clear-checked/', views.clear_checked_shopping_items, name='clear_checked_shopping'),
     # 習慣トラッカー
     path('habits/', views.habit_dashboard, name='habit_dashboard'),
     path('habits/create/', views.create_habit, name='create_habit'),

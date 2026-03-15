@@ -1,385 +1,178 @@
 {% extends "app/base.html" %}
 {% load static %}
 {% load app_filters %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app/shopping.css' %}">
+{% endblock %}
+
 {% block content %}
 <div class="container mt-2">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
-        <h2 class="mb-0">買いものリスト</h2>
-    </div>
-
-    <div class="d-flex flex-wrap-reverse mb-2">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="fas fa-shopping-cart mr-1"></i> 買い物リスト</h4>
         <button onclick="openCreateShoppingModal()" class="btn btn-primary btn-sm">
-            <i class="fas fa-plus"></i> 新規商品追加
+            <i class="fas fa-plus"></i> 追加
         </button>
     </div>
-    <!-- 検索・絞り込み機能 -->
+
+    <!-- 検索 -->
+    <form method="GET" class="mb-3">
+        <div class="input-group input-group-sm">
+            <input type="text" name="search" class="form-control"
+                   placeholder="商品名で検索..." value="{{ search_query }}">
+            <div class="input-group-append">
+                {% if search_query %}
+                <a href="{% url 'shopping_list' %}" class="btn btn-outline-secondary">クリア</a>
+                {% else %}
+                <button type="submit" class="btn btn-outline-secondary">検索</button>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+
+    <!-- 今回の買い物（一時的） -->
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <div>
+                <i class="fas fa-list-ul mr-1"></i> 今回の買い物
+                <span class="badge badge-secondary ml-1">{{ one_time_items|length }}</span>
+            </div>
+            {% if has_checked_one_time %}
+            <form method="post" action="{% url 'clear_checked_shopping' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2">
+                    <i class="fas fa-check-double"></i> 購入済みを削除
+                </button>
+            </form>
+            {% endif %}
+        </div>
+        {% if one_time_items %}
+        <div class="list-group list-group-flush">
+            {% for item in one_time_items %}
+            <div class="list-group-item px-3 py-2 shopping-one-time-row {% if item.is_checked %}shopping-checked{% endif %}"
+                 id="item-row-{{ item.id }}">
+                <div class="d-flex align-items-center">
+                    <!-- チェックボタン -->
+                    <button id="check-btn-{{ item.id }}"
+                            class="btn shopping-check-btn mr-3"
+                            onclick="toggleCheck({{ item.id }})"
+                            title="購入済みにする">
+                        <i class="fas {% if item.is_checked %}fa-check-circle text-success{% else %}fa-circle text-muted{% endif %} fa-lg"></i>
+                    </button>
+                    <!-- タイトル・金額・メモ -->
+                    <div class="flex-grow-1" style="min-width: 0;">
+                        <span id="item-title-{{ item.id }}"
+                              class="{% if item.is_checked %}text-muted{% endif %}"
+                              style="{% if item.is_checked %}text-decoration: line-through;{% endif %}">
+                            {{ item.title|highlight:search_query }}
+                        </span>
+                        {% if item.price %}
+                        <small class="text-muted ml-1">¥{{ item.price|floatformat:0 }}</small>
+                        {% endif %}
+                        {% if item.memo %}
+                        <div class="text-muted small">{{ item.memo|truncatechars:60 }}</div>
+                        {% endif %}
+                    </div>
+                    <!-- 操作ボタン -->
+                    <div class="d-flex ml-2 flex-shrink-0">
+                        <button onclick="openEditShoppingModal({{ item.id }})"
+                                class="btn btn-sm btn-outline-secondary py-0 px-2 mr-1" title="編集">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <form method="post" action="{% url 'delete_shopping_item' item.id %}"
+                              style="display:inline;" onsubmit="return confirm('削除しますか？');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="削除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="card-body text-muted text-center py-3">
+            <i class="fas fa-clipboard-list mr-1"></i> 今回の買い物リストは空です
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 定期的な買い物 -->
     <div class="card mb-3">
         <div class="card-header py-2">
-            <button class="btn btn-link btn-sm p-0" type="button" data-toggle="collapse" data-target="#shoppingSearchFilterCollapse" aria-expanded="false">
-                <i class="fas fa-search"></i> 検索
-            </button>
+            <i class="fas fa-redo mr-1"></i> 定期的な買い物
+            <span class="badge badge-secondary ml-1">{{ recurring_items|length }}</span>
         </div>
-        <div class="collapse" id="shoppingSearchFilterCollapse">
-            <div class="card-body py-2">
-                <form id="searchForm" method="GET">
-                    {% csrf_token %}
-                    <div class="row">
-                        <div class="col-md-8 mb-2">
-                            <label for="search" class="form-label small">検索</label>
-                            <input type="text" id="search" name="search" class="form-control form-control-sm" 
-                                   placeholder="商品名またはメモで検索..." value="{{ search_query }}">
-                        </div>
-                        <div class="col-md-4 mb-2 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary btn-sm mr-2">検索</button>
-                            <a href="{% url 'shopping_list' %}" class="btn btn-secondary btn-sm">クリア</a>
-                        </div>
+        {% if recurring_items %}
+        <div class="list-group list-group-flush">
+            {% for item in recurring_items %}
+            <div class="list-group-item px-3 py-2">
+                <div class="d-flex align-items-center flex-wrap">
+                    <!-- ステータスバッジ + タイトル -->
+                    <div class="flex-grow-1 mr-2" style="min-width: 0;">
+                        <span id="status-badge-{{ item.id }}"
+                              class="badge {% if item.status == 'insufficient' %}badge-danger{% else %}badge-success{% endif %} mr-1">
+                            {{ item.get_status_display }}
+                        </span>
+                        <span>{{ item.title|highlight:search_query }}</span>
+                        {% if item.price %}
+                        <small class="text-muted ml-1">¥{{ item.price|floatformat:0 }}</small>
+                        {% endif %}
+                        {% if item.memo %}
+                        <div class="text-muted small">{{ item.memo|truncatechars:60 }}</div>
+                        {% endif %}
                     </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- 検索結果表示 -->
-    {% if search_query %}
-    <div class="alert alert-info py-2">
-        <strong>検索結果:</strong> {{ total_count }}件の商品が見つかりました
-        （検索キーワード: "{{ search_query }}"）
-    </div>
-    {% endif %}
-
-    <!-- 定期的な買い物リスト -->
-    <div class="card mb-4">
-        <div class="card-header bg-success text-white">
-            <h5 class="mb-0">
-                <i class="fas fa-repeat mr-2"></i>定期的な買い物
-                <span class="badge badge-light text-success ml-2">{{ recurring_items|length }}件</span>
-            </h5>
-        </div>
-        <div class="card-body">
-            {% if recurring_items %}
-            <div class="row">
-                {% for item in recurring_items %}
-                <div class="col-lg-6 col-md-12 mb-3">
-                    <div class="card shopping-item-card {% if item.threshold_count >= 1 %}border-danger{% elif item.threshold_count == 0 and item.remaining_count >= 1 %}border-success{% endif %}">
-                        <div class="card-body py-2 px-3">
-                            <!-- 1行目: タイトル（左）と金額（右） -->
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="card-title mb-0 flex-grow-1 mr-2">{{ item.title|truncatechars:30|highlight:search_query }}</h6>
-                                {% if item.price %}
-                                <span class="text-muted small">
-                                    <i class="fas fa-yen-sign"></i> {{ item.price|floatformat:0 }}円
-                                </span>
-                                {% endif %}
-                            </div>
-                            
-                            <!-- 2行目: 残数・不足数・編集・削除 -->
-                            <!-- デスクトップ表示用（768px以上） -->
-                            <div class="shopping-controls-desktop d-none d-md-flex justify-content-between align-items-center mb-2">
-                                <div class="d-flex align-items-center mr-2">
-                                    <span class="text-muted small mr-2" style="white-space: nowrap;">残数:</span>
-                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" 
-                                            onclick="updateCount({{ item.id }}, 'remaining', 'decrease10')" title="-10">
-                                        <i class="fas fa-angle-double-down"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2 ml-1" 
-                                            onclick="updateCount({{ item.id }}, 'remaining', 'decrease')">
-                                        <i class="fas fa-minus"></i>
-                                    </button>
-                                    <span class="mx-2 font-weight-bold" id="remaining-count-{{ item.id }}">{{ item.remaining_count }}</span>
-                                    <button class="btn btn-sm btn-outline-primary py-0 px-2" 
-                                            onclick="updateCount({{ item.id }}, 'remaining', 'increase')">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-primary py-0 px-2 ml-1" 
-                                            onclick="updateCount({{ item.id }}, 'remaining', 'increase10')" title="+10">
-                                        <i class="fas fa-angle-double-up"></i>
-                                    </button>
-                                </div>
-                                <div class="d-flex align-items-center mr-2">
-                                    <span class="text-muted small mr-2" style="white-space: nowrap;">不足数:</span>
-                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" 
-                                            onclick="updateCount({{ item.id }}, 'threshold', 'decrease10')" title="-10">
-                                        <i class="fas fa-angle-double-down"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2 ml-1" 
-                                            onclick="updateCount({{ item.id }}, 'threshold', 'decrease')">
-                                        <i class="fas fa-minus"></i>
-                                    </button>
-                                    <span class="mx-2 font-weight-bold" id="threshold-count-{{ item.id }}">{{ item.threshold_count }}</span>
-                                    <button class="btn btn-sm btn-outline-primary py-0 px-2" 
-                                            onclick="updateCount({{ item.id }}, 'threshold', 'increase')">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-primary py-0 px-2 ml-1" 
-                                            onclick="updateCount({{ item.id }}, 'threshold', 'increase10')" title="+10">
-                                        <i class="fas fa-angle-double-up"></i>
-                                    </button>
-                                </div>
-                                <div class="d-flex" style="white-space: nowrap;">
-                                    <button onclick="openEditShoppingModal({{ item.id }})" class="btn btn-sm btn-outline-warning py-0 px-1 mr-1" title="編集">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <form method="post" action="{% url 'delete_shopping_item' item.id %}" style="display: inline;" onsubmit="return confirm('この商品を削除してもよろしいですか？');">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="削除">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                            
-                            <!-- モバイル表示用（768px以下） -->
-                            <div class="shopping-controls-mobile d-md-none mb-2">
-                                <!-- 2段目: 残数（左）と編集ボタン（右） -->
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div class="d-flex align-items-center flex-grow-1 mr-2" style="min-width: 0;">
-                                        <span class="text-muted small mr-1" style="white-space: nowrap;">残数:</span>
-                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" 
-                                                onclick="updateCount({{ item.id }}, 'remaining', 'decrease10')" title="-10">
-                                            <i class="fas fa-angle-double-down"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1 ml-1" 
-                                                onclick="updateCount({{ item.id }}, 'remaining', 'decrease')">
-                                            <i class="fas fa-minus"></i>
-                                        </button>
-                                        <span class="mx-1 font-weight-bold" id="remaining-count-mobile-{{ item.id }}">{{ item.remaining_count }}</span>
-                                        <button class="btn btn-sm btn-outline-primary py-0 px-1" 
-                                                onclick="updateCount({{ item.id }}, 'remaining', 'increase')">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary py-0 px-1 ml-1" 
-                                                onclick="updateCount({{ item.id }}, 'remaining', 'increase10')" title="+10">
-                                            <i class="fas fa-angle-double-up"></i>
-                                        </button>
-                                    </div>
-                                    <button onclick="openEditShoppingModal({{ item.id }})" class="btn btn-sm btn-outline-warning py-0 px-1" title="編集">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                </div>
-                                
-                                <!-- 3段目: 不足数（左）と削除ボタン（右） -->
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div class="d-flex align-items-center flex-grow-1 mr-2" style="min-width: 0;">
-                                        <span class="text-muted small mr-1" style="white-space: nowrap;">不足数:</span>
-                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" 
-                                                onclick="updateCount({{ item.id }}, 'threshold', 'decrease10')" title="-10">
-                                            <i class="fas fa-angle-double-down"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1 ml-1" 
-                                                onclick="updateCount({{ item.id }}, 'threshold', 'decrease')">
-                                            <i class="fas fa-minus"></i>
-                                        </button>
-                                        <span class="mx-1 font-weight-bold" id="threshold-count-mobile-{{ item.id }}">{{ item.threshold_count }}</span>
-                                        <button class="btn btn-sm btn-outline-primary py-0 px-1" 
-                                                onclick="updateCount({{ item.id }}, 'threshold', 'increase')">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary py-0 px-1 ml-1" 
-                                                onclick="updateCount({{ item.id }}, 'threshold', 'increase10')" title="+10">
-                                            <i class="fas fa-angle-double-up"></i>
-                                        </button>
-                                    </div>
-                                    <form method="post" action="{% url 'delete_shopping_item' item.id %}" style="display: inline;" onsubmit="return confirm('この商品を削除してもよろしいですか？');">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="削除">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                            
-                            <!-- メモ（オプション） -->
-                            {% if item.memo %}
-                            <div class="border rounded p-2 bg-light">
-                                <p class="card-text text-muted small mb-0">{{ item.memo|highlight:search_query }}</p>
-                            </div>
-                            {% endif %}
-                        </div>
+                    <!-- 残数コントロール + 操作ボタン -->
+                    <div class="d-flex align-items-center flex-shrink-0 mt-1">
+                        <small class="text-muted mr-1" style="white-space: nowrap;">残数</small>
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                onclick="updateCount({{ item.id }}, 'remaining', 'decrease')">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <span class="mx-2 font-weight-bold text-center" id="remaining-count-{{ item.id }}"
+                              style="min-width: 1.5em;">
+                            {{ item.remaining_count }}
+                        </span>
+                        <button class="btn btn-sm btn-outline-primary py-0 px-2"
+                                onclick="updateCount({{ item.id }}, 'remaining', 'increase')">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button onclick="openEditShoppingModal({{ item.id }})"
+                                class="btn btn-sm btn-outline-secondary py-0 px-2 ml-2 mr-1" title="編集">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <form method="post" action="{% url 'delete_shopping_item' item.id %}"
+                              style="display:inline;" onsubmit="return confirm('削除しますか？');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="削除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
-                {% endfor %}
             </div>
-            {% else %}
-            <p class="text-muted text-center">定期的な買い物リストはありません。</p>
-            {% endif %}
+            {% endfor %}
         </div>
+        {% else %}
+        <div class="card-body text-muted text-center py-3">
+            <i class="fas fa-redo mr-1"></i> 定期的な買い物はありません
+        </div>
+        {% endif %}
     </div>
-
-    <!-- 一時的な買い物リスト -->
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">
-                <i class="fas fa-shopping-cart mr-2"></i>一時的な買い物
-                <span class="badge badge-light text-primary ml-2">{{ one_time_items|length }}件</span>
-            </h5>
-        </div>
-        <div class="card-body">
-            {% if one_time_items %}
-            <div class="row">
-                {% for item in one_time_items %}
-                <div class="col-lg-6 col-md-12 mb-3">
-                    <div class="card shopping-item-card {% if item.threshold_count >= 1 %}border-danger{% elif item.threshold_count == 0 and item.remaining_count >= 1 %}border-success{% endif %}">
-                        <div class="card-body py-2 px-3">
-                            <!-- 1行目: タイトル（左）と金額（右） -->
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="card-title mb-0 flex-grow-1 mr-2">{{ item.title|truncatechars:30|highlight:search_query }}</h6>
-                                {% if item.price %}
-                                <span class="text-muted small">
-                                    <i class="fas fa-yen-sign"></i> {{ item.price|floatformat:0 }}円
-                                </span>
-                                {% endif %}
-                            </div>
-                            
-                            <!-- 2行目: 残数・不足数・編集・削除 -->
-                            <!-- デスクトップ表示用（768px以上） -->
-                            <div class="shopping-controls-desktop d-none d-md-flex justify-content-between align-items-center mb-2">
-                                <div class="d-flex align-items-center mr-2">
-                                    <span class="text-muted small mr-2" style="white-space: nowrap;">残数:</span>
-                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" 
-                                            onclick="updateCount({{ item.id }}, 'remaining', 'decrease10')" title="-10">
-                                        <i class="fas fa-angle-double-down"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2 ml-1" 
-                                            onclick="updateCount({{ item.id }}, 'remaining', 'decrease')">
-                                        <i class="fas fa-minus"></i>
-                                    </button>
-                                    <span class="mx-2 font-weight-bold" id="remaining-count-{{ item.id }}">{{ item.remaining_count }}</span>
-                                    <button class="btn btn-sm btn-outline-primary py-0 px-2" 
-                                            onclick="updateCount({{ item.id }}, 'remaining', 'increase')">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-primary py-0 px-2 ml-1" 
-                                            onclick="updateCount({{ item.id }}, 'remaining', 'increase10')" title="+10">
-                                        <i class="fas fa-angle-double-up"></i>
-                                    </button>
-                                </div>
-                                <div class="d-flex align-items-center mr-2">
-                                    <span class="text-muted small mr-2" style="white-space: nowrap;">不足数:</span>
-                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" 
-                                            onclick="updateCount({{ item.id }}, 'threshold', 'decrease10')" title="-10">
-                                        <i class="fas fa-angle-double-down"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2 ml-1" 
-                                                onclick="updateCount({{ item.id }}, 'threshold', 'decrease')">
-                                        <i class="fas fa-minus"></i>
-                                    </button>
-                                    <span class="mx-2 font-weight-bold" id="threshold-count-{{ item.id }}">{{ item.threshold_count }}</span>
-                                    <button class="btn btn-sm btn-outline-primary py-0 px-2" 
-                                            onclick="updateCount({{ item.id }}, 'threshold', 'increase')">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-primary py-0 px-2 ml-1" 
-                                            onclick="updateCount({{ item.id }}, 'threshold', 'increase10')" title="+10">
-                                        <i class="fas fa-angle-double-up"></i>
-                                    </button>
-                                </div>
-                                <div class="d-flex" style="white-space: nowrap;">
-                                    <button onclick="openEditShoppingModal({{ item.id }})" class="btn btn-sm btn-outline-warning py-0 px-1 mr-1" title="編集">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <form method="post" action="{% url 'delete_shopping_item' item.id %}" style="display: inline;" onsubmit="return confirm('この商品を削除してもよろしいですか？');">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="削除">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                            
-                            <!-- モバイル表示用（768px以下） -->
-                            <div class="shopping-controls-mobile d-md-none mb-2">
-                                <!-- 2段目: 残数（左）と編集ボタン（右） -->
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div class="d-flex align-items-center flex-grow-1 mr-2" style="min-width: 0;">
-                                        <span class="text-muted small mr-1" style="white-space: nowrap;">残数:</span>
-                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" 
-                                                onclick="updateCount({{ item.id }}, 'remaining', 'decrease10')" title="-10">
-                                            <i class="fas fa-angle-double-down"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1 ml-1" 
-                                                onclick="updateCount({{ item.id }}, 'remaining', 'decrease')">
-                                            <i class="fas fa-minus"></i>
-                                        </button>
-                                        <span class="mx-1 font-weight-bold">{{ item.remaining_count }}</span>
-                                        <button class="btn btn-sm btn-outline-primary py-0 px-1" 
-                                                onclick="updateCount({{ item.id }}, 'remaining', 'increase')">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary py-0 px-1 ml-1" 
-                                                onclick="updateCount({{ item.id }}, 'remaining', 'increase10')" title="+10">
-                                            <i class="fas fa-angle-double-up"></i>
-                                        </button>
-                                    </div>
-                                    <button onclick="openEditShoppingModal({{ item.id }})" class="btn btn-sm btn-outline-warning py-0 px-1" title="編集">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                </div>
-                                
-                                <!-- 3段目: 不足数（左）と削除ボタン（右） -->
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div class="d-flex align-items-center flex-grow-1 mr-2" style="min-width: 0;">
-                                        <span class="text-muted small mr-1" style="white-space: nowrap;">不足数:</span>
-                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" 
-                                                onclick="updateCount({{ item.id }}, 'threshold', 'decrease10')" title="-10">
-                                            <i class="fas fa-angle-double-down"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1 ml-1" 
-                                                onclick="updateCount({{ item.id }}, 'threshold', 'decrease')">
-                                            <i class="fas fa-minus"></i>
-                                        </button>
-                                        <span class="mx-1 font-weight-bold">{{ item.threshold_count }}</span>
-                                        <button class="btn btn-sm btn-outline-primary py-0 px-1" 
-                                                onclick="updateCount({{ item.id }}, 'threshold', 'increase')">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary py-0 px-1 ml-1" 
-                                                onclick="updateCount({{ item.id }}, 'threshold', 'increase10')" title="+10">
-                                            <i class="fas fa-angle-double-up"></i>
-                                        </button>
-                                    </div>
-                                    <form method="post" action="{% url 'delete_shopping_item' item.id %}" style="display: inline;" onsubmit="return confirm('この商品を削除してもよろしいですか？');">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="削除">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                            
-                            <!-- メモ（オプション） -->
-                            {% if item.memo %}
-                            <div class="border rounded p-2 bg-light">
-                                <p class="card-text text-muted small mb-0">{{ item.memo|highlight:search_query }}</p>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="text-muted text-center">一時的な買い物リストはありません。</p>
-            {% endif %}
-        </div>
-    </div>
-
 </div>
 
-<link rel="stylesheet" href="{% static 'app/modal.css' %}">
-<link rel="stylesheet" href="{% static 'app/shopping.css' %}">
 <script src="{% static 'app/shopping.js' %}"></script>
 
 <!-- 編集モーダル -->
-<div class="modal fade" id="editShoppingModal" tabindex="-1" role="dialog" aria-labelledby="editShoppingModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" role="document">
-        <!-- モーダルの内容はAjaxで読み込まれます -->
+<div class="modal fade" id="editShoppingModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
     </div>
 </div>
 
 <!-- 新規作成モーダル -->
-<div class="modal fade" id="createShoppingModal" tabindex="-1" role="dialog" aria-labelledby="createShoppingModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" role="document">
-        <!-- モーダルの内容はAjaxで読み込まれます -->
+<div class="modal fade" id="createShoppingModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
     </div>
 </div>
 {% endblock %}

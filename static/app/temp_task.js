@@ -15,7 +15,13 @@ const touch = {
 // ダブルタップ検出用
 let lastTapTime = 0;
 let lastTapLocalId = null;
+// 長押し検出用
+let longPressTimerId = null;
+let deletePendingLocalId = null;
+let deleteModeAutoTimeoutId = null;
 const DRAG_THRESHOLD = 8; // px
+const LONG_PRESS_DURATION = 500; // ms
+const DELETE_MODE_TIMEOUT = 3000; // ms: 操作がなければ自動キャンセル
 // =========================================================
 // ローカル状態管理
 // =========================================================
@@ -25,6 +31,9 @@ function generateLocalId() {
 }
 function getTaskByLocalId(localId) {
     return tasks.find(t => t.localId === localId);
+}
+function isDesktopLayout() {
+    return window.innerWidth >= 768;
 }
 // =========================================================
 // API ユーティリティ
@@ -97,7 +106,6 @@ async function addTask(status) {
         input.focus();
         return;
     }
-    // 楽観的UI更新: 即座に未保存状態でリスト追加
     const localId = generateLocalId();
     const newTask = {
         localId,
@@ -111,7 +119,6 @@ async function addTask(status) {
     input.value = '';
     renderAll();
     input.focus();
-    // サーバーへ非同期保存
     try {
         const saved = await apiCreateTask(title, status);
         const task = getTaskByLocalId(localId);
@@ -136,7 +143,6 @@ async function deleteTask(localId) {
     const serverId = task.serverId;
     tasks = tasks.filter(t => t.localId !== localId);
     renderAll();
-    // サーバーへ非同期削除（サーバーIDがある場合のみ）
     if (serverId !== null) {
         try {
             await apiDeleteTask(serverId);
@@ -230,7 +236,6 @@ async function loadFromServer() {
         renderAll();
     }
     catch (_a) {
-        // サーバー取得失敗時は空の状態を表示
         tasks = [];
         renderAll();
     }
@@ -271,9 +276,26 @@ function updateCardSavedState(localId) {
     else if (task.savedState === 'error') {
         card.classList.add('save-error');
     }
+    // 未保存ドットを更新
+    const dot = card.querySelector('.kanban-task-unsaved-dot');
+    if (task.savedState !== 'saved') {
+        if (!dot) {
+            const newDot = document.createElement('span');
+            newDot.className = 'kanban-task-unsaved-dot';
+            newDot.title = task.savedState === 'error' ? '保存失敗' : '保存中...';
+            const deleteOverlay = card.querySelector('.kanban-task-delete-overlay');
+            if (deleteOverlay)
+                card.insertBefore(newDot, deleteOverlay);
+        }
+        else {
+            dot.title = task.savedState === 'error' ? '保存失敗' : '保存中...';
+        }
+    }
+    else {
+        dot === null || dot === void 0 ? void 0 : dot.remove();
+    }
 }
 function createTaskCard(task) {
-    var _a;
     const card = document.createElement('div');
     card.className = 'kanban-task-card';
     if (task.savedState === 'saving')
@@ -288,23 +310,51 @@ function createTaskCard(task) {
     card.innerHTML = `
         <span class="kanban-task-text">${escapeHtml(task.title)}</span>
         ${unsavedIndicator}
-        <button class="kanban-task-delete" title="削除" data-local-id="${task.localId}">
-            <i class="fas fa-times"></i>
-        </button>
+        <div class="kanban-task-delete-overlay" title="削除">
+            <i class="fas fa-trash-alt"></i>
+        </div>
     `;
-    // 削除ボタン
-    (_a = card.querySelector('.kanban-task-delete')) === null || _a === void 0 ? void 0 : _a.addEventListener('click', (e) => {
-        e.stopPropagation();
-        void deleteTask(task.localId);
-    });
+    // 削除オーバーレイ（長押し後に表示）のクリックで削除
+    const deleteOverlay = card.querySelector('.kanban-task-delete-overlay');
+    if (deleteOverlay) {
+        deleteOverlay.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deactivateDeleteMode();
+            void deleteTask(task.localId);
+        });
+        // タッチ時にカードのタッチハンドラへの伝播を防ぐ
+        deleteOverlay.addEventListener('touchstart', (e) => { e.stopPropagation(); }, { passive: false });
+        deleteOverlay.addEventListener('touchend', (e) => { e.stopPropagation(); }, { passive: false });
+    }
     // ダブルクリックで編集（PC）
     card.addEventListener('dblclick', (e) => {
-        if (e.target.closest('.kanban-task-delete'))
+        if (e.target.closest('.kanban-task-delete-overlay'))
             return;
+        if (deletePendingLocalId === task.localId) {
+            deactivateDeleteMode();
+            return;
+        }
         startEdit(task, card);
     });
+    // PC: 長押し検出（mousedown/mouseup/mouseleave）
+    card.addEventListener('mousedown', (e) => {
+        if (e.button !== 0)
+            return;
+        if (e.target.closest('.kanban-task-delete-overlay'))
+            return;
+        if (deletePendingLocalId) {
+            deactivateDeleteMode();
+            return;
+        }
+        startLongPressTimer(task.localId);
+    });
+    card.addEventListener('mouseup', cancelLongPressTimer);
+    card.addEventListener('mouseleave', cancelLongPressTimer);
     // PC: HTML5 Drag & Drop
-    card.addEventListener('dragstart', handleDragStart);
+    card.addEventListener('dragstart', (e) => {
+        cancelLongPressTimer();
+        handleDragStart(e);
+    });
     card.addEventListener('dragend', handleDragEnd);
     // モバイル: タッチイベント
     card.addEventListener('touchstart', handleTouchStart, { passive: false });
@@ -313,6 +363,59 @@ function createTaskCard(task) {
         handleTouchEnd(e, task, card);
     }, { passive: false });
     return card;
+}
+// =========================================================
+// 長押し削除モード
+// =========================================================
+function startLongPressTimer(localId) {
+    cancelLongPressTimer();
+    longPressTimerId = setTimeout(() => {
+        activateDeleteMode(localId);
+    }, LONG_PRESS_DURATION);
+}
+function cancelLongPressTimer() {
+    if (longPressTimerId !== null) {
+        clearTimeout(longPressTimerId);
+        longPressTimerId = null;
+    }
+}
+function activateDeleteMode(localId) {
+    deactivateDeleteMode();
+    const card = document.querySelector(`[data-local-id="${CSS.escape(localId)}"]`);
+    if (!card)
+        return;
+    deletePendingLocalId = localId;
+    card.classList.add('delete-pending');
+    card.draggable = false;
+    // 軽いバイブレーションフィードバック（対応端末のみ）
+    if (navigator.vibrate)
+        navigator.vibrate(40);
+    // 3秒後に自動キャンセル
+    deleteModeAutoTimeoutId = setTimeout(deactivateDeleteMode, DELETE_MODE_TIMEOUT);
+    // カード外クリックでキャンセル
+    setTimeout(() => {
+        document.addEventListener('click', handleOutsideClickForDeleteMode, { once: true });
+    }, 0);
+}
+function deactivateDeleteMode() {
+    if (deleteModeAutoTimeoutId !== null) {
+        clearTimeout(deleteModeAutoTimeoutId);
+        deleteModeAutoTimeoutId = null;
+    }
+    if (!deletePendingLocalId)
+        return;
+    const card = document.querySelector(`[data-local-id="${CSS.escape(deletePendingLocalId)}"]`);
+    if (card) {
+        card.classList.remove('delete-pending');
+        card.draggable = true;
+    }
+    deletePendingLocalId = null;
+}
+function handleOutsideClickForDeleteMode(e) {
+    const target = e.target;
+    if (!target.closest('.kanban-task-delete-overlay')) {
+        deactivateDeleteMode();
+    }
 }
 // =========================================================
 // インライン編集
@@ -361,7 +464,97 @@ function startEdit(task, card) {
     input.select();
 }
 // =========================================================
-// ドラッグオーバーレイ
+// PC ドラッグ & ドロップ（デスクトップ: カラム直接ドロップ）
+// =========================================================
+function showDeleteZone() {
+    const zone = document.getElementById('kanbanDeleteZone');
+    if (zone)
+        zone.classList.add('active');
+}
+function hideDeleteZone() {
+    const zone = document.getElementById('kanbanDeleteZone');
+    if (zone)
+        zone.classList.remove('active', 'drag-over');
+}
+function initializeDeleteZone() {
+    const zone = document.getElementById('kanbanDeleteZone');
+    if (!zone)
+        return;
+    zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer)
+            e.dataTransfer.dropEffect = 'move';
+        zone.classList.add('drag-over');
+    });
+    zone.addEventListener('dragleave', (e) => {
+        if (zone.contains(e.relatedTarget))
+            return;
+        zone.classList.remove('drag-over');
+    });
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        if (draggedLocalId) {
+            void deleteTask(draggedLocalId);
+        }
+        hideDeleteZone();
+    });
+}
+function initializeColumnDropZones() {
+    document.querySelectorAll('.kanban-tasks').forEach(col => {
+        col.addEventListener('dragover', (e) => {
+            if (!isDesktopLayout())
+                return;
+            e.preventDefault();
+            if (e.dataTransfer)
+                e.dataTransfer.dropEffect = 'move';
+            col.classList.add('drag-over');
+        });
+        col.addEventListener('dragleave', (e) => {
+            if (col.contains(e.relatedTarget))
+                return;
+            col.classList.remove('drag-over');
+        });
+        col.addEventListener('drop', (e) => {
+            e.preventDefault();
+            col.classList.remove('drag-over');
+            if (!isDesktopLayout())
+                return;
+            const status = col.dataset.status || '';
+            if (draggedLocalId && status) {
+                void moveTask(draggedLocalId, status);
+            }
+        });
+    });
+}
+function handleDragStart(e) {
+    dragSourceEl = e.currentTarget;
+    draggedLocalId = dragSourceEl.dataset.localId || null;
+    dragSourceEl.classList.add('dragging');
+    if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', draggedLocalId || '');
+    }
+    requestAnimationFrame(() => {
+        if (isDesktopLayout()) {
+            showDeleteZone();
+        }
+        else {
+            showDragOverlay();
+        }
+    });
+}
+function handleDragEnd(_e) {
+    if (dragSourceEl)
+        dragSourceEl.classList.remove('dragging');
+    dragSourceEl = null;
+    draggedLocalId = null;
+    hideDragOverlay();
+    hideDeleteZone();
+    document.querySelectorAll('.kanban-tasks').forEach(c => c.classList.remove('drag-over'));
+}
+// =========================================================
+// ドラッグオーバーレイ（モバイル用5ゾーン）
 // =========================================================
 function showDragOverlay() {
     const overlay = document.getElementById('dragOverlay');
@@ -417,31 +610,17 @@ function initializeDragOverlay() {
     });
 }
 // =========================================================
-// PC ドラッグ & ドロップ
-// =========================================================
-function handleDragStart(e) {
-    dragSourceEl = e.currentTarget;
-    draggedLocalId = dragSourceEl.dataset.localId || null;
-    dragSourceEl.classList.add('dragging');
-    if (e.dataTransfer) {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', draggedLocalId || '');
-    }
-    requestAnimationFrame(showDragOverlay);
-}
-function handleDragEnd(_e) {
-    if (dragSourceEl)
-        dragSourceEl.classList.remove('dragging');
-    dragSourceEl = null;
-    draggedLocalId = null;
-    hideDragOverlay();
-}
-// =========================================================
 // モバイル タッチドラッグ
 // =========================================================
 function handleTouchStart(e) {
-    if (e.target.closest('.kanban-task-delete'))
+    // 削除オーバーレイのタッチはカードハンドラに流さない
+    if (e.target.closest('.kanban-task-delete-overlay'))
         return;
+    // 削除モード中は一旦キャンセル
+    if (deletePendingLocalId) {
+        deactivateDeleteMode();
+        return;
+    }
     const t = e.touches[0];
     const card = e.currentTarget;
     touch.localId = card.dataset.localId || null;
@@ -451,6 +630,10 @@ function handleTouchStart(e) {
     touch.isDragging = false;
     touch.cloneEl = null;
     e.preventDefault();
+    // 長押しタイマー開始
+    if (touch.localId) {
+        startLongPressTimer(touch.localId);
+    }
 }
 function handleTouchMove(e) {
     if (!touch.localId || !touch.sourceEl)
@@ -462,6 +645,8 @@ function handleTouchMove(e) {
     if (!touch.isDragging) {
         if (dist < DRAG_THRESHOLD)
             return;
+        // ドラッグ開始 → 長押しキャンセル
+        cancelLongPressTimer();
         touch.isDragging = true;
         const card = touch.sourceEl;
         const rect = card.getBoundingClientRect();
@@ -493,6 +678,7 @@ function handleTouchMove(e) {
     }
 }
 function handleTouchEnd(e, task, card) {
+    cancelLongPressTimer();
     if (!touch.localId)
         return;
     if (touch.isDragging) {
@@ -518,6 +704,12 @@ function handleTouchEnd(e, task, card) {
         touch.isDragging = false;
     }
     else {
+        // 長押し中（delete-pending）の場合はダブルタップを無視
+        if (deletePendingLocalId === task.localId) {
+            touch.localId = null;
+            touch.sourceEl = null;
+            return;
+        }
         // ダブルタップ検出
         const now = Date.now();
         if (now - lastTapTime < 300 && lastTapLocalId === task.localId) {
@@ -546,20 +738,18 @@ function handleInputKeypress(e) {
 // =========================================================
 // リトライ
 // =========================================================
-const RETRY_INTERVAL_MS = 30000; // 30秒ごと
+const RETRY_INTERVAL_MS = 30000;
 async function retryFailedTasks() {
     const failedTasks = tasks.filter(t => t.savedState === 'error');
     if (failedTasks.length === 0)
         return;
     for (const task of failedTasks) {
-        // 既にローカル状態から消えていたらスキップ
         if (!getTaskByLocalId(task.localId))
             continue;
         task.savedState = 'saving';
         updateCardSavedState(task.localId);
         try {
             if (task.serverId === null) {
-                // 作成失敗のリトライ
                 const saved = await apiCreateTask(task.title, task.status);
                 const t = getTaskByLocalId(task.localId);
                 if (t) {
@@ -569,7 +759,6 @@ async function retryFailedTasks() {
                 }
             }
             else {
-                // 更新失敗のリトライ（現在の title/status を再送）
                 await apiUpdateTask(task.serverId, { title: task.title, status: task.status });
                 const t = getTaskByLocalId(task.localId);
                 if (t) {
@@ -597,9 +786,17 @@ function initializeInputs() {
 }
 document.addEventListener('DOMContentLoaded', () => {
     initializeDragOverlay();
+    initializeDeleteZone();
+    initializeColumnDropZones();
     initializeInputs();
     void loadFromServer();
-    // 定期リトライ（30秒ごと）
+    // Escape キーで削除モードキャンセル
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && deletePendingLocalId) {
+            deactivateDeleteMode();
+        }
+    });
+    // 定期リトライ
     setInterval(() => { void retryFailedTasks(); }, RETRY_INTERVAL_MS);
     // ネットワーク復帰時に即リトライ
     window.addEventListener('online', () => { void retryFailedTasks(); });

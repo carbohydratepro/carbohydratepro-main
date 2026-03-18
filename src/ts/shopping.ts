@@ -187,6 +187,46 @@ async function openCreateShoppingModal(): Promise<void> {
     }
 }
 
+function initShoppingDoubleClick(): void {
+    document.querySelectorAll<HTMLElement>('.lp-delete-item[data-item-id]').forEach(item => {
+        const itemId = parseInt(item.dataset['itemId'] ?? '0', 10);
+        if (!itemId) return;
+
+        let lastTapTime = 0;
+        let suppressClick = false;
+        let clickCount = 0;
+        let clickTimer: ReturnType<typeof setTimeout> | null = null;
+
+        item.addEventListener('touchend', (e: TouchEvent) => {
+            const target = e.target as HTMLElement;
+            if (isInteractiveTarget(target) || item.classList.contains('delete-pending')) return;
+            const now = Date.now();
+            if (now - lastTapTime < 400) {
+                e.preventDefault();
+                suppressClick = true;
+                lastTapTime = 0;
+                openEditShoppingModal(itemId);
+            } else {
+                lastTapTime = now;
+            }
+        }, { passive: false });
+
+        item.addEventListener('click', (e: MouseEvent) => {
+            if (suppressClick) { suppressClick = false; return; }
+            const target = e.target as HTMLElement;
+            if (isInteractiveTarget(target) || item.classList.contains('delete-pending')) return;
+            clickCount++;
+            if (clickCount === 1) {
+                clickTimer = setTimeout(() => { clickCount = 0; }, 400);
+            } else if (clickCount >= 2) {
+                if (clickTimer !== null) clearTimeout(clickTimer);
+                clickCount = 0;
+                openEditShoppingModal(itemId);
+            }
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.querySelector<HTMLInputElement>('input[name="search"]');
     searchInput?.addEventListener('keypress', (e) => {
@@ -194,4 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
             (searchInput.closest('form') as HTMLFormElement | null)?.submit();
         }
     });
+
+    initLongPressDelete();
+    initShoppingDoubleClick();
 });

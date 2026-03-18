@@ -48,7 +48,22 @@
                 </thead>
                 <tbody>
                     {% for memo_type in memo_types %}
+                    {% if memo_type.name == 'その他' %}
                     <tr>
+                        <td>
+                            <span class="badge p-2" style="background-color: {{ memo_type.color }}; color: #fff;">{{ memo_type.color }}</span>
+                        </td>
+                        <td>
+                            {{ memo_type.name }}
+                            <small class="text-muted d-block">デフォルト</small>
+                        </td>
+                        <td><span class="text-muted small">変更不可</span></td>
+                    </tr>
+                    {% else %}
+                    <tr class="lp-delete-modal-item"
+                        data-delete-modal-id="deleteMemoTypeModal{{ memo_type.id }}"
+                        data-edit-modal-id="editMemoTypeModal{{ memo_type.id }}"
+                        data-item-id="{{ memo_type.id }}">
                         <td>
                             <span class="badge p-2" style="background-color: {{ memo_type.color }}; color: #fff;">{{ memo_type.color }}</span>
                         </td>
@@ -60,20 +75,16 @@
                             <small class="text-muted d-block">デフォルト</small>
                             {% endif %}
                         </td>
-                        <td>
-                            {% if memo_type.name == 'その他' %}
-                                <span class="text-muted small">変更不可</span>
-                            {% else %}
-                                <button class="btn btn-sm btn-outline-warning py-0 px-2 mr-1" data-toggle="modal" data-target="#editMemoTypeModal{{ memo_type.id }}">編集</button>
-                                <button class="btn btn-sm btn-outline-danger py-0 px-2" data-toggle="modal" data-target="#deleteMemoTypeModal{{ memo_type.id }}">削除</button>
-                            {% endif %}
+                        <td class="lp-actions-cell">
+                            <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                         </td>
                     </tr>
+                    {% endif %}
 
                     {% if memo_type.name != 'その他' %}
                     <!-- 編集モーダル -->
                     <div class="modal fade" id="editMemoTypeModal{{ memo_type.id }}" tabindex="-1" role="dialog" aria-labelledby="editMemoTypeModalLabel{{ memo_type.id }}" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered" role="document">
+                        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                             <div class="modal-content" id="editMemoTypeModal{{ memo_type.id }}">
                                 <div class="modal-header">
                                     <h5 class="modal-title" id="editMemoTypeModalLabel{{ memo_type.id }}">種別を編集</h5>
@@ -122,7 +133,7 @@
 
                     <!-- 削除モーダル -->
                     <div class="modal fade" id="deleteMemoTypeModal{{ memo_type.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteMemoTypeModalLabel{{ memo_type.id }}" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered" role="document">
+                        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title" id="deleteMemoTypeModalLabel{{ memo_type.id }}">種別を削除</h5>
@@ -154,11 +165,12 @@
             {% endif %}
         </div>
     </div>
+    <p class="text-muted small text-center"><i class="fas fa-info-circle"></i> 長押し（0.5秒）で削除、ダブルタップで編集</p>
 </div>
 
 <!-- 新規作成モーダル -->
 <div class="modal fade" id="createMemoTypeModal" tabindex="-1" role="dialog" aria-labelledby="createMemoTypeModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
         <div class="modal-content" id="createMemoTypeModal">
             <div class="modal-header">
                 <h5 class="modal-title" id="createMemoTypeModalLabel">新しい種別を作成</h5>
@@ -204,8 +216,5 @@
     </div>
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
 <script src="{% static 'app/label-settings.js' %}"></script>
 {% endblock %}

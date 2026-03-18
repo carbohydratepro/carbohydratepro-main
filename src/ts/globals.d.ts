@@ -104,6 +104,11 @@ interface Window {
   markdownit?: (options?: object) => { render: (text: string) => string };
 }
 
+// Global functions from app.ts
+declare function isInteractiveTarget(target: EventTarget | null): boolean;
+declare function initLongPressDelete(container?: HTMLElement): void;
+declare function getCookie(name: string): string | null;
+
 // Global chart data variables (set via Django template script tags)
 declare const categoryData: ChartData | undefined;
 declare const expenseData: ChartData | undefined;

@@ -73,26 +73,24 @@
                 </thead>
                 <tbody>
                     {% for label in labels %}
-                    <tr>
+                    <tr class="lp-delete-modal-item"
+                        data-delete-modal-id="deleteLabelModal{{ label.id }}"
+                        data-edit-modal-id="editLabelModal{{ label.id }}"
+                        data-item-id="{{ label.id }}">
                         <td>
                             <span class="badge badge-lg p-2" style="background-color: {{ label.color }}; color: white; min-width: 80px;">
                                 {{ label.color }}
                             </span>
                         </td>
                         <td>{{ label.name|truncatechars:30 }}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-warning py-0 px-1 mr-1" data-toggle="modal" data-target="#editLabelModal{{ label.id }}" title="編集">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger py-0 px-1" data-toggle="modal" data-target="#deleteLabelModal{{ label.id }}" title="削除">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                        <td class="lp-actions-cell">
+                            <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                         </td>
                     </tr>
 
                     <!-- 編集モーダル -->
                     <div class="modal fade" id="editLabelModal{{ label.id }}" tabindex="-1" role="dialog" aria-labelledby="editLabelModalLabel{{ label.id }}" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered" role="document">
+                        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title" id="editLabelModalLabel{{ label.id }}">ラベルの編集</h5>
@@ -144,7 +142,7 @@
 
                     <!-- 削除モーダル -->
                     <div class="modal fade" id="deleteLabelModal{{ label.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteLabelModalLabel{{ label.id }}" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered" role="document">
+                        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title" id="deleteLabelModalLabel{{ label.id }}">ラベルの削除</h5>
@@ -175,11 +173,12 @@
             {% endif %}
         </div>
     </div>
+    <p class="text-muted small text-center"><i class="fas fa-info-circle"></i> 長押し（0.5秒）で削除、ダブルタップで編集</p>
 </div>
 
 <!-- 新規作成モーダル -->
 <div class="modal fade" id="createLabelModal" tabindex="-1" role="dialog" aria-labelledby="createLabelModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="createLabelModalLabel">新しいラベルを作成</h5>

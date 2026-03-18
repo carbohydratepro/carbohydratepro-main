@@ -229,9 +229,51 @@ function initializeMemoFilters(): void {
     });
 }
 
+function initMemoDoubleClick(): void {
+    document.querySelectorAll<HTMLElement>('.memo-card[data-item-id]').forEach(card => {
+        const memoId = card.dataset['itemId'] ?? '';
+        if (!memoId) return;
+
+        let lastTapTime = 0;
+        let suppressClick = false;
+        let clickCount = 0;
+        let clickTimer: ReturnType<typeof setTimeout> | null = null;
+
+        card.addEventListener('touchend', (e: TouchEvent) => {
+            const el = e.target as HTMLElement;
+            if (isInteractiveTarget(el) || !!el.closest('.memo-preview') || card.classList.contains('delete-pending')) return;
+            const now = Date.now();
+            if (now - lastTapTime < 400) {
+                e.preventDefault();
+                suppressClick = true;
+                lastTapTime = 0;
+                openEditMemoModal(memoId);
+            } else {
+                lastTapTime = now;
+            }
+        }, { passive: false });
+
+        card.addEventListener('click', (e: MouseEvent) => {
+            if (suppressClick) { suppressClick = false; return; }
+            const el = e.target as HTMLElement;
+            if (isInteractiveTarget(el) || !!el.closest('.memo-preview') || card.classList.contains('delete-pending')) return;
+            clickCount++;
+            if (clickCount === 1) {
+                clickTimer = setTimeout(() => { clickCount = 0; }, 400);
+            } else if (clickCount >= 2) {
+                if (clickTimer !== null) clearTimeout(clickTimer);
+                clickCount = 0;
+                openEditMemoModal(memoId);
+            }
+        });
+    });
+}
+
 // ページ読み込み時にフィルターを初期化
 document.addEventListener('DOMContentLoaded', () => {
     initializeMemoFilters();
     const saved = localStorage.getItem('memoMarkdownEnabled');
     setMarkdownMode(saved === '1');
+    initLongPressDelete();
+    initMemoDoubleClick();
 });

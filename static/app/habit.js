@@ -634,9 +634,72 @@ function openEditHabit(id, title, frequency, coefficient, isPositive, weeklyGoal
         monthlyField.classList.toggle('hidden', frequency !== 'monthly');
     $('#editHabitModal').modal('show');
 }
+function initHabitListInteractions() {
+    document.querySelectorAll('.habit-mgmt-item.lp-delete-item').forEach(item => {
+        var _a;
+        const habitId = parseInt((_a = item.dataset['habitId']) !== null && _a !== void 0 ? _a : '0', 10);
+        if (!habitId)
+            return;
+        let lastTapTime = 0;
+        let suppressClick = false;
+        let clickCount = 0;
+        let clickTimer = null;
+        function openEdit() {
+            var _a, _b, _c, _d, _e;
+            const title = (_a = item.dataset['habitTitle']) !== null && _a !== void 0 ? _a : '';
+            const frequency = (_b = item.dataset['habitFrequency']) !== null && _b !== void 0 ? _b : 'daily';
+            const coefficient = parseFloat((_c = item.dataset['habitCoefficient']) !== null && _c !== void 0 ? _c : '1');
+            const isPositive = item.dataset['habitIsPositive'] === 'true';
+            const weeklyGoal = parseInt((_d = item.dataset['habitWeeklyGoal']) !== null && _d !== void 0 ? _d : '0', 10);
+            const monthlyGoal = parseInt((_e = item.dataset['habitMonthlyGoal']) !== null && _e !== void 0 ? _e : '0', 10);
+            openEditHabit(habitId, title, frequency, coefficient, isPositive, weeklyGoal, monthlyGoal);
+        }
+        item.addEventListener('touchend', (e) => {
+            const target = e.target;
+            if (isInteractiveTarget(target) || item.classList.contains('delete-pending'))
+                return;
+            const now = Date.now();
+            if (now - lastTapTime < 400) {
+                e.preventDefault();
+                suppressClick = true;
+                lastTapTime = 0;
+                openEdit();
+            }
+            else {
+                lastTapTime = now;
+            }
+        }, { passive: false });
+        item.addEventListener('click', (e) => {
+            if (suppressClick) {
+                suppressClick = false;
+                return;
+            }
+            const target = e.target;
+            if (isInteractiveTarget(target) || item.classList.contains('delete-pending'))
+                return;
+            clickCount++;
+            if (clickCount === 1) {
+                clickTimer = setTimeout(() => { clickCount = 0; }, 400);
+            }
+            else if (clickCount >= 2) {
+                if (clickTimer !== null)
+                    clearTimeout(clickTimer);
+                clickCount = 0;
+                openEdit();
+            }
+        });
+    });
+}
 // ---- 初期化 ----
 document.addEventListener('DOMContentLoaded', () => {
-    // ヒートマップ
+    // 習慣一覧ページ（habit list）
+    if (document.querySelector('.habit-mgmt-list')) {
+        initLongPressDelete();
+        initHabitListInteractions();
+    }
+    // ヒートマップ（ダッシュボードのみ）
+    if (!document.getElementById('habitHeatmap'))
+        return;
     renderHeatmap(heatmapData, habitToday, habitSelectedYear);
     // 初期高さ設定
     setTimeout(updateWrapHeight, 100);

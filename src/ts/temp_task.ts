@@ -52,7 +52,14 @@ const touch: TouchState = {
 let lastTapTime = 0;
 let lastTapLocalId: string | null = null;
 
-const DRAG_THRESHOLD = 8; // px
+// 長押し検出用
+let longPressTimerId: ReturnType<typeof setTimeout> | null = null;
+let deletePendingLocalId: string | null = null;
+let deleteModeAutoTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+const DRAG_THRESHOLD = 8;       // px
+const LONG_PRESS_DURATION = 500; // ms
+const DELETE_MODE_TIMEOUT = 3000; // ms: 操作がなければ自動キャンセル
 
 // =========================================================
 // ローカル状態管理
@@ -66,6 +73,10 @@ function generateLocalId(): string {
 
 function getTaskByLocalId(localId: string): TempTask | undefined {
     return tasks.find(t => t.localId === localId);
+}
+
+function isDesktopLayout(): boolean {
+    return window.innerWidth >= 768;
 }
 
 // =========================================================
@@ -145,7 +156,6 @@ async function addTask(status: string): Promise<void> {
         return;
     }
 
-    // 楽観的UI更新: 即座に未保存状態でリスト追加
     const localId = generateLocalId();
     const newTask: TempTask = {
         localId,
@@ -160,7 +170,6 @@ async function addTask(status: string): Promise<void> {
     renderAll();
     input.focus();
 
-    // サーバーへ非同期保存
     try {
         const saved = await apiCreateTask(title, status);
         const task = getTaskByLocalId(localId);
@@ -186,7 +195,6 @@ async function deleteTask(localId: string): Promise<void> {
     tasks = tasks.filter(t => t.localId !== localId);
     renderAll();
 
-    // サーバーへ非同期削除（サーバーIDがある場合のみ）
     if (serverId !== null) {
         try {
             await apiDeleteTask(serverId);
@@ -284,7 +292,6 @@ async function loadFromServer(): Promise<void> {
         }));
         renderAll();
     } catch {
-        // サーバー取得失敗時は空の状態を表示
         tasks = [];
         renderAll();
     }
@@ -329,6 +336,22 @@ function updateCardSavedState(localId: string): void {
     } else if (task.savedState === 'error') {
         card.classList.add('save-error');
     }
+
+    // 未保存ドットを更新
+    const dot = card.querySelector<HTMLElement>('.kanban-task-unsaved-dot');
+    if (task.savedState !== 'saved') {
+        if (!dot) {
+            const newDot = document.createElement('span');
+            newDot.className = 'kanban-task-unsaved-dot';
+            newDot.title = task.savedState === 'error' ? '保存失敗' : '保存中...';
+            const deleteOverlay = card.querySelector('.kanban-task-delete-overlay');
+            if (deleteOverlay) card.insertBefore(newDot, deleteOverlay);
+        } else {
+            dot.title = task.savedState === 'error' ? '保存失敗' : '保存中...';
+        }
+    } else {
+        dot?.remove();
+    }
 }
 
 function createTaskCard(task: TempTask): HTMLElement {
@@ -346,25 +369,52 @@ function createTaskCard(task: TempTask): HTMLElement {
     card.innerHTML = `
         <span class="kanban-task-text">${escapeHtml(task.title)}</span>
         ${unsavedIndicator}
-        <button class="kanban-task-delete" title="削除" data-local-id="${task.localId}">
-            <i class="fas fa-times"></i>
-        </button>
+        <div class="kanban-task-delete-overlay" title="削除">
+            <i class="fas fa-trash-alt"></i>
+        </div>
     `;
 
-    // 削除ボタン
-    card.querySelector('.kanban-task-delete')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        void deleteTask(task.localId);
-    });
+    // 削除オーバーレイ（長押し後に表示）のクリックで削除
+    const deleteOverlay = card.querySelector<HTMLElement>('.kanban-task-delete-overlay');
+    if (deleteOverlay) {
+        deleteOverlay.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deactivateDeleteMode();
+            void deleteTask(task.localId);
+        });
+        // タッチ時にカードのタッチハンドラへの伝播を防ぐ
+        deleteOverlay.addEventListener('touchstart', (e) => { e.stopPropagation(); }, { passive: false });
+        deleteOverlay.addEventListener('touchend', (e) => { e.stopPropagation(); }, { passive: false });
+    }
 
     // ダブルクリックで編集（PC）
     card.addEventListener('dblclick', (e: MouseEvent) => {
-        if ((e.target as HTMLElement).closest('.kanban-task-delete')) return;
+        if ((e.target as HTMLElement).closest('.kanban-task-delete-overlay')) return;
+        if (deletePendingLocalId === task.localId) {
+            deactivateDeleteMode();
+            return;
+        }
         startEdit(task, card);
     });
 
+    // PC: 長押し検出（mousedown/mouseup/mouseleave）
+    card.addEventListener('mousedown', (e: MouseEvent) => {
+        if (e.button !== 0) return;
+        if ((e.target as HTMLElement).closest('.kanban-task-delete-overlay')) return;
+        if (deletePendingLocalId) {
+            deactivateDeleteMode();
+            return;
+        }
+        startLongPressTimer(task.localId);
+    });
+    card.addEventListener('mouseup', cancelLongPressTimer);
+    card.addEventListener('mouseleave', cancelLongPressTimer);
+
     // PC: HTML5 Drag & Drop
-    card.addEventListener('dragstart', handleDragStart);
+    card.addEventListener('dragstart', (e: DragEvent) => {
+        cancelLongPressTimer();
+        handleDragStart(e);
+    });
     card.addEventListener('dragend', handleDragEnd);
 
     // モバイル: タッチイベント
@@ -375,6 +425,68 @@ function createTaskCard(task: TempTask): HTMLElement {
     }, { passive: false });
 
     return card;
+}
+
+// =========================================================
+// 長押し削除モード
+// =========================================================
+
+function startLongPressTimer(localId: string): void {
+    cancelLongPressTimer();
+    longPressTimerId = setTimeout(() => {
+        activateDeleteMode(localId);
+    }, LONG_PRESS_DURATION);
+}
+
+function cancelLongPressTimer(): void {
+    if (longPressTimerId !== null) {
+        clearTimeout(longPressTimerId);
+        longPressTimerId = null;
+    }
+}
+
+function activateDeleteMode(localId: string): void {
+    deactivateDeleteMode();
+
+    const card = document.querySelector<HTMLElement>(`[data-local-id="${CSS.escape(localId)}"]`);
+    if (!card) return;
+
+    deletePendingLocalId = localId;
+    card.classList.add('delete-pending');
+    card.draggable = false;
+
+    // 軽いバイブレーションフィードバック（対応端末のみ）
+    if (navigator.vibrate) navigator.vibrate(40);
+
+    // 3秒後に自動キャンセル
+    deleteModeAutoTimeoutId = setTimeout(deactivateDeleteMode, DELETE_MODE_TIMEOUT);
+
+    // カード外クリックでキャンセル
+    setTimeout(() => {
+        document.addEventListener('click', handleOutsideClickForDeleteMode, { once: true });
+    }, 0);
+}
+
+function deactivateDeleteMode(): void {
+    if (deleteModeAutoTimeoutId !== null) {
+        clearTimeout(deleteModeAutoTimeoutId);
+        deleteModeAutoTimeoutId = null;
+    }
+    if (!deletePendingLocalId) return;
+
+    const card = document.querySelector<HTMLElement>(`[data-local-id="${CSS.escape(deletePendingLocalId)}"]`);
+    if (card) {
+        card.classList.remove('delete-pending');
+        card.draggable = true;
+    }
+    deletePendingLocalId = null;
+}
+
+function handleOutsideClickForDeleteMode(e: Event): void {
+    const target = e.target as HTMLElement;
+    if (!target.closest('.kanban-task-delete-overlay')) {
+        deactivateDeleteMode();
+    }
 }
 
 // =========================================================
@@ -428,7 +540,98 @@ function startEdit(task: TempTask, card: HTMLElement): void {
 }
 
 // =========================================================
-// ドラッグオーバーレイ
+// PC ドラッグ & ドロップ（デスクトップ: カラム直接ドロップ）
+// =========================================================
+
+function showDeleteZone(): void {
+    const zone = document.getElementById('kanbanDeleteZone');
+    if (zone) zone.classList.add('active');
+}
+
+function hideDeleteZone(): void {
+    const zone = document.getElementById('kanbanDeleteZone');
+    if (zone) zone.classList.remove('active', 'drag-over');
+}
+
+function initializeDeleteZone(): void {
+    const zone = document.getElementById('kanbanDeleteZone');
+    if (!zone) return;
+
+    zone.addEventListener('dragover', (e: DragEvent) => {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        zone.classList.add('drag-over');
+    });
+
+    zone.addEventListener('dragleave', (e: DragEvent) => {
+        if (zone.contains(e.relatedTarget as Node)) return;
+        zone.classList.remove('drag-over');
+    });
+
+    zone.addEventListener('drop', (e: DragEvent) => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        if (draggedLocalId) {
+            void deleteTask(draggedLocalId);
+        }
+        hideDeleteZone();
+    });
+}
+
+function initializeColumnDropZones(): void {
+    document.querySelectorAll<HTMLElement>('.kanban-tasks').forEach(col => {
+        col.addEventListener('dragover', (e: DragEvent) => {
+            if (!isDesktopLayout()) return;
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            col.classList.add('drag-over');
+        });
+
+        col.addEventListener('dragleave', (e: DragEvent) => {
+            if (col.contains(e.relatedTarget as Node)) return;
+            col.classList.remove('drag-over');
+        });
+
+        col.addEventListener('drop', (e: DragEvent) => {
+            e.preventDefault();
+            col.classList.remove('drag-over');
+            if (!isDesktopLayout()) return;
+            const status = col.dataset.status || '';
+            if (draggedLocalId && status) {
+                void moveTask(draggedLocalId, status);
+            }
+        });
+    });
+}
+
+function handleDragStart(e: DragEvent): void {
+    dragSourceEl = e.currentTarget as HTMLElement;
+    draggedLocalId = dragSourceEl.dataset.localId || null;
+    dragSourceEl.classList.add('dragging');
+    if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', draggedLocalId || '');
+    }
+    requestAnimationFrame(() => {
+        if (isDesktopLayout()) {
+            showDeleteZone();
+        } else {
+            showDragOverlay();
+        }
+    });
+}
+
+function handleDragEnd(_e: DragEvent): void {
+    if (dragSourceEl) dragSourceEl.classList.remove('dragging');
+    dragSourceEl = null;
+    draggedLocalId = null;
+    hideDragOverlay();
+    hideDeleteZone();
+    document.querySelectorAll('.kanban-tasks').forEach(c => c.classList.remove('drag-over'));
+}
+
+// =========================================================
+// ドラッグオーバーレイ（モバイル用5ゾーン）
 // =========================================================
 
 function showDragOverlay(): void {
@@ -488,33 +691,18 @@ function initializeDragOverlay(): void {
 }
 
 // =========================================================
-// PC ドラッグ & ドロップ
-// =========================================================
-
-function handleDragStart(e: DragEvent): void {
-    dragSourceEl = e.currentTarget as HTMLElement;
-    draggedLocalId = dragSourceEl.dataset.localId || null;
-    dragSourceEl.classList.add('dragging');
-    if (e.dataTransfer) {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', draggedLocalId || '');
-    }
-    requestAnimationFrame(showDragOverlay);
-}
-
-function handleDragEnd(_e: DragEvent): void {
-    if (dragSourceEl) dragSourceEl.classList.remove('dragging');
-    dragSourceEl = null;
-    draggedLocalId = null;
-    hideDragOverlay();
-}
-
-// =========================================================
 // モバイル タッチドラッグ
 // =========================================================
 
 function handleTouchStart(e: TouchEvent): void {
-    if ((e.target as HTMLElement).closest('.kanban-task-delete')) return;
+    // 削除オーバーレイのタッチはカードハンドラに流さない
+    if ((e.target as HTMLElement).closest('.kanban-task-delete-overlay')) return;
+
+    // 削除モード中は一旦キャンセル
+    if (deletePendingLocalId) {
+        deactivateDeleteMode();
+        return;
+    }
 
     const t = e.touches[0];
     const card = e.currentTarget as HTMLElement;
@@ -525,6 +713,11 @@ function handleTouchStart(e: TouchEvent): void {
     touch.isDragging = false;
     touch.cloneEl = null;
     e.preventDefault();
+
+    // 長押しタイマー開始
+    if (touch.localId) {
+        startLongPressTimer(touch.localId);
+    }
 }
 
 function handleTouchMove(e: TouchEvent): void {
@@ -537,6 +730,8 @@ function handleTouchMove(e: TouchEvent): void {
 
     if (!touch.isDragging) {
         if (dist < DRAG_THRESHOLD) return;
+        // ドラッグ開始 → 長押しキャンセル
+        cancelLongPressTimer();
         touch.isDragging = true;
 
         const card = touch.sourceEl;
@@ -571,6 +766,8 @@ function handleTouchMove(e: TouchEvent): void {
 }
 
 function handleTouchEnd(e: TouchEvent, task: TempTask, card: HTMLElement): void {
+    cancelLongPressTimer();
+
     if (!touch.localId) return;
 
     if (touch.isDragging) {
@@ -595,6 +792,13 @@ function handleTouchEnd(e: TouchEvent, task: TempTask, card: HTMLElement): void 
         touch.localId = null;
         touch.isDragging = false;
     } else {
+        // 長押し中（delete-pending）の場合はダブルタップを無視
+        if (deletePendingLocalId === task.localId) {
+            touch.localId = null;
+            touch.sourceEl = null;
+            return;
+        }
+
         // ダブルタップ検出
         const now = Date.now();
         if (now - lastTapTime < 300 && lastTapLocalId === task.localId) {
@@ -626,14 +830,13 @@ function handleInputKeypress(e: KeyboardEvent): void {
 // リトライ
 // =========================================================
 
-const RETRY_INTERVAL_MS = 30_000; // 30秒ごと
+const RETRY_INTERVAL_MS = 30_000;
 
 async function retryFailedTasks(): Promise<void> {
     const failedTasks = tasks.filter(t => t.savedState === 'error');
     if (failedTasks.length === 0) return;
 
     for (const task of failedTasks) {
-        // 既にローカル状態から消えていたらスキップ
         if (!getTaskByLocalId(task.localId)) continue;
 
         task.savedState = 'saving';
@@ -641,7 +844,6 @@ async function retryFailedTasks(): Promise<void> {
 
         try {
             if (task.serverId === null) {
-                // 作成失敗のリトライ
                 const saved = await apiCreateTask(task.title, task.status);
                 const t = getTaskByLocalId(task.localId);
                 if (t) {
@@ -650,7 +852,6 @@ async function retryFailedTasks(): Promise<void> {
                     updateCardSavedState(t.localId);
                 }
             } else {
-                // 更新失敗のリトライ（現在の title/status を再送）
                 await apiUpdateTask(task.serverId, { title: task.title, status: task.status });
                 const t = getTaskByLocalId(task.localId);
                 if (t) {
@@ -680,10 +881,19 @@ function initializeInputs(): void {
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeDragOverlay();
+    initializeDeleteZone();
+    initializeColumnDropZones();
     initializeInputs();
     void loadFromServer();
 
-    // 定期リトライ（30秒ごと）
+    // Escape キーで削除モードキャンセル
+    document.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && deletePendingLocalId) {
+            deactivateDeleteMode();
+        }
+    });
+
+    // 定期リトライ
     setInterval(() => { void retryFailedTasks(); }, RETRY_INTERVAL_MS);
 
     // ネットワーク復帰時に即リトライ

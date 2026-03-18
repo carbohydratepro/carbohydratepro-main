@@ -647,10 +647,67 @@ function openEditHabit(
   ($('#editHabitModal') as JQuery).modal('show');
 }
 
+function initHabitListInteractions(): void {
+  document.querySelectorAll<HTMLElement>('.habit-mgmt-item.lp-delete-item').forEach(item => {
+    const habitId = parseInt(item.dataset['habitId'] ?? '0', 10);
+    if (!habitId) return;
+
+    let lastTapTime = 0;
+    let suppressClick = false;
+    let clickCount = 0;
+    let clickTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function openEdit(): void {
+      const title = item.dataset['habitTitle'] ?? '';
+      const frequency = item.dataset['habitFrequency'] ?? 'daily';
+      const coefficient = parseFloat(item.dataset['habitCoefficient'] ?? '1');
+      const isPositive = item.dataset['habitIsPositive'] === 'true';
+      const weeklyGoal = parseInt(item.dataset['habitWeeklyGoal'] ?? '0', 10);
+      const monthlyGoal = parseInt(item.dataset['habitMonthlyGoal'] ?? '0', 10);
+      openEditHabit(habitId, title, frequency, coefficient, isPositive, weeklyGoal, monthlyGoal);
+    }
+
+    item.addEventListener('touchend', (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (isInteractiveTarget(target) || item.classList.contains('delete-pending')) return;
+      const now = Date.now();
+      if (now - lastTapTime < 400) {
+        e.preventDefault();
+        suppressClick = true;
+        lastTapTime = 0;
+        openEdit();
+      } else {
+        lastTapTime = now;
+      }
+    }, { passive: false });
+
+    item.addEventListener('click', (e: MouseEvent) => {
+      if (suppressClick) { suppressClick = false; return; }
+      const target = e.target as HTMLElement;
+      if (isInteractiveTarget(target) || item.classList.contains('delete-pending')) return;
+      clickCount++;
+      if (clickCount === 1) {
+        clickTimer = setTimeout(() => { clickCount = 0; }, 400);
+      } else if (clickCount >= 2) {
+        if (clickTimer !== null) clearTimeout(clickTimer);
+        clickCount = 0;
+        openEdit();
+      }
+    });
+  });
+}
+
 // ---- 初期化 ----
 
 document.addEventListener('DOMContentLoaded', () => {
-  // ヒートマップ
+  // 習慣一覧ページ（habit list）
+  if (document.querySelector('.habit-mgmt-list')) {
+    initLongPressDelete();
+    initHabitListInteractions();
+  }
+
+  // ヒートマップ（ダッシュボードのみ）
+  if (!document.getElementById('habitHeatmap')) return;
   renderHeatmap(heatmapData, habitToday, habitSelectedYear);
 
   // 初期高さ設定

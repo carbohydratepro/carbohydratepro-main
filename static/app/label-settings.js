@@ -130,4 +130,5 @@ document.addEventListener('DOMContentLoaded', () => {
     $('.modal').on('shown.bs.modal', function () {
         initializeColorPicker(this.id);
     });
+    initLongPressDelete();
 });

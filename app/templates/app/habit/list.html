@@ -28,7 +28,16 @@
 
   <div class="habit-mgmt-list">
     {% for habit in habits %}
-    <div class="habit-mgmt-item">
+    <div class="habit-mgmt-item lp-delete-item"
+         data-delete-url="{% url 'delete_habit' habit.id %}"
+         data-habit-id="{{ habit.id }}"
+         data-habit-title="{{ habit.title|escapejs }}"
+         data-habit-frequency="{{ habit.frequency }}"
+         data-habit-coefficient="{{ habit.coefficient }}"
+         data-habit-is-positive="{{ habit.is_positive|lower }}"
+         data-habit-weekly-goal="{{ habit.weekly_goal }}"
+         data-habit-monthly-goal="{{ habit.monthly_goal }}">
+      <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
       <div class="habit-color-dot" style="background:{{ habit.color }};"></div>
       <div style="flex:1; min-width:0;">
         <span style="font-weight:500;">{{ habit.title }}</span>
@@ -39,23 +48,17 @@
         {% if habit.weekly_goal > 0 %}<span class="badge badge-info ml-1" style="font-size:0.68rem;">週{{ habit.weekly_goal }}回</span>{% endif %}
         {% if habit.monthly_goal > 0 %}<span class="badge badge-secondary ml-1" style="font-size:0.68rem;">月{{ habit.monthly_goal }}回</span>{% endif %}
       </div>
-      <button class="btn btn-sm btn-outline-secondary"
-        onclick="openEditHabit({{ habit.id }}, '{{ habit.title|escapejs }}', '{{ habit.frequency }}', {{ habit.coefficient }}, {{ habit.is_positive|lower }}, {{ habit.weekly_goal }}, {{ habit.monthly_goal }})"
-        type="button"><i class="fas fa-edit"></i></button>
-      <form method="post" action="{% url 'delete_habit' habit.id %}" style="margin:0;" onsubmit="return confirm('「{{ habit.title|escapejs }}」を削除しますか？');">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
-      </form>
     </div>
     {% empty %}
     <p class="text-muted small">習慣がありません。上のボタンから追加してください。</p>
     {% endfor %}
   </div>
+  <p class="text-muted small text-center mt-2"><i class="fas fa-info-circle"></i> 長押し（0.5秒）で削除、ダブルタップで編集</p>
 </div>
 
 <!-- 習慣追加モーダル -->
 <div class="modal fade" id="addHabitModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title"><i class="fas fa-plus"></i> 習慣を追加</h5>
@@ -74,7 +77,7 @@
 
 <!-- 習慣編集モーダル -->
 <div class="modal fade" id="editHabitModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title"><i class="fas fa-edit"></i> 習慣を編集</h5>

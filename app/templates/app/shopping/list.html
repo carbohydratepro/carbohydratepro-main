@@ -49,8 +49,11 @@
         {% if one_time_items %}
         <div class="list-group list-group-flush">
             {% for item in one_time_items %}
-            <div class="list-group-item px-3 py-2 shopping-one-time-row {% if item.is_checked %}shopping-checked{% endif %}"
-                 id="item-row-{{ item.id }}">
+            <div class="list-group-item px-3 py-2 shopping-one-time-row lp-delete-item {% if item.is_checked %}shopping-checked{% endif %}"
+                 id="item-row-{{ item.id }}"
+                 data-delete-url="{% url 'delete_shopping_item' item.id %}"
+                 data-item-id="{{ item.id }}">
+                <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                 <div class="d-flex align-items-center">
                     <!-- チェックボタン -->
                     <button id="check-btn-{{ item.id }}"
@@ -73,20 +76,6 @@
                         <div class="text-muted small">{{ item.memo|truncatechars:60 }}</div>
                         {% endif %}
                     </div>
-                    <!-- 操作ボタン -->
-                    <div class="d-flex ml-2 flex-shrink-0">
-                        <button onclick="openEditShoppingModal({{ item.id }})"
-                                class="btn btn-sm btn-outline-secondary py-0 px-2 mr-1" title="編集">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <form method="post" action="{% url 'delete_shopping_item' item.id %}"
-                              style="display:inline;" onsubmit="return confirm('削除しますか？');">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="削除">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </form>
-                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -107,7 +96,10 @@
         {% if recurring_items %}
         <div class="list-group list-group-flush">
             {% for item in recurring_items %}
-            <div class="list-group-item px-3 py-2">
+            <div class="list-group-item px-3 py-2 lp-delete-item"
+                 data-delete-url="{% url 'delete_shopping_item' item.id %}"
+                 data-item-id="{{ item.id }}">
+                <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                 <div class="d-flex align-items-center flex-wrap">
                     <!-- ステータスバッジ + タイトル -->
                     <div class="flex-grow-1 mr-2" style="min-width: 0;">
@@ -123,7 +115,7 @@
                         <div class="text-muted small">{{ item.memo|truncatechars:60 }}</div>
                         {% endif %}
                     </div>
-                    <!-- 残数コントロール + 操作ボタン -->
+                    <!-- 残数コントロール -->
                     <div class="d-flex align-items-center flex-shrink-0 mt-1">
                         <small class="text-muted mr-1" style="white-space: nowrap;">残数</small>
                         <button class="btn btn-sm btn-outline-secondary py-0 px-2"
@@ -138,17 +130,6 @@
                                 onclick="updateCount({{ item.id }}, 'remaining', 'increase')">
                             <i class="fas fa-plus"></i>
                         </button>
-                        <button onclick="openEditShoppingModal({{ item.id }})"
-                                class="btn btn-sm btn-outline-secondary py-0 px-2 ml-2 mr-1" title="編集">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <form method="post" action="{% url 'delete_shopping_item' item.id %}"
-                              style="display:inline;" onsubmit="return confirm('削除しますか？');">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="削除">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </form>
                     </div>
                 </div>
             </div>
@@ -162,6 +143,7 @@
     </div>
 </div>
 
+<p class="text-muted small text-center mt-2"><i class="fas fa-info-circle"></i> 長押し（0.5秒）で削除、ダブルタップで編集</p>
 <script src="{% static 'app/shopping.js' %}"></script>
 
 <!-- 編集モーダル -->

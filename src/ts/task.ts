@@ -133,19 +133,13 @@ function showDayTasksModal(year: string, month: string, day: string, monthLabel:
                         </span>` : '';
 
                     return `
-                        <div class="card task-card-mini mb-2" ${borderStyle}>
+                        <div class="card task-card-mini mb-2 lp-delete-item"
+                             data-delete-url="/carbohydratepro/tasks/delete/${task.id}/"
+                             data-item-id="${task.id}"
+                             ${borderStyle}>
+                            <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                             <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h6 class="mb-0 flex-grow-1">${truncateText(task.title, 30)}</h6>
-                                    <div class="d-flex ml-2" style="white-space: nowrap;">
-                                        <button onclick="openEditTaskModalFromList(${task.id})" class="btn btn-sm btn-outline-warning py-0 px-1 mr-1" title="編集">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button onclick="deleteTaskFromList(${task.id})" class="btn btn-sm btn-outline-danger py-0 px-1" title="削除">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
+                                <h6 class="mb-1">${truncateText(task.title, 30)}</h6>
                                 ${task.due_date ? `<p class="small text-muted mb-2"><i class="far fa-clock"></i> ${task.due_date}</p>` : ''}
                                 ${task.description ? `<p class="small text-muted mb-2">${task.description}</p>` : ''}
                                 <div class="d-flex flex-wrap gap-1">
@@ -157,6 +151,44 @@ function showDayTasksModal(year: string, month: string, day: string, monthLabel:
                         </div>
                     `;
                 }).join('');
+
+                initLongPressDelete(modalBody);
+
+                modalBody.querySelectorAll<HTMLElement>('.task-card-mini').forEach(card => {
+                    let lastTapTime = 0;
+                    let suppressClick = false;
+                    let clickCount = 0;
+                    let clickTimer: ReturnType<typeof setTimeout> | null = null;
+                    const taskId = parseInt(card.dataset['itemId'] ?? '0', 10);
+
+                    card.addEventListener('touchend', (e: TouchEvent) => {
+                        const el = e.target as HTMLElement;
+                        if (isInteractiveTarget(el) || !!el.closest('.lp-delete-overlay') || card.classList.contains('delete-pending')) return;
+                        const now = Date.now();
+                        if (now - lastTapTime < 400) {
+                            e.preventDefault();
+                            suppressClick = true;
+                            lastTapTime = 0;
+                            if (taskId) openEditTaskModalFromList(taskId);
+                        } else {
+                            lastTapTime = now;
+                        }
+                    }, { passive: false });
+
+                    card.addEventListener('click', (e: MouseEvent) => {
+                        if (suppressClick) { suppressClick = false; return; }
+                        const el = e.target as HTMLElement;
+                        if (isInteractiveTarget(el) || !!el.closest('.lp-delete-overlay') || card.classList.contains('delete-pending')) return;
+                        clickCount++;
+                        if (clickCount === 1) {
+                            clickTimer = setTimeout(() => { clickCount = 0; }, 400);
+                        } else if (clickCount >= 2) {
+                            if (clickTimer !== null) clearTimeout(clickTimer);
+                            clickCount = 0;
+                            if (taskId) openEditTaskModalFromList(taskId);
+                        }
+                    });
+                });
             } else {
                 modalBody.innerHTML = '<p class="text-center text-muted">この日のタスクはありません</p>';
             }

@@ -437,6 +437,30 @@ function initializeExpenseFilters(): void {
     // filterForm は HTML 側の onchange で直接サブミットするため処理なし
 }
 
+function initTransactionDoubleClick(): void {
+    document.querySelectorAll<HTMLElement>('.lp-delete-item[data-item-id]').forEach(card => {
+        const transactionId = card.dataset['itemId'] ?? '';
+        if (!transactionId) return;
+
+        let clickCount = 0;
+        let clickTimer: ReturnType<typeof setTimeout> | null = null;
+
+        card.addEventListener('click', (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (isInteractiveTarget(target) || card.classList.contains('delete-pending')) return;
+
+            clickCount++;
+            if (clickCount === 1) {
+                clickTimer = setTimeout(() => { clickCount = 0; }, 300);
+            } else if (clickCount >= 2) {
+                if (clickTimer !== null) clearTimeout(clickTimer);
+                clickCount = 0;
+                openEditModal(transactionId);
+            }
+        });
+    });
+}
+
 // ページ読み込み後にグラフとフィルターを初期化
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('monthlyBarChart')) {
@@ -445,4 +469,6 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeExpenseCharts();
     }
     initializeExpenseFilters();
+    initLongPressDelete();
+    initTransactionDoubleClick();
 });

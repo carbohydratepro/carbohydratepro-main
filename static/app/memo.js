@@ -232,9 +232,57 @@ function initializeMemoFilters() {
         }
     });
 }
+function initMemoDoubleClick() {
+    document.querySelectorAll('.memo-card[data-item-id]').forEach(card => {
+        var _a;
+        const memoId = (_a = card.dataset['itemId']) !== null && _a !== void 0 ? _a : '';
+        if (!memoId)
+            return;
+        let lastTapTime = 0;
+        let suppressClick = false;
+        let clickCount = 0;
+        let clickTimer = null;
+        card.addEventListener('touchend', (e) => {
+            const el = e.target;
+            if (isInteractiveTarget(el) || !!el.closest('.memo-preview') || card.classList.contains('delete-pending'))
+                return;
+            const now = Date.now();
+            if (now - lastTapTime < 400) {
+                e.preventDefault();
+                suppressClick = true;
+                lastTapTime = 0;
+                openEditMemoModal(memoId);
+            }
+            else {
+                lastTapTime = now;
+            }
+        }, { passive: false });
+        card.addEventListener('click', (e) => {
+            if (suppressClick) {
+                suppressClick = false;
+                return;
+            }
+            const el = e.target;
+            if (isInteractiveTarget(el) || !!el.closest('.memo-preview') || card.classList.contains('delete-pending'))
+                return;
+            clickCount++;
+            if (clickCount === 1) {
+                clickTimer = setTimeout(() => { clickCount = 0; }, 400);
+            }
+            else if (clickCount >= 2) {
+                if (clickTimer !== null)
+                    clearTimeout(clickTimer);
+                clickCount = 0;
+                openEditMemoModal(memoId);
+            }
+        });
+    });
+}
 // ページ読み込み時にフィルターを初期化
 document.addEventListener('DOMContentLoaded', () => {
     initializeMemoFilters();
     const saved = localStorage.getItem('memoMarkdownEnabled');
     setMarkdownMode(saved === '1');
+    initLongPressDelete();
+    initMemoDoubleClick();
 });

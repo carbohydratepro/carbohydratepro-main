@@ -17,17 +17,19 @@
         <tbody>
             <!-- 支払方法の行 -->
             {% for payment in payments %}
-            <tr>
+            <tr class="lp-delete-modal-item"
+                data-delete-modal-id="deletePaymentModal{{ payment.id }}"
+                data-edit-modal-id="editPaymentModal{{ payment.id }}"
+                data-item-id="{{ payment.id }}">
                 <td>{{ payment.name }}</td>
-                <td>
-                    <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editPaymentModal{{ payment.id }}">編集</button>
-                    <button class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deletePaymentModal{{ payment.id }}">削除</button>
+                <td class="lp-actions-cell">
+                    <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                 </td>
             </tr>
 
             <!-- 支払方法編集モーダル -->
             <div class="modal fade" id="editPaymentModal{{ payment.id }}" tabindex="-1" role="dialog" aria-labelledby="editPaymentModalLabel{{ payment.id }}" aria-hidden="true">
-                <div class="modal-dialog" role="document">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                     <div class="modal-content">
                         <form method="post">
                             {% csrf_token %}
@@ -56,7 +58,7 @@
 
             <!-- 支払方法削除モーダル -->
             <div class="modal fade" id="deletePaymentModal{{ payment.id }}" tabindex="-1" role="dialog" aria-labelledby="deletePaymentModalLabel{{ payment.id }}" aria-hidden="true">
-                <div class="modal-dialog" role="document">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                     <div class="modal-content">
                         <form method="post">
                             {% csrf_token %}
@@ -127,17 +129,19 @@
         <tbody>
             <!-- 使用用途の行 -->
             {% for purpose in purposes %}
-            <tr>
+            <tr class="lp-delete-modal-item"
+                data-delete-modal-id="deletePurposeModal{{ purpose.id }}"
+                data-edit-modal-id="editPurposeModal{{ purpose.id }}"
+                data-item-id="{{ purpose.id }}">
                 <td>{{ purpose.name }}</td>
-                <td>
-                    <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editPurposeModal{{ purpose.id }}">編集</button>
-                    <button class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deletePurposeModal{{ purpose.id }}">削除</button>
+                <td class="lp-actions-cell">
+                    <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                 </td>
             </tr>
 
             <!-- 使用用途編集モーダル -->
             <div class="modal fade" id="editPurposeModal{{ purpose.id }}" tabindex="-1" role="dialog" aria-labelledby="editPurposeModalLabel{{ purpose.id }}" aria-hidden="true">
-                <div class="modal-dialog" role="document">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                     <div class="modal-content">
                         <form method="post">
                             {% csrf_token %}
@@ -166,7 +170,7 @@
 
             <!-- 使用用途削除モーダル -->
             <div class="modal fade" id="deletePurposeModal{{ purpose.id }}" tabindex="-1" role="dialog" aria-labelledby="deletePurposeModalLabel{{ purpose.id }}" aria-hidden="true">
-                <div class="modal-dialog" role="document">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                     <div class="modal-content">
                         <form method="post">
                             {% csrf_token %}
@@ -225,5 +229,7 @@
             </tr>
         </tbody>
     </table>
+    <p class="text-muted small text-center"><i class="fas fa-info-circle"></i> 長押し（0.5秒）で削除、ダブルタップで編集</p>
 </div>
+<script>document.addEventListener('DOMContentLoaded', function() { initLongPressDelete(); });</script>
 {% endblock %}

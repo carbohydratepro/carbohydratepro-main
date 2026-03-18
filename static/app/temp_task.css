@@ -132,6 +132,7 @@
 
 /* タスクカード */
 .kanban-task-card {
+    position: relative;
     background: white;
     border-radius: 7px;
     padding: 9px 12px;
@@ -145,6 +146,7 @@
     user-select: none;
     touch-action: none;
     border-left: 3px solid transparent;
+    overflow: hidden;
 }
 
 #tasks-todo .kanban-task-card {
@@ -181,50 +183,29 @@
     margin-right: 6px;
 }
 
-.kanban-task-delete {
-    border: none;
-    background: none;
-    color: #bbb;
-    cursor: pointer;
-    padding: 0;
-    font-size: 0.8rem;
-    flex-shrink: 0;
-    line-height: 1;
-    transition: color 0.15s;
-}
-
-.kanban-task-delete:hover {
-    color: #dc3545;
-}
-
-/* ゴミ箱エリア */
-.kanban-trash {
-    display: flex;
+/* 長押し削除オーバーレイ */
+.kanban-task-delete-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(220, 53, 69, 0.88);
+    border-radius: 7px;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    margin-top: 16px;
-    padding: 14px;
-    border: 2px dashed #dee2e6;
-    border-radius: 10px;
-    color: #bbb;
-    transition: all 0.2s;
-    background: transparent;
-    cursor: default;
+    cursor: pointer;
+    color: white;
+    font-size: 1.1rem;
+    z-index: 10;
 }
 
-.kanban-trash .fas {
-    font-size: 1.2rem;
+.kanban-task-card.delete-pending .kanban-task-delete-overlay {
+    display: flex;
+    animation: delete-overlay-appear 0.15s ease;
 }
 
-.kanban-trash.drag-over {
-    background-color: #fff5f5;
-    border-color: #dc3545;
-    color: #dc3545;
-}
-
-.trash-label {
-    font-size: 0.875rem;
+@keyframes delete-overlay-appear {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
 }
 
 /* 未保存インジケーター */
@@ -276,7 +257,34 @@
     border-radius: 7px;
 }
 
-/* ドラッグオーバーレイ */
+/* デスクトップ用削除ゾーン（ドラッグ中のみ表示） */
+.kanban-delete-zone {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 14px;
+    border: 2px dashed #f5c6cb;
+    border-radius: 10px;
+    color: #dc3545;
+    background: rgba(220, 53, 69, 0.04);
+    transition: background 0.2s, border-color 0.2s, border-style 0.1s;
+    font-size: 0.875rem;
+    cursor: default;
+}
+
+.kanban-delete-zone.active {
+    display: flex;
+}
+
+.kanban-delete-zone.drag-over {
+    background: rgba(220, 53, 69, 0.12);
+    border-color: #dc3545;
+    border-style: solid;
+}
+
+/* ドラッグオーバーレイ（モバイル用） */
 .drag-overlay {
     display: none;
     position: fixed;
@@ -401,6 +409,11 @@
 
     .drag-zone .fas {
         font-size: 1.5rem;
+    }
+
+    /* モバイルでは削除ゾーンを非表示 */
+    .kanban-delete-zone {
+        display: none !important;
     }
 }
 

@@ -154,3 +154,54 @@ h1 {
 .message-close-btn:hover {
     color: #333;
 }
+
+/* 長押し削除オーバーレイ（全画面共通） */
+.lp-delete-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.lp-delete-overlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: rgba(220, 53, 69, 0.88);
+    border-radius: inherit;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    font-size: 1.1rem;
+    z-index: 10;
+    gap: 8px;
+}
+
+.lp-delete-item {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.lp-delete-item.delete-pending .lp-delete-overlay,
+.lp-delete-modal-item.delete-pending .lp-delete-overlay {
+    display: flex;
+    animation: lp-overlay-appear 0.15s ease;
+}
+
+@keyframes lp-overlay-appear {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+/* 設定画面テーブル行の長押し削除（<tr>はposition:relativeが効かないため<td>に適用） */
+.lp-delete-modal-item {
+    cursor: pointer;
+}
+
+.lp-actions-cell {
+    position: relative;
+    overflow: hidden;
+    min-width: 80px;
+}

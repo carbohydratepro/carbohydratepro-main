@@ -234,7 +234,10 @@
     <div class="row">
         {% for transaction in transactions_page %}
         <div class="col-md-6 col-lg-4 mb-2">
-            <div class="card card-sm">
+            <div class="card card-sm lp-delete-item"
+                 data-delete-url="{% url 'delete_expenses' transaction.id %}"
+                 data-item-id="{{ transaction.id }}">
+                <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                 <div class="card-body p-2">
                     <!-- 1行目: タイトル（左）と日付（右） -->
                     <div class="d-flex justify-content-between align-items-start mb-1">
@@ -257,7 +260,7 @@
                         </small>
                     </div>
 
-                    <!-- 3行目: カテゴリ・費用タイプ・取引タイプ（左）と編集・削除アイコン（右） -->
+                    <!-- 3行目: カテゴリ・費用タイプ・取引タイプ -->
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <div class="small text-muted">
                             <span title="{{ transaction.category }}"><i class="fas fa-tag"></i> {{ transaction.category|truncatechars:10 }}</span>
@@ -268,17 +271,6 @@
                                 {% else %}badge-secondary{% endif %}">
                                 {{ transaction.get_transaction_type_display }}
                             </span>
-                        </div>
-                        <div class="d-flex">
-                            <button onclick="openEditModal({{ transaction.id }})" class="btn btn-sm btn-outline-warning mr-1 py-0 px-1">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <form method="post" action="{% url 'delete_expenses' transaction.id %}" style="display: inline;" onsubmit="return confirm('この取引を削除してもよろしいですか？');">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
                         </div>
                     </div>
 
@@ -359,6 +351,8 @@
     window.majorCategoryData = JSON.parse('{{ major_category_data_json|escapejs }}');
     {% endif %}
 </script>
+
+<p class="text-muted small text-center mt-2"><i class="fas fa-info-circle"></i> 長押し（0.5秒）で削除、ダブルタップで編集</p>
 
 <!-- 編集モーダル -->
 <div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel" aria-hidden="true">

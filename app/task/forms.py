@@ -75,12 +75,12 @@ class TaskForm(forms.ModelForm):
             self.fields['label'].empty_label = 'ラベルなし'
             self.fields['label'].required = False
         
-        # 既存のインスタンスがある場合、時刻フィールドを初期化
+        # 既存のインスタンスがある場合、時刻フィールドを初期化（ローカル時刻で表示）
         if self.instance.pk:
             if self.instance.start_date and not self.instance.all_day:
-                self.fields['start_time'].initial = self.instance.start_date.time()
+                self.fields['start_time'].initial = timezone.localtime(self.instance.start_date).time()
             if self.instance.end_date and not self.instance.all_day:
-                self.fields['end_time'].initial = self.instance.end_date.time()
+                self.fields['end_time'].initial = timezone.localtime(self.instance.end_date).time()
         
         # すべてのフィールドに 'form-control' クラスを追加
         for field_name, field in self.fields.items():

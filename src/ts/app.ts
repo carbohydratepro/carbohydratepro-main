@@ -192,3 +192,22 @@ document.addEventListener('keydown', (e) => {
         closeMessageDialog();
     }
 });
+
+// 日付・時刻入力: クリック時に必ずピッカーを開く
+function initDateTimePickers(): void {
+    document.querySelectorAll<HTMLInputElement>('input[type="date"], input[type="time"]').forEach(input => {
+        input.addEventListener('click', () => {
+            if (typeof input.showPicker === 'function') {
+                input.showPicker();
+            }
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initDateTimePickers();
+    // モーダルが開いた後にも適用
+    document.addEventListener('shown.bs.modal', () => {
+        initDateTimePickers();
+    });
+});

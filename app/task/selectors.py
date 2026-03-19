@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from django.db.models import Q, QuerySet
-from django.utils.timezone import make_aware
+from django.utils.timezone import localtime, make_aware
 
 from .models import Task, TaskLabel
 
@@ -61,8 +61,8 @@ def build_gantt_data(tasks_qs: QuerySet, day_start: datetime, day_end: datetime)
 
         task_start = task.start_date if task.start_date else day_start
         task_end = task.end_date if task.end_date else day_end
-        display_start = max(task_start, day_start)
-        display_end = min(task_end, day_end)
+        display_start = localtime(max(task_start, day_start))
+        display_end = localtime(min(task_end, day_end))
 
         start_minutes = display_start.hour * 60 + display_start.minute
         end_minutes = display_end.hour * 60 + display_end.minute
@@ -143,17 +143,19 @@ def build_task_api_json(tasks: QuerySet) -> list[dict[str, object]]:
     """APIレスポンス用タスクデータを構築"""
     tasks_data: list[dict[str, object]] = []
     for task in tasks:
+        local_start = localtime(task.start_date) if task.start_date else None
+        local_end = localtime(task.end_date) if task.end_date else None
         if task.all_day:
-            date_display = task.start_date.strftime('%Y-%m-%d') if task.start_date else ''
-            if task.end_date and task.start_date and task.start_date.date() != task.end_date.date():
-                date_display += f" 〜 {task.end_date.strftime('%Y-%m-%d')}"
+            date_display = local_start.strftime('%Y-%m-%d') if local_start else ''
+            if local_end and local_start and local_start.date() != local_end.date():
+                date_display += f" 〜 {local_end.strftime('%Y-%m-%d')}"
         else:
-            date_display = task.start_date.strftime('%Y-%m-%d %H:%M') if task.start_date else ''
-            if task.end_date and task.start_date:
-                if task.start_date.date() == task.end_date.date():
-                    date_display += f" 〜 {task.end_date.strftime('%H:%M')}"
+            date_display = local_start.strftime('%Y-%m-%d %H:%M') if local_start else ''
+            if local_end and local_start:
+                if local_start.date() == local_end.date():
+                    date_display += f" 〜 {local_end.strftime('%H:%M')}"
                 else:
-                    date_display += f" 〜 {task.end_date.strftime('%Y-%m-%d %H:%M')}"
+                    date_display += f" 〜 {local_end.strftime('%Y-%m-%d %H:%M')}"
 
         tasks_data.append({
             'id': task.id,

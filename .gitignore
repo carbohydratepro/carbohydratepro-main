@@ -6,6 +6,7 @@
 *.sql
 *.ctl
 deploy.sh
+restart-dev.sh
 settings.local.json
 node_modules/
 static_root/

@@ -53,7 +53,10 @@ def task_list(request: HttpRequest) -> HttpResponse:
     start_date = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     end_date = (start_date + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0) - timedelta(microseconds=1)
 
-    month_tasks = selectors.get_month_tasks(request.user, start_date, end_date)
+    # カレンダーの前後週（最大7日分）を含むようにタスク取得範囲を拡張
+    extended_start = start_date - timedelta(days=7)
+    extended_end = end_date + timedelta(days=7)
+    month_tasks = selectors.get_month_tasks(request.user, extended_start, extended_end)
     calendar_data, weekday_labels = selectors.build_calendar_data(
         month_tasks, target_date.year, target_date.month, week_start
     )

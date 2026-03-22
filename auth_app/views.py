@@ -30,6 +30,11 @@ class TopView(generic.TemplateView):
 class Login(LoginView):
     form_class = LoginForm
     template_name = 'registration/login.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect(resolve_url('top'))
+        return super().dispatch(request, *args, **kwargs)
     
 '''自分しかアクセスできないようにするMixin(My Pageのため)'''
 class OnlyYouMixin(UserPassesTestMixin):

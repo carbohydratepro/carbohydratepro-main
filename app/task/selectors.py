@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import calendar
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from django.db.models import Q, QuerySet
@@ -109,32 +109,36 @@ def build_calendar_data(
 ) -> tuple[list[list[dict[str, object]]], list[str]]:
     """カレンダーデータと曜日ラベルを生成"""
     firstweekday = 6 if week_start == 'sunday' else 0
-    cal = calendar.Calendar(firstweekday=firstweekday).monthdayscalendar(year, month)
+    cal = calendar.Calendar(firstweekday=firstweekday).monthdatescalendar(year, month)
     weekday_labels = (
         ['日', '月', '火', '水', '木', '金', '土']
         if week_start == 'sunday'
         else ['月', '火', '水', '木', '金', '土', '日']
     )
 
+    today = date.today()
     calendar_data: list[list[dict[str, object]]] = []
     for week in cal:
         week_data: list[dict[str, object]] = []
-        for day in week:
-            if day == 0:
-                week_data.append({'day': 0, 'tasks': []})
-            else:
-                day_start = make_aware(datetime(year, month, day, 0, 0, 0))
-                day_end = make_aware(datetime(year, month, day, 23, 59, 59))
-                day_tasks = list(month_tasks.filter(
-                    Q(start_date__lte=day_end, end_date__gte=day_start) |
-                    Q(start_date__lte=day_end, end_date__isnull=True) |
-                    Q(start_date__isnull=True, end_date__gte=day_start)
-                ).order_by('start_date')[:5])
-                week_data.append({
-                    'day': day,
-                    'tasks': day_tasks,
-                    'task_count': len(day_tasks),
-                })
+        for d in week:
+            is_current_month = (d.month == month)
+            is_today = (d == today)
+            day_start = make_aware(datetime(d.year, d.month, d.day, 0, 0, 0))
+            day_end = make_aware(datetime(d.year, d.month, d.day, 23, 59, 59))
+            day_tasks = list(month_tasks.filter(
+                Q(start_date__lte=day_end, end_date__gte=day_start) |
+                Q(start_date__lte=day_end, end_date__isnull=True) |
+                Q(start_date__isnull=True, end_date__gte=day_start)
+            ).order_by('start_date')[:5])
+            week_data.append({
+                'day': d.day,
+                'month': d.month,
+                'year': d.year,
+                'tasks': day_tasks,
+                'task_count': len(day_tasks),
+                'is_current_month': is_current_month,
+                'is_today': is_today,
+            })
         calendar_data.append(week_data)
     return calendar_data, weekday_labels
 

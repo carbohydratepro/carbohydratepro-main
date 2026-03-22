@@ -421,51 +421,115 @@ function formatTimeHHMM(date) {
     const minutes = String(date.getMinutes()).padStart(2, '0');
     return `${hours}:${minutes}`;
 }
-// 時刻フィールドをセレクトボックス（5分刻み）に置き換える
+// 時刻フィールドを時・分の2つのセレクトボックスに置き換える
 function initializeTimeSelects() {
     ['id_start_time', 'id_end_time'].forEach(inputId => {
+        var _a, _b;
         const inputEl = document.getElementById(inputId);
-        if (!inputEl || inputEl.tagName === 'SELECT')
+        if (!inputEl || inputEl.dataset.timePickerInitialized)
             return;
         const input = inputEl;
-        const select = document.createElement('select');
-        select.id = input.id;
-        select.name = input.name;
-        select.className = input.className;
-        const emptyOption = document.createElement('option');
-        emptyOption.value = '';
-        emptyOption.textContent = '-- 時刻を選択 --';
-        select.appendChild(emptyOption);
-        for (let hour = 0; hour < 24; hour++) {
-            for (let minute = 0; minute < 60; minute += 5) {
-                const option = document.createElement('option');
-                const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-                option.value = timeStr;
-                option.textContent = timeStr;
-                select.appendChild(option);
-            }
+        const currentValue = input.value;
+        const parts = currentValue ? currentValue.split(':') : [];
+        const currentHour = (_a = parts[0]) !== null && _a !== void 0 ? _a : '';
+        const currentMinute = (_b = parts[1]) !== null && _b !== void 0 ? _b : '';
+        // フォーム送信用の隠しフィールド（idとnameを保持）
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.id = input.id;
+        hiddenInput.name = input.name;
+        hiddenInput.value = currentValue;
+        hiddenInput.dataset.timePickerInitialized = 'true';
+        // 時セレクト
+        const hourSelect = document.createElement('select');
+        hourSelect.className = 'form-control form-control-sm time-hour-select';
+        hourSelect.style.width = 'auto';
+        const emptyHour = document.createElement('option');
+        emptyHour.value = '';
+        emptyHour.textContent = '--';
+        hourSelect.appendChild(emptyHour);
+        for (let h = 0; h < 24; h++) {
+            const opt = document.createElement('option');
+            opt.value = String(h).padStart(2, '0');
+            opt.textContent = String(h).padStart(2, '0');
+            if (currentHour !== '' && parseInt(currentHour) === h)
+                opt.selected = true;
+            hourSelect.appendChild(opt);
         }
-        if (input.value) {
-            select.value = input.value;
+        // 分セレクト（5分刻み）
+        const minuteSelect = document.createElement('select');
+        minuteSelect.className = 'form-control form-control-sm time-minute-select';
+        minuteSelect.style.width = 'auto';
+        const emptyMinute = document.createElement('option');
+        emptyMinute.value = '';
+        emptyMinute.textContent = '--';
+        minuteSelect.appendChild(emptyMinute);
+        for (let m = 0; m < 60; m += 5) {
+            const opt = document.createElement('option');
+            opt.value = String(m).padStart(2, '0');
+            opt.textContent = String(m).padStart(2, '0');
+            if (currentMinute !== '' && parseInt(currentMinute) === m)
+                opt.selected = true;
+            minuteSelect.appendChild(opt);
         }
-        input.replaceWith(select);
+        // 隠しフィールドへ同期
+        const syncHidden = () => {
+            hiddenInput.value = (hourSelect.value && minuteSelect.value)
+                ? `${hourSelect.value}:${minuteSelect.value}`
+                : '';
+            const form = hiddenInput.closest('form');
+            if (form)
+                validateAndFixDateTimeOrder(form);
+        };
+        hourSelect.addEventListener('change', syncHidden);
+        minuteSelect.addEventListener('change', syncHidden);
+        // ラッパー
+        const wrapper = document.createElement('div');
+        wrapper.className = 'time-picker-wrapper d-inline-flex align-items-center';
+        wrapper.style.gap = '4px';
+        wrapper.dataset.timePickerFor = inputId;
+        const sep = document.createElement('span');
+        sep.className = 'mx-1';
+        sep.textContent = ':';
+        wrapper.appendChild(hourSelect);
+        wrapper.appendChild(sep);
+        wrapper.appendChild(minuteSelect);
+        wrapper.appendChild(hiddenInput);
+        input.replaceWith(wrapper);
     });
+}
+// 時刻ピッカー（隠し入力 + 時・分セレクト）に値をセット
+function setTimePickerValue(inputId, timeStr) {
+    const hiddenInput = document.getElementById(inputId);
+    if (!hiddenInput)
+        return;
+    hiddenInput.value = timeStr;
+    const wrapper = hiddenInput.closest('.time-picker-wrapper');
+    if (!wrapper)
+        return;
+    const [hourStr = '', minuteStr = ''] = timeStr ? timeStr.split(':') : [];
+    const hourSelect = wrapper.querySelector('.time-hour-select');
+    const minuteSelect = wrapper.querySelector('.time-minute-select');
+    if (hourSelect)
+        hourSelect.value = hourStr;
+    if (minuteSelect) {
+        const rounded = Math.round(parseInt(minuteStr || '0') / 5) * 5;
+        minuteSelect.value = String(rounded % 60).padStart(2, '0');
+    }
 }
 // デフォルト時刻を設定（新規作成時のみ：値が空の場合）
 function setDefaultTimes() {
-    const startTimeEl = document.getElementById('id_start_time');
-    const endTimeEl = document.getElementById('id_end_time');
-    if (!startTimeEl || !endTimeEl)
+    const startHidden = document.getElementById('id_start_time');
+    const endHidden = document.getElementById('id_end_time');
+    if (!startHidden || !endHidden)
         return;
-    const startTimeInput = startTimeEl;
-    const endTimeInput = endTimeEl;
-    if (startTimeInput.value || endTimeInput.value)
+    if (startHidden.value || endHidden.value)
         return;
     const now = new Date();
     const rounded = roundToNearest5Minutes(now);
     const oneHourLater = new Date(rounded.getTime() + 60 * 60 * 1000);
-    startTimeInput.value = formatTimeHHMM(rounded);
-    endTimeInput.value = formatTimeHHMM(oneHourLater);
+    setTimePickerValue('id_start_time', formatTimeHHMM(rounded));
+    setTimePickerValue('id_end_time', formatTimeHHMM(oneHourLater));
 }
 // 開始日変更時のイベント処理（終了日を同じ幅で移動・終了日ピッカーを自動オープン）
 function handleStartDateChange(event) {
@@ -539,12 +603,10 @@ function validateAndFixDateTimeOrder(form) {
             const startHour = parseInt(parts[0]);
             const startMinute = parseInt(parts[1]);
             const endHour = startHour + 1;
-            if (endHour >= 24) {
-                endTimeEl.value = '23:55';
-            }
-            else {
-                endTimeEl.value = `${String(endHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}`;
-            }
+            const newEndTimeStr = endHour >= 24
+                ? '23:55'
+                : `${String(endHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}`;
+            setTimePickerValue('id_end_time', newEndTimeStr);
         }
     }
 }
@@ -590,9 +652,14 @@ function toggleTimeFields() {
         timeFields.forEach(field => {
             field.style.display = isAllDay ? 'none' : 'block';
             if (isAllDay) {
-                const timeControl = field.querySelector('input[type="time"], select');
-                if (timeControl)
-                    timeControl.value = '';
+                // 時・分セレクトをクリア
+                field.querySelectorAll('.time-hour-select, .time-minute-select').forEach(sel => {
+                    sel.value = '';
+                });
+                // 隠しフィールドもクリア
+                field.querySelectorAll('input[data-time-picker-initialized]').forEach(inp => {
+                    inp.value = '';
+                });
             }
         });
     }

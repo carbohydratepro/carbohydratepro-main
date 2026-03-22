@@ -4,7 +4,7 @@
 {% block content %}
 <div class="container mt-2">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
-        <h2 class="mb-2">メモ</h2>
+        <h2 class="mb-2">メモ <button type="button" class="btn btn-link btn-sm p-0" data-toggle="collapse" data-target="#memoDescription" aria-expanded="false"><i class="fas fa-info-circle text-info"></i></button></h2>
         <div class="d-flex flex-row align-items-center">
             <div class="btn-group btn-group-sm mr-2 mb-1" role="group" aria-label="表示切替">
                 <button type="button" class="btn btn-primary" id="markdownToggleOn" onclick="setMarkdownMode(true)">
@@ -27,6 +27,9 @@
                 </button>
             </div>
         </div>
+    </div>
+    <div class="collapse mb-2" id="memoDescription">
+        <div class="alert alert-info py-1 mb-1 small">テキストやMarkdownでメモを作成・管理します。長押し（0.5秒）で削除、ダブルタップで編集できます。</div>
     </div>
 
     <!-- 検索・絞り込み機能 -->

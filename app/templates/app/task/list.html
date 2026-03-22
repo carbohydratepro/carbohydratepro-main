@@ -4,7 +4,10 @@
 {% block content %}
 <div class="container mt-5">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
-        <h2 class="mb-0">スケジュール</h2>
+        <h2 class="mb-0">スケジュール <button type="button" class="btn btn-link btn-sm p-0" data-toggle="collapse" data-target="#scheduleDescription" aria-expanded="false"><i class="fas fa-info-circle text-info"></i></button></h2>
+    </div>
+    <div class="collapse mb-2" id="scheduleDescription">
+        <div class="alert alert-info py-1 mb-1 small">タスクをカレンダー（月表示）またはガントチャート（日表示）で管理します。日付セルをクリックしてタスクを追加・確認できます。</div>
     </div>
 
     <div class="d-flex flex-row-reverse mb-2">
@@ -172,27 +175,25 @@
                     {% for week in calendar_data %}
                     <tr>
                         {% for day_data in week %}
-                        <td class="task-calendar-cell"
+                        <td class="task-calendar-cell{% if not day_data.is_current_month %} other-month-cell{% endif %}{% if day_data.is_today %} today-cell{% endif %}"
                             data-day="{{ day_data.day }}"
-                            data-month="{{ default_target_date|slice:':7' }}"
+                            data-month="{{ day_data.year }}-{{ day_data.month|stringformat:'02d' }}"
                             data-task-count="{{ day_data.task_count }}"
-                            data-year="{{ default_target_date|slice:':4' }}"
-                            data-month-num="{{ default_target_date|slice:'5:7' }}">
-                            {% if day_data.day != 0 %}
-                                <div class="day-number">{{ day_data.day }}</div>
-                                <div class="task-list">
-                                    {% for task in day_data.tasks %}
-                                    <div class="task-item"
-                                         data-task-id="{{ task.id }}"
-                                         {% if task.label %}style="background-color: {{ task.label.color }}; color: white; border-left: 3px solid {{ task.label.color|darker }};"{% endif %}>
-                                        {{ task.title|truncatechars:30 }}
-                                    </div>
-                                    {% endfor %}
-                                    {% if day_data.task_count > 5 %}
-                                    <div class="text-muted small">...</div>
-                                    {% endif %}
+                            data-year="{{ day_data.year }}"
+                            data-month-num="{{ day_data.month|stringformat:'02d' }}">
+                            <div class="day-number{% if not day_data.is_current_month %} text-muted{% endif %}{% if day_data.is_today %} today-number{% endif %}">{{ day_data.day }}</div>
+                            <div class="task-list">
+                                {% for task in day_data.tasks %}
+                                <div class="task-item"
+                                     data-task-id="{{ task.id }}"
+                                     {% if task.label %}style="background-color: {{ task.label.color }}; color: white; border-left: 3px solid {{ task.label.color|darker }};"{% endif %}>
+                                    {{ task.title|truncatechars:30 }}
                                 </div>
-                            {% endif %}
+                                {% endfor %}
+                                {% if day_data.task_count > 5 %}
+                                <div class="text-muted small">...</div>
+                                {% endif %}
+                            </div>
                         </td>
                         {% endfor %}
                     </tr>

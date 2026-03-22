@@ -484,3 +484,95 @@
         font-size: 0.65rem;
     }
 }
+
+/* 前後月のカレンダーセル */
+.task-calendar-cell.other-month-cell {
+    background-color: #f8f9fa;
+    opacity: 0.7;
+}
+
+.task-calendar-cell.other-month-cell .task-item {
+    opacity: 0.8;
+}
+
+/* 今日の日付 */
+.task-calendar-cell.today-cell {
+    background-color: #fff8e1;
+    border: 2px solid #ffc107 !important;
+}
+
+.day-number.today-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background-color: #ffc107;
+    color: #212529;
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: 0.85rem;
+}
+
+/* 日時横並びレイアウト */
+.datetime-row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px;
+}
+
+.datetime-label {
+    white-space: nowrap;
+    font-weight: 500;
+    font-size: 0.85rem;
+    min-width: 30px;
+    flex-shrink: 0;
+}
+
+.datetime-row input[type="date"] {
+    min-width: 0;
+    width: 130px;
+    flex-shrink: 1;
+    font-size: 0.8rem;
+    padding: 3px 4px;
+    height: auto;
+}
+
+.datetime-row .time-field {
+    flex-shrink: 0;
+}
+
+.time-picker-wrapper {
+    gap: 2px !important;
+}
+
+.time-hour-select,
+.time-minute-select {
+    width: 52px !important;
+    font-size: 0.8rem !important;
+    padding: 3px 2px !important;
+    height: auto !important;
+    text-align: center;
+}
+
+/* スマホでも横並びを維持 */
+@media (max-width: 576px) {
+    .datetime-row input[type="date"] {
+        width: 112px;
+        font-size: 0.75rem;
+        padding: 2px 3px;
+    }
+
+    .time-hour-select,
+    .time-minute-select {
+        width: 44px !important;
+        font-size: 0.75rem !important;
+        padding: 2px 1px !important;
+    }
+
+    .datetime-label {
+        font-size: 0.8rem;
+        min-width: 26px;
+    }
+}

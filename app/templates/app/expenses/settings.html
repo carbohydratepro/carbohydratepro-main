@@ -24,6 +24,11 @@
                 <td>{{ payment.name }}</td>
                 <td class="lp-actions-cell">
                     <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn"
+                            data-toggle="modal" data-target="#editPaymentModal{{ payment.id }}"
+                            onclick="event.stopPropagation();">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
                 </td>
             </tr>
 
@@ -123,6 +128,7 @@
         <thead>
             <tr>
                 <th>使用用途</th>
+                <th>グラフ色</th>
                 <th></th>
             </tr>
         </thead>
@@ -134,8 +140,16 @@
                 data-edit-modal-id="editPurposeModal{{ purpose.id }}"
                 data-item-id="{{ purpose.id }}">
                 <td>{{ purpose.name }}</td>
+                <td>
+                    <span style="display:inline-block; width:20px; height:20px; border-radius:3px; background:{{ purpose.chart_color|default:'#BDC3C7' }}; border:1px solid #ccc; vertical-align:middle;"></span>
+                </td>
                 <td class="lp-actions-cell">
                     <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn"
+                            data-toggle="modal" data-target="#editPurposeModal{{ purpose.id }}"
+                            onclick="event.stopPropagation();">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
                 </td>
             </tr>
 
@@ -155,6 +169,20 @@
                                 <div class="form-group">
                                     <label for="purpose-name-{{ purpose.id }}">使用用途</label>
                                     <input type="text" name="purpose-name" class="form-control" id="purpose-name-{{ purpose.id }}" value="{{ purpose.name }}" maxlength="20">
+                                </div>
+                                <div class="form-group">
+                                    <label for="purpose-chart_color-{{ purpose.id }}">グラフ色</label>
+                                    <div class="d-flex align-items-center">
+                                        <input type="color" name="purpose-chart_color"
+                                               class="form-control form-control-color mr-2"
+                                               id="purpose-chart_color-{{ purpose.id }}"
+                                               value="{{ purpose.chart_color|default:'#4ECDC4' }}"
+                                               style="width:60px; padding:2px; height:38px;">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                onclick="document.getElementById('purpose-chart_color-{{ purpose.id }}').value='#4ECDC4';">
+                                            リセット
+                                        </button>
+                                    </div>
                                 </div>
                                 <input type="hidden" name="purpose_id" value="{{ purpose.id }}">
                                 <input type="hidden" name="edit_purpose" value="true">
@@ -230,6 +258,50 @@
         </tbody>
     </table>
     <p class="text-muted small text-center"><i class="fas fa-info-circle"></i> 長押し（0.5秒）で削除、ダブルタップで編集</p>
+
+    <!-- グラフ設定 -->
+    <h4 class="mt-4 mb-3">グラフ設定</h4>
+    <div class="card">
+        <div class="card-body py-3">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <strong>日別支出グラフ 土日色付け</strong>
+                    <div class="text-muted small">土曜・日曜の棒グラフをオレンジ色で表示します</div>
+                </div>
+                <button id="settingsWeekendToggle" type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="toggleSettingsWeekend(this)">
+                    <i class="fas fa-calendar-week"></i> <span id="settingsWeekendStatus">OFF</span>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 <script>document.addEventListener('DOMContentLoaded', function() { initLongPressDelete(); });</script>
+<script>
+(function() {
+    var enabled = localStorage.getItem('weekendColorEnabled') === 'true';
+    var statusEl = document.getElementById('settingsWeekendStatus');
+    var btn = document.getElementById('settingsWeekendToggle');
+    if (statusEl) statusEl.textContent = enabled ? 'ON' : 'OFF';
+    if (btn && enabled) {
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-secondary');
+    }
+})();
+
+function toggleSettingsWeekend(btn) {
+    var enabled = localStorage.getItem('weekendColorEnabled') === 'true';
+    enabled = !enabled;
+    localStorage.setItem('weekendColorEnabled', String(enabled));
+    var statusEl = document.getElementById('settingsWeekendStatus');
+    if (statusEl) statusEl.textContent = enabled ? 'ON' : 'OFF';
+    if (enabled) {
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-secondary');
+    } else {
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-outline-secondary');
+    }
+}
+</script>
 {% endblock %}

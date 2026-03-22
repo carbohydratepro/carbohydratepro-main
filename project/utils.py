@@ -63,7 +63,12 @@ def send_html_email(
 
 # グラフ用カラーパレット
 CHART_COLORS = {
-    'category': ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'],
+    # カテゴリ別パレット（カテゴリIDのmod割り当てで色を固定）
+    'category': [
+        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+        '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+        '#F1948A', '#82E0AA', '#F8C471', '#AED6F1', '#A9DFBF',
+    ],
     'major_category': {
         'variable': '#E74C3C',
         'fixed': '#3498DB',

@@ -87,7 +87,18 @@
                 <span class="history-date">{{ msg.created_at|date:"Y/m/d H:i" }}</span>
             </div>
             <div class="history-subject">{{ msg.subject }}</div>
-            <div class="history-message">{{ msg.message|truncatewords:30 }}</div>
+            {% if msg.message|wordcount > 30 %}
+            <div class="history-message" id="msg-preview-{{ msg.id }}">{{ msg.message|truncatewords:30 }}</div>
+            <div id="msg-full-{{ msg.id }}" style="display:none;">
+                <div class="history-message-full">{{ msg.message|linebreaksbr }}</div>
+            </div>
+            <button type="button" class="btn btn-link btn-sm p-0 history-toggle-btn"
+                    data-msg-id="{{ msg.id }}">
+                <small>全文を見る</small>
+            </button>
+            {% else %}
+            <div class="history-message">{{ msg.message }}</div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
@@ -99,4 +110,25 @@
     </div>
     {% endif %}
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.history-toggle-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var msgId = btn.getAttribute('data-msg-id');
+            var preview = document.getElementById('msg-preview-' + msgId);
+            var full = document.getElementById('msg-full-' + msgId);
+            var label = btn.querySelector('small');
+            if (full.style.display === 'none') {
+                full.style.display = 'block';
+                if (preview) preview.style.display = 'none';
+                if (label) label.textContent = '閉じる';
+            } else {
+                full.style.display = 'none';
+                if (preview) preview.style.display = '';
+                if (label) label.textContent = '全文を見る';
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

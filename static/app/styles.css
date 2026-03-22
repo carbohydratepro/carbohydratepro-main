@@ -205,3 +205,11 @@ h1 {
     overflow: hidden;
     min-width: 80px;
 }
+
+.lp-edit-btn {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
+}

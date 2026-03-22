@@ -293,6 +293,41 @@ function initializeLineChart(
     animateLineChart(chart, originalData);
 }
 
+// 土日色付け状態（localStorage で永続化）
+let weekendColorEnabled: boolean = localStorage.getItem('weekendColorEnabled') === 'true';
+
+// 土日判定
+function isWeekend(dateStr: string): boolean {
+    const date = new Date(dateStr);
+    const day = date.getDay();
+    return day === 0 || day === 6;
+}
+
+// 棒グラフ用の色配列を生成（土日色付けON/OFFに応じる）
+function buildBarColors(labels: string[]): string[] {
+    const normalColor = '#FF6384';
+    const weekendColor = 'rgba(255, 165, 0, 0.75)';
+    return labels.map(label => (weekendColorEnabled && isWeekend(label)) ? weekendColor : normalColor);
+}
+
+// 土日色付けトグル（設定画面から呼ばれる場合などに使用）
+function toggleWeekendColor(): void {
+    weekendColorEnabled = !weekendColorEnabled;
+    localStorage.setItem('weekendColorEnabled', String(weekendColorEnabled));
+
+    // 棒グラフの色を更新
+    if (activeBarCharts.length > 0 && typeof expenseData !== 'undefined') {
+        const colors = buildBarColors(expenseData.labels);
+        activeBarCharts.forEach(chart => {
+            chart.data.datasets[0].backgroundColor = colors;
+            chart.update();
+        });
+    }
+}
+
+// 棒グラフのチャートインスタンスを保持
+const activeBarCharts: Chart[] = [];
+
 // グラフ初期化関数
 function initializeExpenseCharts(): void {
     if (typeof categoryData === 'undefined' || typeof expenseData === 'undefined' ||
@@ -321,6 +356,16 @@ function initializeExpenseCharts(): void {
         }
     }
 
+    // 棒グラフ用データを土日色付け状態に応じて準備
+    const barColors = buildBarColors(expenseData.labels);
+    const expenseDataWithColors: ChartData = {
+        labels: expenseData.labels,
+        datasets: [{
+            ...expenseData.datasets[0],
+            backgroundColor: barColors,
+        }],
+    };
+
     // 棒グラフ共通オプション生成
     const createBarConfig = (data: ChartData, maxTicksX: number, maxTicksY: number): ChartConfig => ({
         type: 'bar',
@@ -345,7 +390,10 @@ function initializeExpenseCharts(): void {
     const ctxBar = document.getElementById('expenseBarChart') as HTMLCanvasElement | null;
     if (ctxBar) {
         const barCtx = ctxBar.getContext('2d');
-        if (barCtx) new Chart(barCtx, createBarConfig(expenseData, 10, 5));
+        if (barCtx) {
+            const chart = new Chart(barCtx, createBarConfig(expenseDataWithColors, 10, 5));
+            activeBarCharts.push(chart);
+        }
     }
 
     // モバイル用棒グラフ
@@ -355,7 +403,10 @@ function initializeExpenseCharts(): void {
         ctxBarMobile.style.height = '250px';
         ctxBarMobile.height = 250;
         const barMobileCtx = ctxBarMobile.getContext('2d');
-        if (barMobileCtx) new Chart(barMobileCtx, createBarConfig(expenseData, 8, 4));
+        if (barMobileCtx) {
+            const chart = new Chart(barMobileCtx, createBarConfig(expenseDataWithColors, 8, 4));
+            activeBarCharts.push(chart);
+        }
     }
 
     // メインカテゴリ円グラフ共通オプション

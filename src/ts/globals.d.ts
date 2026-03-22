@@ -109,6 +109,9 @@ declare function isInteractiveTarget(target: EventTarget | null): boolean;
 declare function initLongPressDelete(container?: HTMLElement): void;
 declare function getCookie(name: string): string | null;
 
+// Global functions from transaction.ts
+declare function toggleWeekendColor(): void;
+
 // Global chart data variables (set via Django template script tags)
 declare const categoryData: ChartData | undefined;
 declare const expenseData: ChartData | undefined;

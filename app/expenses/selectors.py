@@ -98,10 +98,13 @@ def get_summary(transactions_qs: QuerySet) -> dict[str, Decimal | float]:
 
 
 def build_category_chart_data(transactions_qs: QuerySet) -> str:
-    """カテゴリ別グラフデータ（JSON文字列）を返す。支出のみ、上位5件＋その他。"""
+    """カテゴリ別グラフデータ（JSON文字列）を返す。支出のみ、上位5件＋その他。
+    カテゴリに色が設定されていればそれを使い、なければIDのmod割り当てで固定色を使う。
+    """
     expense_qs = transactions_qs.filter(transaction_type='expense')
-    category_data = expense_qs.values('category__name').annotate(total=Sum('amount')).order_by('-total')
+    category_data = expense_qs.values('category__id', 'category__name', 'category__chart_color').annotate(total=Sum('amount')).order_by('-total')
 
+    palette: list[str] = CHART_COLORS['category']
     if category_data.exists():
         top_categories = list(category_data[:5])
         other_total = sum(float(entry['total']) for entry in category_data[5:])
@@ -110,7 +113,11 @@ def build_category_chart_data(transactions_qs: QuerySet) -> str:
             for entry in top_categories
         ]
         amounts = [float(entry['total']) for entry in top_categories]
-        colors: list[str] = CHART_COLORS['category'][: len(labels)]
+        colors: list[str] = [
+            entry['category__chart_color'] if entry['category__chart_color']
+            else palette[(entry['category__id'] or 0) % len(palette)]
+            for entry in top_categories
+        ]
         if other_total > 0:
             labels.append('その他')
             amounts.append(other_total)

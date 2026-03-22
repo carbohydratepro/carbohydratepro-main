@@ -16,6 +16,7 @@ class PaymentMethod(models.Model):
 class Category(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='categories')
     name = models.CharField(max_length=20)
+    chart_color = models.CharField(max_length=7, blank=True, default='', help_text='グラフ表示色（例: #FF6B6B）')
 
     def __str__(self) -> str:
         return self.name

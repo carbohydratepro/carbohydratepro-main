@@ -92,19 +92,32 @@ class PaymentMethodForm(forms.ModelForm):
 class CategoryForm(forms.ModelForm):
     class Meta:
         model = Category
+        fields = ['name', 'chart_color']
 
-        fields = ['name']
-    # bootstrap4対応で、classを指定
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
-        for field in self.fields.values():
-            field.widget.attrs['class'] = 'form-control'
-            field.widget.attrs['maxlength'] = '20'
-        # エラーメッセージのカスタマイズ
+        self.fields['name'].widget.attrs['class'] = 'form-control'
+        self.fields['name'].widget.attrs['maxlength'] = '20'
         self.fields['name'].error_messages = {
             'max_length': '上限文字数は20です。',
             'required': 'この項目は必須です。',
         }
+        self.fields['chart_color'].widget = forms.TextInput(attrs={
+            'type': 'color',
+            'class': 'form-control form-control-color',
+            'style': 'width: 60px; padding: 2px;',
+        })
+        self.fields['chart_color'].required = False
+        self.fields['chart_color'].label = 'グラフ色'
+        # If no color is set, show a default color in the picker
+        if not self.instance.pk or not self.instance.chart_color:
+            self.fields['chart_color'].initial = '#4ECDC4'
+
+    def clean_chart_color(self) -> str:
+        color = self.cleaned_data.get('chart_color', '')
+        if color and (len(color) != 7 or not color.startswith('#')):
+            return ''
+        return color
 
 
 DAY_OF_WEEK_CHOICES = [

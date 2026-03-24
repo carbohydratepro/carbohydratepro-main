@@ -10,7 +10,77 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
+}
+
+/* セット切り替えタブ */
+.set-tabs-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.set-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.set-tab {
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: #555;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.set-tab:hover {
+    background: #e0e0e0;
+}
+
+.set-tab.active {
+    background: #007bff;
+    border-color: #007bff;
+    color: #fff;
+    font-weight: 600;
+}
+
+.set-tab-input {
+    border: 1px solid #007bff;
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 0.85rem;
+    outline: none;
+    width: 120px;
+}
+
+.set-add-btn {
+    background: none;
+    border: 1px dashed #aaa;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+    color: #888;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+}
+
+.set-add-btn:hover {
+    background: #e8f0fe;
+    color: #007bff;
+    border-color: #007bff;
 }
 
 .temp-task-title {

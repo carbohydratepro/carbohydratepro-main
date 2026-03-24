@@ -1,6 +1,9 @@
 "use strict";
 // 一時タスク管理（カンバンボード）用 TypeScript
 // サーバー側（DB）に非同期保存する実装
+let sets = [];
+let currentSetId = null;
+const SET_STORAGE_KEY = 'tempTaskCurrentSetId';
 // ドラッグ状態管理
 let draggedLocalId = null;
 let dragSourceEl = null;
@@ -52,20 +55,36 @@ function getApiClearUrl() {
     const container = document.getElementById('tempTaskContainer');
     return (container === null || container === void 0 ? void 0 : container.dataset.apiClearUrl) || '';
 }
+function getApiSetsUrl() {
+    const container = document.getElementById('tempTaskContainer');
+    return (container === null || container === void 0 ? void 0 : container.dataset.apiSetsUrl) || '';
+}
+function getApiSetDetailUrl(setId) {
+    const container = document.getElementById('tempTaskContainer');
+    const base = (container === null || container === void 0 ? void 0 : container.dataset.apiSetDetailBaseUrl) || '';
+    // base は /carbohydratepro/tasks/board/api/sets/0/ → 末尾の 0 を setId に置換
+    return base.replace(/\/0\/$/, `/${setId}/`);
+}
 async function apiFetch(url, options) {
     return fetch(url, Object.assign(Object.assign({}, options), { headers: tempTaskApiHeaders() }));
 }
 async function apiGetTasks() {
-    const res = await fetch(getApiBaseUrl());
+    const url = currentSetId !== null
+        ? `${getApiBaseUrl()}?set_id=${currentSetId}`
+        : getApiBaseUrl();
+    const res = await fetch(url);
     if (!res.ok)
         throw new Error('タスク取得失敗');
     const data = await res.json();
     return data.tasks;
 }
 async function apiCreateTask(title, status) {
+    const body = { title, status };
+    if (currentSetId !== null)
+        body.set_id = currentSetId;
     const res = await apiFetch(getApiBaseUrl(), {
         method: 'POST',
-        body: JSON.stringify({ title, status }),
+        body: JSON.stringify(body),
     });
     if (!res.ok)
         throw new Error('タスク作成失敗');
@@ -88,11 +107,177 @@ async function apiDeleteTask(serverId) {
         throw new Error('タスク削除失敗');
 }
 async function apiClearTasks() {
+    const body = {};
+    if (currentSetId !== null)
+        body.set_id = currentSetId;
     const res = await apiFetch(getApiClearUrl(), {
         method: 'DELETE',
+        body: JSON.stringify(body),
     });
     if (!res.ok)
         throw new Error('全削除失敗');
+}
+// =========================================================
+// セット API
+// =========================================================
+async function apiGetSets() {
+    const res = await fetch(getApiSetsUrl());
+    if (!res.ok)
+        throw new Error('セット取得失敗');
+    const data = await res.json();
+    return data.sets;
+}
+async function apiCreateSet(name) {
+    const res = await apiFetch(getApiSetsUrl(), {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+    });
+    if (!res.ok)
+        throw new Error('セット作成失敗');
+    return res.json();
+}
+async function apiUpdateSet(setId, name) {
+    const res = await apiFetch(getApiSetDetailUrl(setId), {
+        method: 'PUT',
+        body: JSON.stringify({ name }),
+    });
+    if (!res.ok)
+        throw new Error('セット更新失敗');
+    return res.json();
+}
+async function apiDeleteSet(setId) {
+    const res = await apiFetch(getApiSetDetailUrl(setId), { method: 'DELETE' });
+    if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'セット削除失敗');
+    }
+}
+// =========================================================
+// セット UI
+// =========================================================
+function renderSetTabs() {
+    const container = document.getElementById('setTabs');
+    if (!container)
+        return;
+    container.innerHTML = '';
+    sets.forEach(s => {
+        const tab = document.createElement('button');
+        tab.className = 'set-tab' + (s.id === currentSetId ? ' active' : '');
+        tab.dataset.setId = String(s.id);
+        tab.textContent = s.name;
+        tab.title = 'ダブルクリックでリネーム、長押しで削除';
+        tab.addEventListener('click', () => {
+            if (s.id !== currentSetId)
+                void switchSet(s.id);
+        });
+        // ダブルクリックでリネーム
+        tab.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            startRenameSet(tab, s.id, s.name);
+        });
+        // 長押しで削除（複数セットある場合のみ）
+        let lpTimer = null;
+        tab.addEventListener('mousedown', () => {
+            if (sets.length <= 1)
+                return;
+            lpTimer = setTimeout(() => { void confirmDeleteSet(s.id, s.name); }, 700);
+        });
+        tab.addEventListener('mouseup', () => { if (lpTimer)
+            clearTimeout(lpTimer); });
+        tab.addEventListener('mouseleave', () => { if (lpTimer)
+            clearTimeout(lpTimer); });
+        tab.addEventListener('touchstart', () => {
+            if (sets.length <= 1)
+                return;
+            lpTimer = setTimeout(() => { void confirmDeleteSet(s.id, s.name); }, 700);
+        }, { passive: true });
+        tab.addEventListener('touchend', () => { if (lpTimer)
+            clearTimeout(lpTimer); });
+        container.appendChild(tab);
+    });
+}
+function startRenameSet(tab, setId, currentName) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'set-tab-input';
+    input.value = currentName;
+    input.maxLength = 50;
+    tab.replaceWith(input);
+    input.focus();
+    input.select();
+    const commit = () => {
+        const newName = input.value.trim();
+        if (newName && newName !== currentName) {
+            void (async () => {
+                try {
+                    await apiUpdateSet(setId, newName);
+                    const s = sets.find(x => x.id === setId);
+                    if (s)
+                        s.name = newName;
+                }
+                catch ( /* ignore */_a) { /* ignore */ }
+                renderSetTabs();
+            })();
+        }
+        else {
+            renderSetTabs();
+        }
+    };
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            input.blur();
+        }
+        if (e.key === 'Escape') {
+            input.value = currentName;
+            input.blur();
+        }
+    });
+}
+async function confirmDeleteSet(setId, name) {
+    var _a, _b;
+    if (sets.length <= 1)
+        return;
+    if (!confirm(`「${name}」を削除しますか？\nこのセットのタスクもすべて削除されます。`))
+        return;
+    try {
+        await apiDeleteSet(setId);
+        sets = sets.filter(s => s.id !== setId);
+        if (currentSetId === setId) {
+            currentSetId = (_b = (_a = sets[0]) === null || _a === void 0 ? void 0 : _a.id) !== null && _b !== void 0 ? _b : null;
+            if (currentSetId !== null)
+                localStorage.setItem(SET_STORAGE_KEY, String(currentSetId));
+        }
+        tasks = [];
+        renderSetTabs();
+        renderAll();
+        if (currentSetId !== null)
+            await loadFromServer();
+    }
+    catch (err) {
+        alert(err instanceof Error ? err.message : 'セット削除に失敗しました');
+    }
+}
+async function switchSet(setId) {
+    currentSetId = setId;
+    localStorage.setItem(SET_STORAGE_KEY, String(setId));
+    renderSetTabs();
+    tasks = [];
+    renderAll();
+    await loadFromServer();
+}
+async function promptAddSet() {
+    const name = prompt('新しいセット名を入力してください（50文字以内）', '');
+    if (!name || !name.trim())
+        return;
+    try {
+        const newSet = await apiCreateSet(name.trim());
+        sets.push(newSet);
+        await switchSet(newSet.id);
+    }
+    catch (_a) {
+        alert('セットの作成に失敗しました');
+    }
 }
 // =========================================================
 // タスク操作（楽観的UI更新 + 非同期保存）
@@ -239,6 +424,24 @@ async function loadFromServer() {
         tasks = [];
         renderAll();
     }
+}
+async function initSets() {
+    try {
+        sets = await apiGetSets();
+    }
+    catch (_a) {
+        sets = [];
+    }
+    // localStorage から前回のセットIDを復元
+    const saved = localStorage.getItem(SET_STORAGE_KEY);
+    const savedId = saved ? parseInt(saved, 10) : NaN;
+    if (!isNaN(savedId) && sets.some(s => s.id === savedId)) {
+        currentSetId = savedId;
+    }
+    else if (sets.length > 0) {
+        currentSetId = sets[0].id;
+    }
+    renderSetTabs();
 }
 // =========================================================
 // レンダリング
@@ -789,7 +992,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeDeleteZone();
     initializeColumnDropZones();
     initializeInputs();
-    void loadFromServer();
+    void (async () => {
+        await initSets();
+        await loadFromServer();
+    })();
     // Escape キーで削除モードキャンセル
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && deletePendingLocalId) {

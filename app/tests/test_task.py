@@ -9,7 +9,7 @@ from django.utils import timezone
 
 import json
 
-from app.task.models import Task, TaskLabel, TempTaskItem
+from app.task.models import Task, TaskLabel, TempTaskItem, TempTaskSet
 from app.task.forms import TaskForm, TaskLabelForm
 from tests.factories import UserFactory, TaskLabelFactory
 
@@ -929,3 +929,104 @@ class TempTaskApiTest(TestCase):
         self.assertFalse(TempTaskItem.objects.filter(user=self.user).exists())
         # 他人のタスクは削除されない
         self.assertTrue(TempTaskItem.objects.filter(user=self.other_user).exists())
+
+
+class TempTaskSetApiTest(TestCase):
+    """一時タスクセット API のテスト"""
+
+    def setUp(self) -> None:
+        self.user = UserFactory()
+        self.other_user = UserFactory()
+        self.client = Client()
+
+    def test_sets_api_requires_login(self) -> None:
+        """未ログイン時はリダイレクトされることを確認"""
+        response = self.client.get(reverse('temp_task_sets_api'))
+        self.assertIn(response.status_code, [301, 302])
+
+    def test_get_sets_creates_default_on_empty(self) -> None:
+        """セットがない場合にデフォルトセットが自動作成される"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('temp_task_sets_api'))
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(len(data['sets']), 1)
+        self.assertEqual(data['sets'][0]['name'], 'デフォルト')
+
+    def test_get_sets_assigns_unset_tasks_to_default(self) -> None:
+        """既存の未割り当てタスクがデフォルトセットへ移される"""
+        task = TempTaskItem.objects.create(user=self.user, title='既存タスク', status='todo')
+        self.assertIsNone(task.task_set)
+
+        self.client.force_login(self.user)
+        self.client.get(reverse('temp_task_sets_api'))
+
+        task.refresh_from_db()
+        self.assertIsNotNone(task.task_set)
+
+    def test_create_set(self) -> None:
+        """セット作成APIのテスト"""
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('temp_task_sets_api'),
+            data=json.dumps({'name': '仕事用'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 201)
+        data = json.loads(response.content)
+        self.assertEqual(data['name'], '仕事用')
+        self.assertTrue(TempTaskSet.objects.filter(user=self.user, name='仕事用').exists())
+
+    def test_create_set_empty_name_fails(self) -> None:
+        """空名のセット作成は失敗する"""
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('temp_task_sets_api'),
+            data=json.dumps({'name': ''}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_rename_set(self) -> None:
+        """セットリネームAPIのテスト"""
+        task_set = TempTaskSet.objects.create(user=self.user, name='元の名前')
+        self.client.force_login(self.user)
+        response = self.client.put(
+            reverse('temp_task_set_detail_api', args=[task_set.id]),
+            data=json.dumps({'name': '新しい名前'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        task_set.refresh_from_db()
+        self.assertEqual(task_set.name, '新しい名前')
+
+    def test_delete_set(self) -> None:
+        """セット削除APIのテスト（2セット以上ある場合）"""
+        s1 = TempTaskSet.objects.create(user=self.user, name='セット1')
+        s2 = TempTaskSet.objects.create(user=self.user, name='セット2')
+        self.client.force_login(self.user)
+        response = self.client.delete(reverse('temp_task_set_detail_api', args=[s2.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(TempTaskSet.objects.filter(id=s2.id).exists())
+        self.assertTrue(TempTaskSet.objects.filter(id=s1.id).exists())
+
+    def test_delete_last_set_fails(self) -> None:
+        """最後の1セットは削除できない"""
+        task_set = TempTaskSet.objects.create(user=self.user, name='唯一のセット')
+        self.client.force_login(self.user)
+        response = self.client.delete(reverse('temp_task_set_detail_api', args=[task_set.id]))
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(TempTaskSet.objects.filter(id=task_set.id).exists())
+
+    def test_tasks_filtered_by_set(self) -> None:
+        """set_idでタスクがフィルタリングされる"""
+        s1 = TempTaskSet.objects.create(user=self.user, name='セット1')
+        s2 = TempTaskSet.objects.create(user=self.user, name='セット2')
+        TempTaskItem.objects.create(user=self.user, task_set=s1, title='セット1のタスク', status='todo')
+        TempTaskItem.objects.create(user=self.user, task_set=s2, title='セット2のタスク', status='todo')
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('temp_task_api') + f'?set_id={s1.id}')
+        data = json.loads(response.content)
+        self.assertEqual(len(data['tasks']), 1)
+        self.assertEqual(data['tasks'][0]['title'], 'セット1のタスク')

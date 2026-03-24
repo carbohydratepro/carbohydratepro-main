@@ -60,6 +60,22 @@ class Task(models.Model):
         ordering = ['-created_date']
 
 
+class TempTaskSet(models.Model):
+    """一時タスクセット（グループ）モデル"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='temp_task_sets')
+    name = models.CharField(max_length=50, verbose_name="セット名")
+    order = models.IntegerField(default=0, verbose_name="表示順")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="作成日時")
+
+    def __str__(self) -> str:
+        return self.name
+
+    class Meta:
+        ordering = ['order', 'created_at']
+        verbose_name = '一時タスクセット'
+        verbose_name_plural = '一時タスクセット'
+
+
 class TempTaskItem(models.Model):
     """一時タスク（サーバー永続化）モデル"""
     STATUS_CHOICES = [
@@ -69,6 +85,7 @@ class TempTaskItem(models.Model):
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='temp_task_items')
+    task_set = models.ForeignKey(TempTaskSet, on_delete=models.CASCADE, null=True, blank=True, related_name='items', verbose_name="セット")
     title = models.CharField(max_length=200, verbose_name="タイトル")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='todo', verbose_name="ステータス")
     order = models.IntegerField(default=0, verbose_name="表示順")

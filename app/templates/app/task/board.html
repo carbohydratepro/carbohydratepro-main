@@ -9,11 +9,20 @@
 <div class="temp-task-container"
      data-api-url="{% url 'temp_task_api' %}"
      data-api-clear-url="{% url 'temp_task_clear_api' %}"
+     data-api-sets-url="{% url 'temp_task_sets_api' %}"
+     data-api-set-detail-base-url="{% url 'temp_task_set_detail_api' set_id=0 %}"
      id="tempTaskContainer">
     <div class="temp-task-header">
         <h2 class="temp-task-title">一時タスク</h2>
         <button class="btn btn-outline-danger btn-sm" onclick="clearAllTasks()">
             <i class="fas fa-trash"></i> 全削除
+        </button>
+    </div>
+    <!-- セット切り替えタブ -->
+    <div class="set-tabs-wrapper">
+        <div class="set-tabs" id="setTabs"></div>
+        <button class="set-add-btn" onclick="promptAddSet()" title="セットを追加">
+            <i class="fas fa-plus"></i>
         </button>
     </div>
 

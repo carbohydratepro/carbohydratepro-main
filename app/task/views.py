@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.timezone import make_aware
 
 from .forms import TaskForm, TaskLabelForm
-from .models import Task, TaskLabel, TempTaskItem
+from .models import Task, TaskLabel, TempTaskItem, TempTaskSet
 from . import selectors, services
 
 
@@ -156,12 +156,84 @@ def temp_task_board(request: HttpRequest) -> HttpResponse:
     return render(request, 'app/task/board.html')
 
 
+def _get_or_create_default_set(user: object) -> 'TempTaskSet':
+    """デフォルトセットを取得または作成し、未割り当てタスクをそこへ移す"""
+    first_set = TempTaskSet.objects.filter(user=user).first()
+    if first_set is None:
+        first_set = TempTaskSet.objects.create(user=user, name='デフォルト', order=0)
+    # 既存の未割り当てタスクを最初のセットへ移す
+    TempTaskItem.objects.filter(user=user, task_set__isnull=True).update(task_set=first_set)
+    return first_set
+
+
+@login_required
+def temp_task_sets_api(request: HttpRequest) -> JsonResponse:
+    """一時タスクセット一覧取得・新規作成 API"""
+    if request.method == 'GET':
+        _get_or_create_default_set(request.user)
+        sets = TempTaskSet.objects.filter(user=request.user)
+        data = [{'id': s.id, 'name': s.name, 'order': s.order} for s in sets]
+        return JsonResponse({'sets': data})
+
+    if request.method == 'POST':
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': '不正なリクエストです'}, status=400)
+
+        name = body.get('name', '').strip()
+        if not name:
+            return JsonResponse({'error': 'セット名は必須です'}, status=400)
+        if len(name) > 50:
+            return JsonResponse({'error': 'セット名は50文字以内にしてください'}, status=400)
+
+        order = TempTaskSet.objects.filter(user=request.user).count()
+        task_set = TempTaskSet.objects.create(user=request.user, name=name, order=order)
+        return JsonResponse({'id': task_set.id, 'name': task_set.name, 'order': task_set.order}, status=201)
+
+    return JsonResponse({'error': 'メソッドが許可されていません'}, status=405)
+
+
+@login_required
+def temp_task_set_detail_api(request: HttpRequest, set_id: int) -> JsonResponse:
+    """一時タスクセット更新・削除 API"""
+    task_set = get_object_or_404(TempTaskSet, id=set_id, user=request.user)
+
+    if request.method == 'PUT':
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': '不正なリクエストです'}, status=400)
+
+        name = body.get('name', '').strip()
+        if not name:
+            return JsonResponse({'error': 'セット名は必須です'}, status=400)
+        if len(name) > 50:
+            return JsonResponse({'error': 'セット名は50文字以内にしてください'}, status=400)
+
+        task_set.name = name
+        task_set.save()
+        return JsonResponse({'id': task_set.id, 'name': task_set.name, 'order': task_set.order})
+
+    if request.method == 'DELETE':
+        # 最後の1セットは削除不可
+        if TempTaskSet.objects.filter(user=request.user).count() <= 1:
+            return JsonResponse({'error': '最後のセットは削除できません'}, status=400)
+        task_set.delete()
+        return JsonResponse({'success': True})
+
+    return JsonResponse({'error': 'メソッドが許可されていません'}, status=405)
+
+
 @login_required
 def temp_task_api(request: HttpRequest) -> JsonResponse:
     """一時タスク一覧取得・新規作成 API"""
     if request.method == 'GET':
-        tasks = TempTaskItem.objects.filter(user=request.user)
-        data = [{'id': t.id, 'title': t.title, 'status': t.status, 'order': t.order} for t in tasks]
+        set_id = request.GET.get('set_id')
+        qs = TempTaskItem.objects.filter(user=request.user)
+        if set_id:
+            qs = qs.filter(task_set_id=set_id)
+        data = [{'id': t.id, 'title': t.title, 'status': t.status, 'order': t.order} for t in qs]
         return JsonResponse({'tasks': data})
 
     if request.method == 'POST':
@@ -172,14 +244,19 @@ def temp_task_api(request: HttpRequest) -> JsonResponse:
 
         title = body.get('title', '').strip()
         status = body.get('status', 'todo')
+        set_id = body.get('set_id')
 
         if not title:
             return JsonResponse({'error': 'タイトルは必須です'}, status=400)
         if status not in ('todo', 'doing', 'done'):
             return JsonResponse({'error': '不正なステータスです'}, status=400)
 
-        order = TempTaskItem.objects.filter(user=request.user).count()
-        task = TempTaskItem.objects.create(user=request.user, title=title, status=status, order=order)
+        task_set = None
+        if set_id:
+            task_set = get_object_or_404(TempTaskSet, id=set_id, user=request.user)
+
+        order = TempTaskItem.objects.filter(user=request.user, task_set=task_set).count()
+        task = TempTaskItem.objects.create(user=request.user, task_set=task_set, title=title, status=status, order=order)
         return JsonResponse({'id': task.id, 'title': task.title, 'status': task.status, 'order': task.order}, status=201)
 
     return JsonResponse({'error': 'メソッドが許可されていません'}, status=405)
@@ -220,9 +297,18 @@ def temp_task_detail_api(request: HttpRequest, task_id: int) -> JsonResponse:
 
 @login_required
 def temp_task_clear_api(request: HttpRequest) -> JsonResponse:
-    """一時タスク全削除 API"""
+    """一時タスク全削除 API（現在のセットのみ）"""
     if request.method == 'DELETE':
-        TempTaskItem.objects.filter(user=request.user).delete()
+        try:
+            body = json.loads(request.body)
+            set_id = body.get('set_id')
+        except (json.JSONDecodeError, AttributeError):
+            set_id = None
+
+        qs = TempTaskItem.objects.filter(user=request.user)
+        if set_id:
+            qs = qs.filter(task_set_id=set_id)
+        qs.delete()
         return JsonResponse({'success': True})
     return JsonResponse({'error': 'メソッドが許可されていません'}, status=405)
 

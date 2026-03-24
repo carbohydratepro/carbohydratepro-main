@@ -56,4 +56,10 @@ urlpatterns = [
     path('habits/list/', views.habit_list, name='habit_list'),
     # お問い合わせ
     path('contact/', views.contact, name='contact'),
+    # 管理パネル（スタッフ専用）
+    path('manage/', views.manage_dashboard, name='manage_dashboard'),
+    path('manage/contacts/', views.manage_contacts, name='manage_contacts'),
+    path('manage/contacts/<int:contact_id>/', views.manage_contact_update, name='manage_contact_update'),
+    path('manage/users/', views.manage_users, name='manage_users'),
+    path('manage/users/stats/', views.manage_users_stats_api, name='manage_users_stats_api'),
 ]

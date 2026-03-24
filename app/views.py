@@ -23,6 +23,7 @@ from .task.views import (
     temp_task_sets_api, temp_task_set_detail_api,
 )
 from .habit.views import habit_dashboard, create_habit, edit_habit, delete_habit, toggle_habit, habit_status_json, habit_heatmap_json, habit_list
+from .manage_views import manage_dashboard, manage_contacts, manage_contact_update, manage_users, manage_users_stats_api
 
 @login_required
 def contact(request: HttpRequest) -> HttpResponse:

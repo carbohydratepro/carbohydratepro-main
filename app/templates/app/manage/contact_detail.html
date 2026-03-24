@@ -1,0 +1,69 @@
+{% extends "app/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex align-items-center mb-3">
+        <a href="{% url 'manage_contacts' %}" class="btn btn-sm btn-outline-secondary mr-3">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <h2 class="mb-0">問い合わせ詳細</h2>
+    </div>
+
+    <!-- 問い合わせ内容 -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>
+                <span class="badge badge-secondary mr-1">{{ contact.get_inquiry_type_display }}</span>
+                {{ contact.subject }}
+            </span>
+            <small class="text-muted">{{ contact.created_at|date:"Y年m月d日 H:i" }}</small>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small mb-1">送信者: {{ contact.user.email }} ({{ contact.user.username }})</p>
+            <hr>
+            <div style="white-space: pre-wrap;">{{ contact.message }}</div>
+        </div>
+    </div>
+
+    {% if contact.admin_reply %}
+    <!-- 既存の返信 -->
+    <div class="card mb-4 border-success">
+        <div class="card-header text-success">
+            <i class="fas fa-reply"></i> 返信済み（{{ contact.admin_reply_at|date:"Y/m/d H:i" }}）
+        </div>
+        <div class="card-body">
+            <div style="white-space: pre-wrap;">{{ contact.admin_reply }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 更新フォーム -->
+    <div class="card">
+        <div class="card-header">ステータス更新・返信</div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>ステータス</label>
+                    <select name="status" class="form-control">
+                        {% for val, label in status_choices %}
+                        <option value="{{ val }}" {% if contact.status == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>返信内容（省略可）</label>
+                    <textarea name="admin_reply" class="form-control" rows="6" placeholder="返信内容を入力...">{{ contact.admin_reply }}</textarea>
+                </div>
+                <div class="form-group form-check">
+                    <input type="checkbox" class="form-check-input" id="sendEmail" name="send_email" value="1">
+                    <label class="form-check-label" for="sendEmail">
+                        返信内容をメールで送信する（{{ contact.user.email }}）
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary">更新</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -114,6 +114,15 @@ class EmailVerificationMiddleware:
                     from django.contrib.auth import logout
                     logout(request)
                     return redirect('signup_done')
-        
+
+        # 最終アクティブ日時を30分ごとに更新
+        if request.user.is_authenticated and hasattr(request.user, 'last_active_at'):
+            now = timezone.now()
+            last_active = request.user.last_active_at
+            if last_active is None or (now - last_active).total_seconds() > 1800:
+                from django.contrib.auth import get_user_model
+                get_user_model().objects.filter(pk=request.user.pk).update(last_active_at=now)
+                request.user.last_active_at = now
+
         response = self.get_response(request)
         return response

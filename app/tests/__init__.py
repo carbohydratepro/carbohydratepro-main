@@ -14,3 +14,4 @@ from .test_memo import *
 from .test_shopping import *
 from .test_task import *
 from .test_lists import *
+from .test_manage import *

@@ -1,0 +1,89 @@
+{% extends "app/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4"><i class="fas fa-cogs"></i> 管理パネル</h2>
+
+    <div class="row mb-4">
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="h3 text-primary">{{ total_users }}</div>
+                    <div class="text-muted small">総ユーザー数</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="h3 text-success">{{ verified_users }}</div>
+                    <div class="text-muted small">認証済みユーザー</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="h3 text-danger">{{ open_contacts }}</div>
+                    <div class="text-muted small">未対応の問い合わせ</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="h3 text-warning">{{ in_progress_contacts }}</div>
+                    <div class="text-muted small">対応中の問い合わせ</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <a href="{% url 'manage_contacts' %}" class="btn btn-outline-primary btn-block">
+                <i class="fas fa-envelope"></i> 問い合わせ管理
+            </a>
+        </div>
+        <div class="col-md-6 mb-3">
+            <a href="{% url 'manage_users' %}" class="btn btn-outline-success btn-block">
+                <i class="fas fa-users"></i> ユーザー統計
+            </a>
+        </div>
+    </div>
+
+    <h5 class="mb-3">最近の問い合わせ</h5>
+    <div class="table-responsive">
+        <table class="table table-sm table-striped">
+            <thead>
+                <tr>
+                    <th>送信日時</th>
+                    <th>ユーザー</th>
+                    <th>種別</th>
+                    <th>件名</th>
+                    <th>ステータス</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in recent_contacts %}
+                <tr>
+                    <td class="small">{{ c.created_at|date:"m/d H:i" }}</td>
+                    <td class="small">{{ c.user.email }}</td>
+                    <td><span class="badge badge-secondary">{{ c.get_inquiry_type_display }}</span></td>
+                    <td class="small">{{ c.subject|truncatechars:30 }}</td>
+                    <td>
+                        {% if c.status == 'open' %}<span class="badge badge-danger">未対応</span>
+                        {% elif c.status == 'in_progress' %}<span class="badge badge-warning">対応中</span>
+                        {% else %}<span class="badge badge-success">対応済み</span>{% endif %}
+                    </td>
+                    <td><a href="{% url 'manage_contact_update' c.id %}" class="btn btn-xs btn-outline-secondary">詳細</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-muted text-center">問い合わせはありません</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, demo_views
 from django.contrib.auth import views as auth_views
 
 urlpatterns = [
@@ -7,6 +7,19 @@ urlpatterns = [
     path('login/', views.Login.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('top/', views.TopView.as_view(), name='top'),
+    # デモ画面
+    path('demo/', demo_views.demo_redirect, name='demo'),
+    path('demo/expenses/', demo_views.demo_expenses, name='demo_expenses'),
+    path('demo/tasks/', demo_views.demo_tasks, name='demo_tasks'),
+    path('demo/habits/', demo_views.demo_habits, name='demo_habits'),
+    path('demo/memos/', demo_views.demo_memos, name='demo_memos'),
+    path('demo/shopping/', demo_views.demo_shopping, name='demo_shopping'),
+    path('demo/board/', demo_views.demo_board, name='demo_board'),
+    path('demo/settings/expenses/', demo_views.demo_expenses_settings, name='demo_expenses_settings'),
+    path('demo/settings/tasks/', demo_views.demo_task_settings, name='demo_task_settings'),
+    path('demo/settings/memos/', demo_views.demo_memo_settings, name='demo_memo_settings'),
+    path('demo/habits/list/', demo_views.demo_habit_list, name='demo_habit_list'),
+    path('demo/expenses/recurring/', demo_views.demo_recurring_payments, name='demo_recurring_payments'),
     path('my_page/<int:pk>/', views.MyPage.as_view(), name='my_page'),
     path('signup/', views.Signup.as_view(), name='signup'),
     path('signup_done/', views.SignupDone.as_view(), name='signup_done'),

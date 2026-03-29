@@ -15,6 +15,9 @@
         </li>
         {% if not user.is_authenticated %}
           <li class="nav-item m-1">
+            <a class="nav-link" href="{% url 'demo' %}">デモ</a>
+          </li>
+          <li class="nav-item m-1">
             <a class="nav-link" href="{% url 'login' %}">ログイン</a>
           </li>
           <li class="nav-item m-1">

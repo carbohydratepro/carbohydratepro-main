@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 
 class TopView(generic.TemplateView):
     template_name = 'registration/top.html'
-    
+
+
 class Login(LoginView):
     form_class = LoginForm
     template_name = 'registration/login.html'

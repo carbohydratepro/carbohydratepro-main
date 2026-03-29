@@ -236,61 +236,36 @@
     </div>
     {% endif %}
 
-    <div class="row">
+    <ul class="list-group list-group-flush">
         {% for transaction in transactions_page %}
-        <div class="col-md-6 col-lg-4 mb-2">
-            <div class="card card-sm lp-delete-item"
-                 data-delete-url="{% url 'delete_expenses' transaction.id %}"
-                 data-item-id="{{ transaction.id }}">
-                <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
-                <div class="card-body p-2">
-                    <!-- 1行目: タイトル（左）と日付（右） -->
-                    <div class="d-flex justify-content-between align-items-start mb-1">
-                        <h6 class="card-title mb-0 text-truncate" title="{{ transaction.purpose }}" style="font-size: 0.9rem;">
-                            {{ transaction.purpose|truncatechars:30 }}
-                        </h6>
-                        <small class="text-muted">{{ transaction.date|date:"m/d" }}</small>
-                    </div>
-
-                    <!-- 2行目: 金額（左）と支払方法ラベル（右） -->
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <h6 class="mb-0
-                            {% if transaction.transaction_type == 'income' %}text-primary
-                            {% elif transaction.transaction_type == 'expense' %}text-danger
-                            {% else %}text-secondary{% endif %}">
-                            {% if transaction.transaction_type == 'income' %}+{% elif transaction.transaction_type == 'expense' %}-{% endif %}¥{{ transaction.amount|comma_format }}
-                        </h6>
-                        <small class="text-muted" title="{{ transaction.payment_method }}">
-                            <i class="fas fa-credit-card"></i> {{ transaction.payment_method|truncatechars:10 }}
-                        </small>
-                    </div>
-
-                    <!-- 3行目: カテゴリ・費用タイプ・取引タイプ -->
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <div class="small text-muted">
-                            <span title="{{ transaction.category }}"><i class="fas fa-tag"></i> {{ transaction.category|truncatechars:10 }}</span>
-                            <span class="badge badge-secondary badge-sm ml-1">{{ transaction.get_major_category_display }}</span>
-                            <span class="badge badge-sm ml-1
-                                {% if transaction.transaction_type == 'income' %}badge-primary
-                                {% elif transaction.transaction_type == 'expense' %}badge-danger
-                                {% else %}badge-secondary{% endif %}">
-                                {{ transaction.get_transaction_type_display }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- 詳細（オプション） -->
+        <li class="list-group-item px-2 py-2 lp-delete-item"
+            data-delete-url="{% url 'delete_expenses' transaction.id %}"
+            data-item-id="{{ transaction.id }}"
+            onclick="openEditModal({{ transaction.id }})"
+            style="cursor:pointer;">
+            <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center" style="min-width:0;">
+                    <small class="text-muted mr-2" style="white-space:nowrap;">{{ transaction.date|date:"m/d" }}</small>
+                    <span class="text-truncate" title="{{ transaction.purpose }}" style="font-size:0.9rem;">{{ transaction.purpose|truncatechars:25 }}</span>
                     {% if transaction.purpose_description %}
-                    <div class="small text-muted mt-1">
-                        <i class="fas fa-comment"></i> {{ transaction.purpose_description|truncatechars:30 }}
-                    </div>
+                    <small class="text-muted ml-1 d-none d-sm-inline">— {{ transaction.purpose_description|truncatechars:20 }}</small>
                     {% endif %}
                 </div>
+                <div class="d-flex align-items-center ml-2" style="white-space:nowrap;">
+                    <small class="text-muted d-none d-sm-inline mr-2" title="{{ transaction.payment_method }}"><i class="fas fa-credit-card"></i> {{ transaction.payment_method|truncatechars:8 }}</small>
+                    <span class="font-weight-bold
+                        {% if transaction.transaction_type == 'income' %}text-primary
+                        {% elif transaction.transaction_type == 'expense' %}text-danger
+                        {% else %}text-secondary{% endif %}" style="font-size:0.9rem;">
+                        {% if transaction.transaction_type == 'income' %}+{% elif transaction.transaction_type == 'expense' %}-{% endif %}¥{{ transaction.amount|comma_format }}
+                    </span>
+                </div>
             </div>
-        </div>
+        </li>
         {% empty %}
-        <div class="col-12">
-            <div class="alert alert-info text-center py-2">
+        <li class="list-group-item">
+            <div class="alert alert-info text-center py-2 mb-0">
                 <i class="fas fa-info-circle"></i>
                 {% if search_query or filter_transaction_type or filter_major_category or filter_category or filter_payment_method %}
                     検索・絞り込み条件に一致する取引がありません。
@@ -298,9 +273,9 @@
                     この期間の取引はありません。
                 {% endif %}
             </div>
-        </div>
+        </li>
         {% endfor %}
-    </div>
+    </ul>
 
     {% if transactions_page.paginator.num_pages > 1 %}
     <nav aria-label="取引ページネーション">

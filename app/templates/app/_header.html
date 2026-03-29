@@ -13,6 +13,39 @@
         <li class="nav-item m-1">
           <a class="nav-link" href="{% url 'top' %}">トップ</a>
         </li>
+        {% if is_demo %}
+        <!-- デモモード用ナビ -->
+        <li class="nav-item m-1">
+          <a class="nav-link {% if request.resolver_match.url_name == 'demo_expenses' %}active{% endif %}"
+             href="{% url 'demo_expenses' %}">家計簿</a>
+        </li>
+        <li class="nav-item m-1">
+          <a class="nav-link {% if request.resolver_match.url_name == 'demo_tasks' %}active{% endif %}"
+             href="{% url 'demo_tasks' %}">スケジュール</a>
+        </li>
+        <li class="nav-item m-1">
+          <a class="nav-link {% if request.resolver_match.url_name == 'demo_board' %}active{% endif %}"
+             href="{% url 'demo_board' %}">一時タスク</a>
+        </li>
+        <li class="nav-item m-1">
+          <a class="nav-link {% if request.resolver_match.url_name == 'demo_habits' %}active{% endif %}"
+             href="{% url 'demo_habits' %}">習慣</a>
+        </li>
+        <li class="nav-item m-1">
+          <a class="nav-link {% if request.resolver_match.url_name == 'demo_memos' %}active{% endif %}"
+             href="{% url 'demo_memos' %}">メモ</a>
+        </li>
+        <li class="nav-item m-1">
+          <a class="nav-link {% if request.resolver_match.url_name == 'demo_shopping' %}active{% endif %}"
+             href="{% url 'demo_shopping' %}">買いものリスト</a>
+        </li>
+        <li class="nav-item m-1">
+          <a href="{% url 'signup' %}" class="btn btn-success btn-sm ml-1 my-auto">
+            <i class="fas fa-user-plus"></i> サインアップ
+          </a>
+        </li>
+        {% elif user.is_authenticated %}
+        <!-- ログイン済みユーザー用ナビ -->
         <li class="nav-item m-1">
           <a class="nav-link" href="{% url 'expense_list' %}">家計簿</a>
         </li>
@@ -31,9 +64,9 @@
         <li class="nav-item m-1">
           <a class="nav-link" href="{% url 'shopping_list' %}">買いものリスト</a>
         </li>
-          <li class="nav-item m-1">
-            <a class="nav-link" href="{% url 'my_page' user.pk %}">マイページ</a>
-          </li>
+        <li class="nav-item m-1">
+          <a class="nav-link" href="{% url 'my_page' user.pk %}">マイページ</a>
+        </li>
         {% if user.is_superuser %}
         <li class="nav-item m-1">
           <a class="nav-link" href="{% url 'manage_dashboard' %}"><i class="fas fa-cogs"></i> 管理</a>
@@ -45,6 +78,8 @@
             <button type="submit" class="nav-link" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.5);">ログアウト</button>
           </form>
         </li>
+        {% endif %}
       </ul>
     </div>
+
   </nav>

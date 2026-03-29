@@ -35,8 +35,45 @@
   </head>
   <body>
     <!-- ナビバー -->
-    
+
     {% include "app/_header.html" %}
+
+    {% if is_demo %}
+    <!-- デモバナー -->
+    <style>
+    @keyframes demoBannerScroll {
+      0%   { transform: translateX(100vw); }
+      100% { transform: translateX(-100%); }
+    }
+    .demo-banner-track { overflow: hidden; }
+    .demo-banner-inner {
+      display: inline-block;
+      white-space: nowrap;
+      animation: demoBannerScroll 22s linear infinite;
+      font-size: 0.82rem;
+      padding: 0.25rem 0;
+    }
+    </style>
+    <div class="alert alert-warning mb-0 rounded-0 demo-banner-track" style="border-left:none;border-right:none;border-top:none;padding:0;">
+      <div class="demo-banner-inner">
+        <i class="fas fa-desktop mr-1"></i>
+        <strong>デモモード</strong> — サンプルデータによる閲覧専用です。
+        <a href="{% url 'signup' %}" class="alert-link">無料サインアップ</a> または
+        <a href="{% url 'login' %}" class="alert-link">ログイン</a> でフル機能をご利用いただけます。
+        &nbsp;&nbsp;&nbsp;
+      </div>
+    </div>
+    <script>
+    window.DEMO_MODE = true;
+    window.DEMO_DATA = {
+      habitStatus: {{ demo_habit_status_json|default:"null"|safe }},
+      heatmap:     {{ demo_heatmap_json|default:"null"|safe }},
+      boardSets:   {{ demo_board_sets_json|default:"null"|safe }},
+      boardTasks:  {{ demo_board_tasks_json|default:"null"|safe }},
+      dayTasks:    {{ demo_day_tasks_json|default:"null"|safe }}
+    };
+    </script>
+    {% endif %}
 
     <!-- コンテンツ -->
     <div class="pl-4 small" style="background-color: #e2e3e5 ; border-bottom: solid 1px #f3f3f3;">
@@ -75,6 +112,178 @@
     {% endif %}
 
     {% block content %}{% endblock %}
+
+    {% if is_demo %}
+    <!-- ============================================================
+         デモ用：サインアップ促進モーダル
+    ============================================================ -->
+    <div class="modal fade" id="demoSignupModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+          <div class="modal-header bg-dark text-white">
+            <h5 class="modal-title" style="font-size:1rem;"><i class="fas fa-lock mr-2"></i>この操作にはログインが必要です</h5>
+            <button type="button" class="close text-white" data-dismiss="modal">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body text-center py-4 px-3">
+            <p class="mb-4" style="font-size:0.9rem;">
+              今ご覧いただいているのは<strong>デモ画面</strong>です。<br>
+              実際の機能を使うにはアカウントが必要です。
+            </p>
+            <div class="d-flex flex-column flex-sm-row justify-content-center">
+              <a href="{% url 'signup' %}" class="btn btn-success mb-2 mb-sm-0 mr-sm-2">
+                <i class="fas fa-user-plus"></i> 無料サインアップ
+              </a>
+              <a href="{% url 'login' %}" class="btn btn-primary">
+                <i class="fas fa-sign-in-alt"></i> ログイン
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         デモ用 JS インターセプター（コンテンツブロックの後に実行）
+    ============================================================ -->
+    <script>
+    (function () {
+      'use strict';
+
+      function showDemoModal () {
+        var $open = $('.modal.show').not('#demoSignupModal');
+        if ($open.length) {
+          $open.modal('hide');
+          setTimeout(function () { $('#demoSignupModal').modal('show'); }, 200);
+        } else {
+          $('#demoSignupModal').modal('show');
+        }
+      }
+
+      /* --- ボードのミューテーション操作をブロック --- */
+      /* clearAllTasks / addTask / promptAddSet はボードテンプレートの onclick から呼ばれるグローバル関数 */
+      ['clearAllTasks', 'addTask', 'promptAddSet'].forEach(function (fn) {
+        if (typeof window[fn] === 'function') window[fn] = function () { showDemoModal(); };
+      });
+      /* ボード削除オーバーレイのクリックをキャプチャフェーズで横取り */
+      document.addEventListener('click', function (e) {
+        if (e.target.closest('.kanban-task-delete-overlay')) {
+          e.stopPropagation();
+          showDemoModal();
+        }
+      }, true);
+
+      /* --- 設定ページリンクをデモ設定ページにリダイレクト --- */
+      var settingsRedirectMap = {
+        '/carbohydratepro/expenses/recurring/': '/demo/expenses/recurring/',
+        '/carbohydratepro/expenses/settings/': '/demo/settings/expenses/',
+        '/carbohydratepro/tasks/settings/':    '/demo/settings/tasks/',
+        '/carbohydratepro/memos/settings/':    '/demo/settings/memos/',
+        '/carbohydratepro/habits/list/':       '/demo/habits/list/',
+        '/carbohydratepro/tasks/':             '/demo/tasks/',
+        '/carbohydratepro/expenses/':          '/demo/expenses/',
+        '/carbohydratepro/memos/':             '/demo/memos/',
+        '/carbohydratepro/habits/':            '/demo/habits/',
+        '/carbohydratepro/shopping/':          '/demo/shopping/',
+        '/carbohydratepro/tasks/board/':       '/demo/board/',
+      };
+      document.addEventListener('click', function (e) {
+        var a = e.target.closest('a[href]');
+        if (!a) return;
+        var href = a.getAttribute('href');
+        if (settingsRedirectMap[href]) {
+          e.preventDefault();
+          window.location.href = settingsRedirectMap[href];
+        }
+      });
+
+      /* --- フォーム送信をブロック（GET フィルターは通す） --- */
+      document.addEventListener('submit', function (e) {
+        if ((e.target.method || '').toLowerCase() !== 'get') {
+          e.preventDefault();
+          showDemoModal();
+        }
+      });
+
+      /* --- fetch パッチ：read-only API はフェイクデータを返し、
+             mutation は即ブロックしてモーダルを表示 --- */
+      var origFetch = window.fetch;
+      var dd = window.DEMO_DATA || {};
+
+      function fakeJsonResponse (data) {
+        return Promise.resolve({
+          ok: true, status: 200,
+          json: function () { return Promise.resolve(data); },
+          text: function () { return Promise.resolve(JSON.stringify(data)); }
+        });
+      }
+      function blockResponse () {
+        showDemoModal();
+        return Promise.resolve({ ok: false, status: 401, json: function () { return Promise.resolve({ error: 'demo' }); }, text: function () { return Promise.resolve(''); } });
+      }
+
+      window.fetch = function (url, options) {
+        var urlStr = (typeof url === 'string') ? url : String(url);
+        var method = (options && options.method) ? options.method.toUpperCase() : 'GET';
+
+        /* 習慣ステータス API（読み取り） */
+        if (urlStr.indexOf('/habits/status/') !== -1 && method === 'GET') {
+          return fakeJsonResponse(dd.habitStatus || { status: [], date: '2026-03-27' });
+        }
+        /* 習慣ヒートマップ API（読み取り） */
+        if (urlStr.indexOf('/habits/heatmap/') !== -1) {
+          return fakeJsonResponse(dd.heatmap || {});
+        }
+        /* 習慣トグル（書き込み）→ ブロック */
+        if (urlStr.indexOf('/habits/toggle/') !== -1) {
+          return blockResponse();
+        }
+        /* ボードセット API GET */
+        if (urlStr.indexOf('/tasks/board/api/sets/') !== -1 && method === 'GET') {
+          return fakeJsonResponse(dd.boardSets || { sets: [{ id: 1, name: 'デモ', order: 0 }] });
+        }
+        /* ボードタスク API GET */
+        if (urlStr.indexOf('/tasks/board/api/') !== -1 &&
+            urlStr.indexOf('/sets/') === -1 && method === 'GET') {
+          return fakeJsonResponse(dd.boardTasks || { tasks: [] });
+        }
+        /* 日別タスク取得 GET（month は 0 パディング済み、day は非パディングの場合あり） */
+        var dayMatch = urlStr.match(/\/tasks\/day\/(\d{4})-(\d{1,2})-(\d{1,2})\//);
+        if (dayMatch && method === 'GET') {
+          var dateKey = dayMatch[1]
+            + '-' + String(dayMatch[2]).padStart(2, '0')
+            + '-' + String(dayMatch[3]).padStart(2, '0');
+          var dayList = (dd.dayTasks && dd.dayTasks[dateKey]) ? dd.dayTasks[dateKey] : [];
+          return fakeJsonResponse({ tasks: dayList });
+        }
+
+        /* モーダルフォーム GET（登録・編集）→ デモモーダルを表示して処理中断 */
+        if (method === 'GET') {
+          var modalPatterns = [
+            /\/expenses\/(create|edit\/\d+)\//,
+            /\/tasks\/(create|edit\/\d+)\//,
+            /\/memos\/(create|edit\/\d+)\//,
+            /\/shopping\/(create|edit\/\d+)\//,
+            /\/habits\/(create|edit\/\d+)\//,
+          ];
+          for (var i = 0; i < modalPatterns.length; i++) {
+            if (modalPatterns[i].test(urlStr)) {
+              showDemoModal();
+              return Promise.reject(new Error('demo'));
+            }
+          }
+        }
+        /* その他すべての書き込みをブロック */
+        if (method !== 'GET') {
+          return blockResponse();
+        }
+
+        return origFetch.apply(this, arguments);
+      };
+    }());
+    </script>
+    {% endif %}
 
     {% include "app/_footer.html" %}
   </body>

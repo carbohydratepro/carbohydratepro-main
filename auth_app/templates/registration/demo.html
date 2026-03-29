@@ -1,0 +1,562 @@
+{% extends "registration/base.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+/* デモページ共通スタイル */
+.demo-banner {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  padding: 16px 20px;
+  text-align: center;
+}
+.demo-banner h1 { font-size: 1.4rem; margin-bottom: 4px; }
+.demo-banner p { font-size: 0.85rem; opacity: 0.9; margin-bottom: 0; }
+.demo-notice {
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  color: #856404;
+}
+.demo-cta-bar {
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+  padding: 12px 16px;
+  text-align: center;
+  font-size: 0.85rem;
+}
+.demo-cta-bar a { margin: 0 6px; }
+
+/* タブ */
+.demo-nav { background: #fff; border-bottom: 2px solid #dee2e6; overflow-x: auto; white-space: nowrap; }
+.demo-nav .nav-link { display: inline-block; padding: 8px 14px; font-size: 0.83rem; color: #6c757d; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.demo-nav .nav-link.active { color: #764ba2; border-bottom-color: #764ba2; font-weight: 600; }
+.demo-nav .nav-link:hover { color: #495057; }
+.demo-section { display: none; padding: 16px; }
+.demo-section.active { display: block; }
+
+/* --- 家計簿デモ --- */
+.summary-card { background: #fff; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px 16px; text-align: center; }
+.summary-card .label { font-size: 0.75rem; color: #6c757d; margin-bottom: 2px; }
+.summary-card .amount { font-size: 1.15rem; font-weight: 700; }
+.amount.income { color: #28a745; }
+.amount.expense { color: #dc3545; }
+.amount.balance { color: #495057; }
+
+/* --- タスクデモ --- */
+.task-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #fff; border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 6px; }
+.task-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.task-label-badge { font-size: 0.68rem; padding: 1px 7px; border-radius: 10px; }
+.task-priority-high { border-left: 3px solid #dc3545; }
+.task-priority-medium { border-left: 3px solid #ffc107; }
+.task-priority-low { border-left: 3px solid #6c757d; }
+
+/* --- 習慣トラッカーデモ --- */
+.habit-card-demo {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: #fff; border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 8px;
+}
+.habit-card-demo.done { background: #f0fff4; border-color: #c3e6cb; }
+.habit-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.habit-name { font-size: 0.88rem; font-weight: 500; flex: 1; }
+.habit-check { color: #28a745; }
+.habit-uncheck { color: #dee2e6; }
+.heatmap-demo { display: flex; gap: 2px; flex-wrap: wrap; }
+.heatmap-cell { width: 12px; height: 12px; border-radius: 2px; }
+.heatmap-0 { background: #ebedf0; }
+.heatmap-1 { background: #c6e48b; }
+.heatmap-2 { background: #7bc96f; }
+.heatmap-3 { background: #239a3b; }
+.heatmap-4 { background: #196127; }
+
+/* --- メモデモ --- */
+.memo-card-demo { background: #fff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
+.memo-type-badge { font-size: 0.68rem; padding: 1px 8px; border-radius: 10px; margin-right: 4px; }
+.memo-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; }
+.memo-body { font-size: 0.8rem; color: #6c757d; }
+
+/* --- 買い物リストデモ --- */
+.shop-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #fff; border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 6px; }
+.shop-item.checked { opacity: 0.5; }
+.shop-count { font-size: 0.75rem; background: #e9ecef; padding: 2px 8px; border-radius: 10px; }
+.shop-count.warn { background: #fff3cd; color: #856404; }
+
+/* --- カンバンデモ --- */
+.kanban-col { flex: 1; min-width: 0; background: #f8f9fa; border-radius: 8px; padding: 10px; }
+.kanban-col-title { font-size: 0.78rem; font-weight: 700; color: #6c757d; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.05em; }
+.kanban-item { background: #fff; border: 1px solid #e9ecef; border-radius: 6px; padding: 7px 10px; margin-bottom: 6px; font-size: 0.82rem; }
+
+/* overlay遮り */
+.demo-overlay-wrap { position: relative; }
+.demo-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 80px;
+  background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.95));
+  display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px;
+}
+</style>
+
+<!-- ヒーローバナー -->
+<div class="demo-banner">
+  <h1><i class="fas fa-desktop"></i> デモ画面</h1>
+  <p>ログイン不要でLife Managementの主な機能を確認できます</p>
+</div>
+
+<div class="demo-notice">
+  <i class="fas fa-info-circle"></i>
+  これはサンプルデータを使った閲覧専用のデモです。実際の機能は<strong>サインアップ後</strong>にすべて利用できます。
+</div>
+
+<!-- タブナビゲーション -->
+<div class="demo-nav" id="demoNav">
+  <a class="nav-link active" href="#" data-tab="expenses"><i class="fas fa-yen-sign"></i> 家計簿</a>
+  <a class="nav-link" href="#" data-tab="tasks"><i class="fas fa-tasks"></i> タスク</a>
+  <a class="nav-link" href="#" data-tab="habits"><i class="fas fa-fire"></i> 習慣</a>
+  <a class="nav-link" href="#" data-tab="memos"><i class="fas fa-sticky-note"></i> メモ</a>
+  <a class="nav-link" href="#" data-tab="shopping"><i class="fas fa-shopping-cart"></i> 買い物</a>
+  <a class="nav-link" href="#" data-tab="kanban"><i class="fas fa-columns"></i> 一時タスク</a>
+</div>
+
+<!-- ==================================================
+     家計簿デモ
+================================================== -->
+<div class="demo-section active" id="demo-expenses">
+  <h5 class="mb-3"><i class="fas fa-yen-sign text-primary"></i> 家計簿 — 2026年3月</h5>
+
+  <!-- サマリーカード -->
+  <div class="row mb-3">
+    <div class="col-4">
+      <div class="summary-card">
+        <div class="label">収入</div>
+        <div class="amount income">¥280,000</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="summary-card">
+        <div class="label">支出</div>
+        <div class="amount expense">¥154,320</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="summary-card">
+        <div class="label">収支</div>
+        <div class="amount balance">¥125,680</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 内訳グラフ（SVGで模擬） -->
+  <div class="card mb-3">
+    <div class="card-header py-2 small"><i class="fas fa-chart-pie"></i> 支出内訳（変動費・固定費・特別費）</div>
+    <div class="card-body py-2">
+      <div class="d-flex align-items-center mb-1" style="gap:8px;">
+        <div style="height:12px; width:55%; background:#4e79a7; border-radius:4px;"></div>
+        <span class="small text-muted">変動費 ¥84,320 (55%)</span>
+      </div>
+      <div class="d-flex align-items-center mb-1" style="gap:8px;">
+        <div style="height:12px; width:35%; background:#f28e2b; border-radius:4px;"></div>
+        <span class="small text-muted">固定費 ¥54,000 (35%)</span>
+      </div>
+      <div class="d-flex align-items-center" style="gap:8px;">
+        <div style="height:12px; width:10%; background:#e15759; border-radius:4px;"></div>
+        <span class="small text-muted">特別費 ¥16,000 (10%)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 取引一覧 -->
+  <div class="demo-overlay-wrap">
+    <table class="table table-sm table-hover small bg-white">
+      <thead class="thead-light">
+        <tr><th>日付</th><th>用途</th><th>カテゴリ</th><th>支払</th><th class="text-right">金額</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>3/27</td><td>スーパー</td><td><span class="badge badge-light">食費</span></td><td>現金</td><td class="text-right text-danger">-¥3,240</td></tr>
+        <tr><td>3/27</td><td>電気代</td><td><span class="badge badge-light">光熱費</span></td><td>口座振替</td><td class="text-right text-danger">-¥8,200</td></tr>
+        <tr><td>3/25</td><td>給与</td><td><span class="badge badge-light">収入</span></td><td>銀行振込</td><td class="text-right text-success">+¥280,000</td></tr>
+        <tr><td>3/24</td><td>ランチ</td><td><span class="badge badge-light">外食</span></td><td>カード</td><td class="text-right text-danger">-¥1,050</td></tr>
+        <tr><td>3/22</td><td>書籍</td><td><span class="badge badge-light">教育</span></td><td>カード</td><td class="text-right text-danger">-¥2,860</td></tr>
+        <tr><td>3/20</td><td>ジム月会費</td><td><span class="badge badge-light">健康</span></td><td>カード</td><td class="text-right text-danger">-¥7,700</td></tr>
+        <tr><td>3/18</td><td>映画</td><td><span class="badge badge-light">娯楽</span></td><td>カード</td><td class="text-right text-danger">-¥1,800</td></tr>
+      </tbody>
+    </table>
+    <div class="demo-overlay"></div>
+  </div>
+</div>
+
+<!-- ==================================================
+     タスク管理デモ
+================================================== -->
+<div class="demo-section" id="demo-tasks">
+  <h5 class="mb-3"><i class="fas fa-tasks text-success"></i> タスク管理 — 2026年3月</h5>
+
+  <!-- 今日のタスク -->
+  <h6 class="text-muted mb-2"><i class="fas fa-calendar-day"></i> 本日のタスク（3/27）</h6>
+  <div class="mb-3">
+    <div class="task-item task-priority-high">
+      <span class="task-dot" style="background:#dc3545;"></span>
+      <span style="font-size:0.88rem; flex:1;">週次レポートの作成</span>
+      <span class="task-label-badge" style="background:#dc354522; color:#dc3545;">高</span>
+      <span class="badge badge-secondary badge-sm small">進行中</span>
+    </div>
+    <div class="task-item task-priority-medium">
+      <span class="task-dot" style="background:#ffc107;"></span>
+      <span style="font-size:0.88rem; flex:1;">歯医者の予約確認</span>
+      <span class="task-label-badge" style="background:#ffc10722; color:#856404;">中</span>
+      <span class="badge badge-light small">未着手</span>
+    </div>
+    <div class="task-item task-priority-low" style="opacity:0.6;">
+      <span class="task-dot" style="background:#6c757d;"></span>
+      <span style="font-size:0.88rem; flex:1; text-decoration:line-through;">メール返信</span>
+      <span class="task-label-badge" style="background:#6c757d22; color:#6c757d;">低</span>
+      <span class="badge badge-success small">完了</span>
+    </div>
+  </div>
+
+  <!-- 今週のタスク（ミニカレンダー風） -->
+  <h6 class="text-muted mb-2"><i class="fas fa-calendar-week"></i> 今週の予定</h6>
+  <div class="card mb-3">
+    <div class="card-body p-2">
+      <div class="row text-center" style="font-size:0.78rem;">
+        {% for day in "月火水木金土日" %}
+        <div class="col">{{ day }}</div>
+        {% endfor %}
+      </div>
+      <div class="row text-center" style="font-size:0.78rem;">
+        <div class="col text-muted">23</div>
+        <div class="col text-muted">24</div>
+        <div class="col text-muted">25</div>
+        <div class="col text-muted">26</div>
+        <div class="col font-weight-bold" style="color:#764ba2;">27</div>
+        <div class="col">28</div>
+        <div class="col">29</div>
+      </div>
+      <div class="row text-center mt-1" style="font-size:0.68rem;">
+        <div class="col"></div>
+        <div class="col"><span class="badge badge-primary" style="font-size:0.6rem;">2</span></div>
+        <div class="col"><span class="badge badge-success" style="font-size:0.6rem;">1</span></div>
+        <div class="col"></div>
+        <div class="col"><span class="badge badge-danger" style="font-size:0.6rem;">3</span></div>
+        <div class="col"><span class="badge badge-secondary" style="font-size:0.6rem;">1</span></div>
+        <div class="col"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ラベル付きタスク -->
+  <h6 class="text-muted mb-2"><i class="fas fa-tags"></i> ラベル別タスク</h6>
+  <div class="demo-overlay-wrap">
+    <div class="task-item task-priority-high">
+      <span class="task-dot" style="background:#e83e8c;"></span>
+      <span style="font-size:0.88rem; flex:1;">企画書の最終確認</span>
+      <span class="task-label-badge" style="background:#e83e8c22; color:#e83e8c;">仕事</span>
+      <span style="font-size:0.75rem; color:#6c757d;">3/28</span>
+    </div>
+    <div class="task-item task-priority-medium">
+      <span class="task-dot" style="background:#20c997;"></span>
+      <span style="font-size:0.88rem; flex:1;">ジムに行く（毎週）</span>
+      <span class="task-label-badge" style="background:#20c99722; color:#20c997;">健康</span>
+      <span style="font-size:0.75rem; color:#6c757d;">毎週</span>
+    </div>
+    <div class="task-item task-priority-low">
+      <span class="task-dot" style="background:#fd7e14;"></span>
+      <span style="font-size:0.88rem; flex:1;">読書：30分</span>
+      <span class="task-label-badge" style="background:#fd7e1422; color:#fd7e14;">学習</span>
+      <span style="font-size:0.75rem; color:#6c757d;">毎日</span>
+    </div>
+    <div class="task-item task-priority-low">
+      <span class="task-dot" style="background:#6f42c1;"></span>
+      <span style="font-size:0.88rem; flex:1;">家の掃除</span>
+      <span class="task-label-badge" style="background:#6f42c122; color:#6f42c1;">家事</span>
+      <span style="font-size:0.75rem; color:#6c757d;">3/30</span>
+    </div>
+    <div class="demo-overlay"></div>
+  </div>
+</div>
+
+<!-- ==================================================
+     習慣トラッカーデモ
+================================================== -->
+<div class="demo-section" id="demo-habits">
+  <h5 class="mb-3"><i class="fas fa-fire text-danger"></i> 習慣トラッカー — 2026年3月27日</h5>
+
+  <h6 class="text-muted mb-2">今日の習慣</h6>
+  <div class="mb-3">
+    <div class="habit-card-demo done">
+      <span class="habit-dot" style="background:#28a745;"></span>
+      <span class="habit-name">朝のランニング <small class="text-muted">（毎日・係数5）</small></span>
+      <i class="fas fa-check-circle habit-check"></i>
+    </div>
+    <div class="habit-card-demo done">
+      <span class="habit-dot" style="background:#28a745;"></span>
+      <span class="habit-name">読書30分 <small class="text-muted">（毎日・係数3）</small></span>
+      <i class="fas fa-check-circle habit-check"></i>
+    </div>
+    <div class="habit-card-demo">
+      <span class="habit-dot" style="background:#28a745;"></span>
+      <span class="habit-name">筋トレ <small class="text-muted">（週3回・係数8）</small></span>
+      <i class="fas fa-circle habit-uncheck fa-lg"></i>
+    </div>
+    <div class="habit-card-demo">
+      <span class="habit-dot" style="background:#dc3545;"></span>
+      <span class="habit-name">スマホ使用2時間以内 <small class="text-muted">（毎日・係数4）</small></span>
+      <i class="fas fa-circle habit-uncheck fa-lg"></i>
+    </div>
+    <div class="habit-card-demo done">
+      <span class="habit-dot" style="background:#dc3545;"></span>
+      <span class="habit-name">お菓子を食べない <small class="text-muted">（毎日・係数6）</small></span>
+      <i class="fas fa-check-circle habit-check"></i>
+    </div>
+  </div>
+
+  <!-- ヒートマップ -->
+  <h6 class="text-muted mb-2"><i class="fas fa-th"></i> 年間ヒートマップ（朝のランニング）</h6>
+  <div class="card mb-3">
+    <div class="card-body py-2 px-3">
+      <div class="heatmap-demo">
+        <!-- 52週 × 7日 = 364セル。ランダムな達成データを表示 -->
+        {% for i in "00000000000000011111111111111121111112111111111111111111212111111111111211112111121111111211111211111121111112111211111121112111111121111111211111112111111211121111211121111112111211111211211121111211121111211121" %}
+          <div class="heatmap-cell heatmap-{{ i }}"></div>
+        {% endfor %}
+      </div>
+      <div class="d-flex align-items-center mt-2" style="gap:4px; font-size:0.72rem; color:#6c757d;">
+        少ない
+        <div class="heatmap-cell heatmap-0"></div>
+        <div class="heatmap-cell heatmap-1"></div>
+        <div class="heatmap-cell heatmap-2"></div>
+        <div class="heatmap-cell heatmap-3"></div>
+        <div class="heatmap-cell heatmap-4"></div>
+        多い
+      </div>
+    </div>
+  </div>
+
+  <!-- 週ビュー -->
+  <h6 class="text-muted mb-2"><i class="fas fa-calendar-week"></i> 今週の達成状況</h6>
+  <div class="table-responsive">
+    <table class="table table-sm text-center small bg-white" style="font-size:0.78rem;">
+      <thead>
+        <tr>
+          <th class="text-left">習慣</th>
+          <th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th><th>日</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="text-left">朝のランニング</td>
+          <td><i class="fas fa-check text-success"></i></td>
+          <td><i class="fas fa-check text-success"></i></td>
+          <td><i class="fas fa-check text-success"></i></td>
+          <td>—</td>
+          <td><i class="fas fa-check text-success"></i></td>
+          <td><i class="fas fa-check text-success"></i></td>
+          <td><i class="fas fa-check text-success"></i></td>
+        </tr>
+        <tr>
+          <td class="text-left">読書30分</td>
+          <td><i class="fas fa-check text-success"></i></td>
+          <td>—</td>
+          <td><i class="fas fa-check text-success"></i></td>
+          <td><i class="fas fa-check text-success"></i></td>
+          <td><i class="fas fa-check text-success"></i></td>
+          <td>—</td>
+          <td><i class="fas fa-check text-success"></i></td>
+        </tr>
+        <tr>
+          <td class="text-left">筋トレ</td>
+          <td><i class="fas fa-check text-success"></i></td>
+          <td>—</td>
+          <td><i class="fas fa-check text-success"></i></td>
+          <td>—</td>
+          <td>—</td>
+          <td>—</td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ==================================================
+     メモデモ
+================================================== -->
+<div class="demo-section" id="demo-memos">
+  <h5 class="mb-3"><i class="fas fa-sticky-note text-warning"></i> メモ</h5>
+
+  <div class="mb-2">
+    <span class="badge badge-light mr-1">全て</span>
+    <span class="badge" style="background:#6f42c1; color:#fff;" class="mr-1">仕事</span>
+    <span class="badge mr-1" style="background:#20c997; color:#fff;">アイデア</span>
+    <span class="badge mr-1" style="background:#fd7e14; color:#fff;">学習</span>
+    <span class="badge mr-1" style="background:#e83e8c; color:#fff;">プライベート</span>
+  </div>
+
+  <div class="demo-overlay-wrap mt-2">
+    <div class="memo-card-demo">
+      <div class="d-flex align-items-center mb-1">
+        <span class="memo-type-badge" style="background:#6f42c122; color:#6f42c1;">仕事</span>
+        <i class="fas fa-star text-warning" style="font-size:0.7rem;"></i>
+        <span style="font-size:0.7rem; color:#aaa; margin-left:auto;">2026/03/26</span>
+      </div>
+      <div class="memo-title">Q1振り返りと次期目標</div>
+      <div class="memo-body">- 売上目標：達成率108%<br>- 次期はマーケット拡大に注力...</div>
+    </div>
+    <div class="memo-card-demo">
+      <div class="d-flex align-items-center mb-1">
+        <span class="memo-type-badge" style="background:#20c99722; color:#20c997;">アイデア</span>
+        <span style="font-size:0.7rem; color:#aaa; margin-left:auto;">2026/03/24</span>
+      </div>
+      <div class="memo-title">新しいルーティンのアイデア</div>
+      <div class="memo-body">朝6時起床 → ストレッチ10分 → ランニング → シャワー → 読書...</div>
+    </div>
+    <div class="memo-card-demo">
+      <div class="d-flex align-items-center mb-1">
+        <span class="memo-type-badge" style="background:#fd7e1422; color:#fd7e14;">学習</span>
+        <span style="font-size:0.7rem; color:#aaa; margin-left:auto;">2026/03/20</span>
+      </div>
+      <div class="memo-title">Python学習メモ</div>
+      <div class="memo-body">## デコレータ<br>`@property` を使うと getter/setter をシンプルに書ける...</div>
+    </div>
+    <div class="memo-card-demo">
+      <div class="d-flex align-items-center mb-1">
+        <span class="memo-type-badge" style="background:#e83e8c22; color:#e83e8c;">プライベート</span>
+        <i class="fas fa-star text-warning" style="font-size:0.7rem;"></i>
+        <span style="font-size:0.7rem; color:#aaa; margin-left:auto;">2026/03/15</span>
+      </div>
+      <div class="memo-title">旅行計画（京都・大阪）</div>
+      <div class="memo-body">4月上旬予定。新幹線は早割で購入済み。ホテルは要予約...</div>
+    </div>
+    <div class="demo-overlay"></div>
+  </div>
+</div>
+
+<!-- ==================================================
+     買い物リストデモ
+================================================== -->
+<div class="demo-section" id="demo-shopping">
+  <h5 class="mb-3"><i class="fas fa-shopping-cart text-info"></i> 買い物リスト</h5>
+
+  <h6 class="text-muted mb-2">要補充（残量が少ないもの）</h6>
+  <div class="mb-3">
+    <div class="shop-item">
+      <i class="fas fa-exclamation-circle text-danger" style="width:16px;"></i>
+      <span style="flex:1; font-size:0.88rem;">牛乳</span>
+      <span class="shop-count warn">残 0 / 2</span>
+    </div>
+    <div class="shop-item">
+      <i class="fas fa-exclamation-circle text-warning" style="width:16px;"></i>
+      <span style="flex:1; font-size:0.88rem;">卵（10個入り）</span>
+      <span class="shop-count warn">残 1 / 2</span>
+    </div>
+    <div class="shop-item">
+      <i class="fas fa-exclamation-circle text-warning" style="width:16px;"></i>
+      <span style="flex:1; font-size:0.88rem;">シャンプー</span>
+      <span class="shop-count warn">残 1 / 1</span>
+    </div>
+  </div>
+
+  <h6 class="text-muted mb-2">一時買い物（今回のみ）</h6>
+  <div class="mb-3">
+    <div class="shop-item">
+      <input type="checkbox" disabled class="mr-1">
+      <span style="flex:1; font-size:0.88rem;">ケーキ（誕生日用）</span>
+    </div>
+    <div class="shop-item">
+      <input type="checkbox" disabled class="mr-1">
+      <span style="flex:1; font-size:0.88rem;">電池（単3×4本）</span>
+    </div>
+    <div class="shop-item checked">
+      <input type="checkbox" checked disabled class="mr-1">
+      <span style="flex:1; font-size:0.88rem; text-decoration:line-through;">ノート（A5）</span>
+    </div>
+  </div>
+
+  <h6 class="text-muted mb-2">定期ストック</h6>
+  <div class="demo-overlay-wrap">
+    <div class="shop-item">
+      <i class="fas fa-check-circle text-success" style="width:16px;"></i>
+      <span style="flex:1; font-size:0.88rem;">米（5kg）</span>
+      <span class="shop-count">残 3 / 2</span>
+    </div>
+    <div class="shop-item">
+      <i class="fas fa-check-circle text-success" style="width:16px;"></i>
+      <span style="flex:1; font-size:0.88rem;">洗剤（液体）</span>
+      <span class="shop-count">残 2 / 1</span>
+    </div>
+    <div class="shop-item">
+      <i class="fas fa-check-circle text-success" style="width:16px;"></i>
+      <span style="flex:1; font-size:0.88rem;">トイレットペーパー（12ロール）</span>
+      <span class="shop-count">残 4 / 2</span>
+    </div>
+    <div class="demo-overlay"></div>
+  </div>
+</div>
+
+<!-- ==================================================
+     一時タスク（カンバン）デモ
+================================================== -->
+<div class="demo-section" id="demo-kanban">
+  <h5 class="mb-3"><i class="fas fa-columns text-secondary"></i> 一時タスク（カンバンボード）</h5>
+  <p class="text-muted small mb-3">Todo / 進行中 / 完了 の3列でタスクを素早く管理できます。</p>
+
+  <div class="d-flex" style="gap:10px; overflow-x:auto;">
+    <div class="kanban-col">
+      <div class="kanban-col-title"><i class="fas fa-circle text-secondary" style="font-size:0.6rem;"></i> Todo <span class="badge badge-secondary badge-sm" style="font-size:0.7rem;">3</span></div>
+      <div class="kanban-item">資料のPDF化</div>
+      <div class="kanban-item">ミーティング議事録まとめ</div>
+      <div class="kanban-item">競合調査</div>
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-col-title"><i class="fas fa-circle text-primary" style="font-size:0.6rem;"></i> 進行中 <span class="badge badge-primary badge-sm" style="font-size:0.7rem;">2</span></div>
+      <div class="kanban-item" style="border-left:3px solid #007bff;">ランディングページの修正</div>
+      <div class="kanban-item" style="border-left:3px solid #007bff;">バグ調査 #142</div>
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-col-title"><i class="fas fa-circle text-success" style="font-size:0.6rem;"></i> 完了 <span class="badge badge-success badge-sm" style="font-size:0.7rem;">4</span></div>
+      <div class="kanban-item" style="opacity:0.6;">週次レポート送付</div>
+      <div class="kanban-item" style="opacity:0.6;">デプロイ手順書の更新</div>
+      <div class="kanban-item" style="opacity:0.6;">コードレビュー #88</div>
+      <div class="kanban-item" style="opacity:0.6;">テストケース追加</div>
+    </div>
+  </div>
+  <p class="text-muted small mt-2">※ 実際はドラッグ＆ドロップやスワイプでステータスを変更できます。</p>
+</div>
+
+<!-- CTAバー -->
+<div class="demo-cta-bar">
+  <span>実際に使ってみませんか？</span>
+  <a href="{% url 'signup' %}" class="btn btn-success btn-sm">
+    <i class="fas fa-user-plus"></i> 無料サインアップ
+  </a>
+  <a href="{% url 'login' %}" class="btn btn-outline-primary btn-sm">
+    <i class="fas fa-sign-in-alt"></i> ログイン
+  </a>
+</div>
+
+<script>
+(function () {
+  const tabs = document.querySelectorAll('#demoNav .nav-link');
+  const sections = document.querySelectorAll('.demo-section');
+  const sectionMap = {
+    expenses: 'demo-expenses',
+    tasks: 'demo-tasks',
+    habits: 'demo-habits',
+    memos: 'demo-memos',
+    shopping: 'demo-shopping',
+    kanban: 'demo-kanban',
+  };
+
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function (e) {
+      e.preventDefault();
+      const key = tab.dataset.tab;
+      tabs.forEach(function (t) { t.classList.remove('active'); });
+      sections.forEach(function (s) { s.classList.remove('active'); });
+      tab.classList.add('active');
+      const target = document.getElementById(sectionMap[key]);
+      if (target) { target.classList.add('active'); }
+    });
+  });
+}());
+</script>
+{% endblock %}

@@ -1,0 +1,239 @@
+{% extends "app/base.html" %}
+
+{% block extra_css %}
+<style>
+.action-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin: 1px;
+}
+.action-view   { background: #e3f2fd; color: #1565c0; }
+.action-create { background: #e8f5e9; color: #2e7d32; }
+.action-edit   { background: #fff8e1; color: #f57f17; }
+.action-delete { background: #fce4ec; color: #c62828; }
+.action-toggle { background: #f3e5f5; color: #6a1b9a; }
+.page-card { border-left: 4px solid; }
+.page-expenses { border-color: #0d6efd; }
+.page-tasks    { border-color: #198754; }
+.page-memos    { border-color: #fd7e14; }
+.page-shopping { border-color: #dc3545; }
+.page-habits   { border-color: #6f42c1; }
+.page-demo     { border-color: #20c997; }
+.total-count { font-size: 1.8rem; font-weight: 700; }
+.filter-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex align-items-center mb-3">
+        <a href="{% url 'manage_dashboard' %}" class="btn btn-sm btn-outline-secondary mr-3">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <h2 class="mb-0"><i class="fas fa-chart-bar"></i> 機能分析</h2>
+    </div>
+
+    <!-- 期間フィルター -->
+    <div class="filter-bar mb-4">
+        <span class="text-muted small">表示期間:</span>
+        <a href="?days=30"  class="btn btn-sm {% if days == 30  %}btn-primary{% else %}btn-outline-secondary{% endif %}">30日</a>
+        <a href="?days=90"  class="btn btn-sm {% if days == 90  %}btn-primary{% else %}btn-outline-secondary{% endif %}">90日</a>
+        <a href="?days=180" class="btn btn-sm {% if days == 180 %}btn-primary{% else %}btn-outline-secondary{% endif %}">180日</a>
+        <a href="?days=365" class="btn btn-sm {% if days == 365 %}btn-primary{% else %}btn-outline-secondary{% endif %}">365日</a>
+    </div>
+
+    <!-- サマリーカード -->
+    <div class="row mb-4">
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <div class="total-count text-primary">{{ total_logs }}</div>
+                    <div class="text-muted small">総アクション数（{{ days }}日間）</div>
+                </div>
+            </div>
+        </div>
+        {% for page_key, page_data in pages_data.items %}
+        <div class="col-6 col-md-3 mb-3">
+            <div class="card text-center h-100 page-card page-{{ page_key }}">
+                <div class="card-body">
+                    <div class="total-count">{{ page_data.total }}</div>
+                    <div class="text-muted small">{{ page_data.label }}</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 機能別詳細テーブル -->
+    <div class="card mb-4">
+        <div class="card-header"><strong>機能別アクション内訳</strong></div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>機能</th>
+                            <th class="text-center">閲覧</th>
+                            <th class="text-center">追加</th>
+                            <th class="text-center">編集</th>
+                            <th class="text-center">削除</th>
+                            <th class="text-center">切替</th>
+                            <th class="text-center">合計</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if pages_data %}
+                        {% for page_key, page_data in pages_data.items %}
+                        <tr>
+                            <td><strong>{{ page_data.label }}</strong></td>
+                            <td class="text-center">
+                                {% with cnt=page_data.actions.view %}
+                                {% if cnt %}<span class="action-badge action-view">{{ cnt }}</span>{% else %}—{% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-center">
+                                {% with cnt=page_data.actions.create %}
+                                {% if cnt %}<span class="action-badge action-create">{{ cnt }}</span>{% else %}—{% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-center">
+                                {% with cnt=page_data.actions.edit %}
+                                {% if cnt %}<span class="action-badge action-edit">{{ cnt }}</span>{% else %}—{% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-center">
+                                {% with cnt=page_data.actions.delete %}
+                                {% if cnt %}<span class="action-badge action-delete">{{ cnt }}</span>{% else %}—{% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-center">
+                                {% with cnt=page_data.actions.toggle %}
+                                {% if cnt %}<span class="action-badge action-toggle">{{ cnt }}</span>{% else %}—{% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-center"><strong>{{ page_data.total }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">データがありません（ユーザーのアクティビティが記録されるとここに表示されます）</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日別トレンドグラフ -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>日別トレンド</strong>
+            <div class="btn-group btn-group-sm" id="pageFilter">
+                <button class="btn btn-outline-primary active" data-page="">全機能</button>
+                <button class="btn btn-outline-primary" data-page="expenses">家計簿</button>
+                <button class="btn btn-outline-primary" data-page="tasks">タスク</button>
+                <button class="btn btn-outline-primary" data-page="memos">メモ</button>
+                <button class="btn btn-outline-primary" data-page="shopping">買うもの</button>
+                <button class="btn btn-outline-primary" data-page="habits">習慣</button>
+                <button class="btn btn-outline-primary" data-page="demo">デモ</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <canvas id="trendChart" height="80"></canvas>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+(function () {
+    var apiUrl = '{% url "manage_analytics_api" %}';
+    var days = {{ days }};
+    var chart = null;
+    var currentPage = '';
+
+    var actionColors = {
+        view:   { bg: 'rgba(13,110,253,0.5)',  border: 'rgba(13,110,253,0.8)' },
+        create: { bg: 'rgba(25,135,84,0.5)',   border: 'rgba(25,135,84,0.8)' },
+        edit:   { bg: 'rgba(253,126,20,0.5)',  border: 'rgba(253,126,20,0.8)' },
+        delete: { bg: 'rgba(220,53,69,0.5)',   border: 'rgba(220,53,69,0.8)' },
+        toggle: { bg: 'rgba(111,66,193,0.5)',  border: 'rgba(111,66,193,0.8)' },
+    };
+    var actionLabels = { view: '閲覧', create: '追加', edit: '編集', delete: '削除', toggle: '切替' };
+    var pageColors = {
+        expenses: { bg: 'rgba(13,110,253,0.5)',  border: 'rgba(13,110,253,0.8)' },
+        tasks:    { bg: 'rgba(25,135,84,0.5)',   border: 'rgba(25,135,84,0.8)' },
+        memos:    { bg: 'rgba(253,126,20,0.5)',  border: 'rgba(253,126,20,0.8)' },
+        shopping: { bg: 'rgba(220,53,69,0.5)',   border: 'rgba(220,53,69,0.8)' },
+        habits:   { bg: 'rgba(111,66,193,0.5)',  border: 'rgba(111,66,193,0.8)' },
+        demo:     { bg: 'rgba(32,201,151,0.5)',  border: 'rgba(32,201,151,0.8)' },
+    };
+    var pageLabels = { expenses: '家計簿', tasks: 'タスク', memos: 'メモ', shopping: '買うもの', habits: '習慣', demo: 'デモ' };
+
+    function fetchAndRender() {
+        var url = apiUrl + '?days=' + days + (currentPage ? '&page=' + currentPage : '');
+        fetch(url).then(function(r) { return r.json(); }).then(function(res) {
+            var labels = res.labels;
+            var data = res.data;
+
+            // データセットを組み立て
+            var seriesKeys = {};
+            labels.forEach(function(d) {
+                if (data[d]) {
+                    Object.keys(data[d]).forEach(function(k) { seriesKeys[k] = true; });
+                }
+            });
+
+            var datasets = Object.keys(seriesKeys).map(function(key) {
+                var parts = key.split('_');
+                var page = parts[0];
+                var action = parts.slice(1).join('_');
+                var color = currentPage
+                    ? (actionColors[action] || { bg: 'rgba(100,100,100,0.4)', border: 'rgba(100,100,100,0.8)' })
+                    : (pageColors[page] || { bg: 'rgba(100,100,100,0.4)', border: 'rgba(100,100,100,0.8)' });
+                var labelStr = currentPage
+                    ? (actionLabels[action] || action)
+                    : (pageLabels[page] || page) + ' / ' + (actionLabels[action] || action);
+                return {
+                    label: labelStr,
+                    data: labels.map(function(d) { return (data[d] && data[d][key]) ? data[d][key] : 0; }),
+                    backgroundColor: color.bg,
+                    borderColor: color.border,
+                    borderWidth: 1,
+                };
+            });
+
+            if (chart) chart.destroy();
+            var ctx = document.getElementById('trendChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true, title: { display: true, text: 'アクション数' } }
+                    }
+                }
+            });
+        });
+    }
+
+    document.querySelectorAll('#pageFilter button').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('#pageFilter button').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            currentPage = btn.dataset.page;
+            fetchAndRender();
+        });
+    });
+
+    fetchAndRender();
+})();
+</script>
+{% endblock %}

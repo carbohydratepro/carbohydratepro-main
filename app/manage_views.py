@@ -9,10 +9,10 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.utils import timezone
 from django.contrib import messages
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.db.models.functions import TruncDate, TruncMonth
 
-from .models import ContactMessage
+from .models import ActivityLog, ContactMessage
 
 import logging
 logger = logging.getLogger(__name__)
@@ -147,6 +147,97 @@ def manage_users(request: HttpRequest) -> HttpResponse:
         'recent_users': recent_users,
     }
     return render(request, 'app/manage/users.html', context)
+
+
+@superuser_required
+def manage_analytics(request: HttpRequest) -> HttpResponse:
+    """機能使用率・アクセス分析ページ"""
+    days = min(int(request.GET.get('days', '30')), 365)
+    since = timezone.now() - timedelta(days=days)
+
+    page_labels = {
+        "expenses": "家計簿",
+        "tasks": "タスク",
+        "memos": "メモ",
+        "shopping": "買うものリスト",
+        "habits": "習慣トラッカー",
+        "demo": "デモ",
+    }
+    action_labels = {
+        "view": "閲覧",
+        "create": "追加",
+        "edit": "編集",
+        "delete": "削除",
+        "toggle": "切替",
+    }
+
+    base_qs = ActivityLog.objects.filter(accessed_at__gte=since)
+
+    # 機能ごと × アクション種別の集計
+    page_action_counts = (
+        base_qs
+        .values("page", "action")
+        .annotate(count=Count("id"))
+        .order_by("page", "action")
+    )
+
+    # 機能別に整形
+    pages_data: dict[str, dict[str, object]] = {}
+    for row in page_action_counts:
+        page = row["page"]
+        action = row["action"]
+        if page not in pages_data:
+            pages_data[page] = {
+                "label": page_labels.get(page, page),
+                "total": 0,
+                "actions": {},
+            }
+        pages_data[page]["actions"][action] = row["count"]  # type: ignore[index]
+        pages_data[page]["total"] = int(pages_data[page]["total"]) + row["count"]  # type: ignore[index]
+
+    # 全機能の総アクセス数
+    total_logs = base_qs.count()
+
+    context = {
+        "days": days,
+        "total_logs": total_logs,
+        "pages_data": pages_data,
+        "page_labels": page_labels,
+        "action_labels": action_labels,
+    }
+    return render(request, "app/manage/analytics.html", context)
+
+
+@superuser_required
+def manage_analytics_api(request: HttpRequest) -> JsonResponse:
+    """分析データ JSON API（Chart.js 用）"""
+    days = min(int(request.GET.get('days', '30')), 365)
+    page_filter = request.GET.get('page', '')
+    since = timezone.now() - timedelta(days=days - 1)
+
+    qs = ActivityLog.objects.filter(accessed_at__gte=since)
+    if page_filter:
+        qs = qs.filter(page=page_filter)
+
+    counts = (
+        qs
+        .annotate(date=TruncDate('accessed_at'))
+        .values('date', 'page', 'action')
+        .annotate(count=Count('id'))
+        .order_by('date', 'page', 'action')
+    )
+
+    # date → {page_action: count} の辞書に変換
+    data: dict[str, dict[str, int]] = {}
+    for row in counts:
+        date_str = str(row['date'])
+        key = f"{row['page']}_{row['action']}"
+        if date_str not in data:
+            data[date_str] = {}
+        data[date_str][key] = row['count']
+
+    labels = sorted(data.keys())
+    return JsonResponse({"labels": labels, "data": data})
 
 
 @superuser_required

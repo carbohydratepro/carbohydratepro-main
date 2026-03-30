@@ -40,14 +40,19 @@
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-6 mb-3">
+        <div class="col-md-4 mb-3">
             <a href="{% url 'manage_contacts' %}" class="btn btn-outline-primary btn-block">
                 <i class="fas fa-envelope"></i> 問い合わせ管理
             </a>
         </div>
-        <div class="col-md-6 mb-3">
+        <div class="col-md-4 mb-3">
             <a href="{% url 'manage_users' %}" class="btn btn-outline-success btn-block">
                 <i class="fas fa-users"></i> ユーザー統計
+            </a>
+        </div>
+        <div class="col-md-4 mb-3">
+            <a href="{% url 'manage_analytics' %}" class="btn btn-outline-info btn-block">
+                <i class="fas fa-chart-bar"></i> 機能分析
             </a>
         </div>
     </div>

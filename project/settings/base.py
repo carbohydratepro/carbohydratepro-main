@@ -47,6 +47,7 @@ MIDDLEWARE = [
     'project.middleware.MaintenanceModeMiddleware',    # メンテナンスモード
     'project.middleware.AdminSecurityMiddleware',      # 管理サイトセキュリティ
     'auth_app.middleware.EmailVerificationMiddleware',  # メール認証チェック
+    'app.middleware.ActivityTrackingMiddleware',        # アクティビティトラッキング
 ]
 
 # メンテナンスモード（True にするとメンテナンスページを表示）

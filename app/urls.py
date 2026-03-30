@@ -62,4 +62,6 @@ urlpatterns = [
     path('manage/contacts/<int:contact_id>/', views.manage_contact_update, name='manage_contact_update'),
     path('manage/users/', views.manage_users, name='manage_users'),
     path('manage/users/stats/', views.manage_users_stats_api, name='manage_users_stats_api'),
+    path('manage/analytics/', views.manage_analytics, name='manage_analytics'),
+    path('manage/analytics/api/', views.manage_analytics_api, name='manage_analytics_api'),
 ]

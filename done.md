@@ -144,3 +144,7 @@
 ## バグ修正/機能改善（買い物リストモバイルスクロール・お問い合わせ全文表示・家計簿グラフ配色固定・棒グラフ土日色付け）
 - **実装内容**: ①買い物リストモバイル対応：Bootstrap 4の`modal-dialog-scrollable.modal-dialog-centered`組み合わせ時に`modal-content`の`max-height`がnoneになるバグをCSS上書きで修正（`shopping.css`）。②お問い合わせ全文表示：履歴一覧で30語以上のメッセージに「全文を見る/閉じる」トグルを追加（Bootstrap collapseとJS）、`contact.html`・`contact.css`を更新。③家計簿カテゴリグラフ配色固定：カテゴリIDのmod割り当てで同一カテゴリが常に同じ色で表示されるよう`selectors.py`を修正、パレットを5色→15色に拡張（`utils.py`）。④棒グラフ土日色付けトグル：日別支出棒グラフに「土日色付け」ボタンを追加（PC/モバイル両対応）、ON時に土曜・日曜のバーをオレンジ色で表示、状態はlocalStorageに永続化（`transaction.ts`・`list.html`）。
 - **実装日時**: 2026-03-22 21:00
+
+## 管理画面分析機能の強化
+- **実装内容**: `ActivityLog` モデル（`app/models.py`）を新設し、機能（家計簿/タスク/メモ/買うものリスト/習慣）ごとのアクセス・操作（閲覧/追加/編集/削除/切替）を記録できるようにした。`app/middleware.py` に `ActivityTrackingMiddleware` を実装し、URL名から機能とアクション種別を自動判定してログを記録（スーパーユーザー・スタッフは除外）。`manage_analytics` / `manage_analytics_api` ビューを追加し、管理画面 `/carbohydratepro/manage/analytics/` で期間フィルタ付きの機能別アクション内訳テーブルと日別積み上げ棒グラフを表示。ダッシュボードに「機能分析」リンクボタンを追加。
+- **実装日時**: 2026-03-30 01:55

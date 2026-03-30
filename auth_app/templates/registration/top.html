@@ -1,6 +1,13 @@
 {% extends "registration/base.html" %}
 {% load static %}
 
+{% block title %}Life management - 家計簿・タスク・習慣・メモを一元管理{% endblock %}
+{% block meta_description %}家計簿・タスク管理・習慣トラッカー・メモ・買い物リストを一元管理できる無料のライフマネジメントツールです。ログイン不要のデモ機能あり。{% endblock %}
+{% block og_title %}Life management - 家計簿・タスク・習慣・メモを一元管理{% endblock %}
+{% block og_description %}家計簿・タスク管理・習慣トラッカー・メモ・買い物リストを一元管理できる無料のライフマネジメントツールです。{% endblock %}
+{% block twitter_title %}Life management - 家計簿・タスク・習慣・メモを一元管理{% endblock %}
+{% block twitter_description %}家計簿・タスク管理・習慣トラッカー・メモ・買い物リストを一元管理できる無料のライフマネジメントツールです。{% endblock %}
+
 <!-- コンテンツ -->
 {% block content %}
 <link rel="stylesheet" href="{% static 'app/top.css' %}">

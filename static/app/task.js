@@ -342,6 +342,14 @@ async function openCreateTaskModal() {
         const modalDialog = document.querySelector('#createTaskModal .modal-dialog');
         if (modalDialog)
             modalDialog.innerHTML = html;
+        // 日付フィールドに今日の日付をデフォルト設定
+        const todayStr = new Date().toISOString().split('T')[0];
+        const startDateField = document.getElementById('id_start_date');
+        const endDateField = document.getElementById('id_end_date');
+        if (startDateField && !startDateField.value)
+            startDateField.value = todayStr;
+        if (endDateField && !endDateField.value)
+            endDateField.value = todayStr;
         $('#createTaskModal').modal('show');
         initializeTaskFormControls();
         const form = document.getElementById('createTaskForm');

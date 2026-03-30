@@ -148,3 +148,11 @@
 ## 管理画面分析機能の強化
 - **実装内容**: `ActivityLog` モデル（`app/models.py`）を新設し、機能（家計簿/タスク/メモ/買うものリスト/習慣）ごとのアクセス・操作（閲覧/追加/編集/削除/切替）を記録できるようにした。`app/middleware.py` に `ActivityTrackingMiddleware` を実装し、URL名から機能とアクション種別を自動判定してログを記録（スーパーユーザー・スタッフは除外）。`manage_analytics` / `manage_analytics_api` ビューを追加し、管理画面 `/carbohydratepro/manage/analytics/` で期間フィルタ付きの機能別アクション内訳テーブルと日別積み上げ棒グラフを表示。ダッシュボードに「機能分析」リンクボタンを追加。
 - **実装日時**: 2026-03-30 01:55
+
+## スケジュール画面のバグ修正
+- **実装内容**: ①カレンダーのdata-year・data-month属性でUSE_THOUSAND_SEPARATORにより年が「2,026」と表示されていたのを`|stringformat:"d"`フィルターで修正。これによりモーダルタイトルの表示とfetch URLが正しく動作するようになった。②新規タスク登録ボタン（`openCreateTaskModal()`）で日付フィールドが空白だった問題を修正。モーダルHTML読み込み後に今日の日付をstart_date・end_dateフィールドへデフォルト設定するようにした。
+- **実装日時**: 2026-03-30 22:50
+
+## SE対策として各画面が検索ヒットしやすいようにする
+- **実装内容**: ①robots.txt を全クロール拒否→認証ページ・管理ページのみDisallowに変更。②`django.contrib.sitemaps` を追加し `/sitemap.xml` を新設（トップ・ログイン・サインアップ・デモ6画面を収録）。③`auth_app/base.html` と `app/base.html` に `{% block title %}`, `{% block meta_description %}`, `{% block meta_robots %}`, OGP/Twitter Card タグ用ブロックを追加。④トップ・ログイン・サインアップ各テンプレートにページ固有タイトル・メタ説明を設定。⑤デモ6画面（家計簿・タスク・メモ・買い物・習慣・ボード）に `index, follow` + ページ固有タイトル・メタ説明を設定。認証後のアプリ画面は `noindex, nofollow` で保護。
+- **実装日時**: 2026-03-31 01:05

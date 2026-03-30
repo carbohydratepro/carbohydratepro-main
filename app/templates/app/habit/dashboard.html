@@ -1,5 +1,10 @@
 {% extends 'app/base.html' %}
 {% load static %}
+{% block title %}{% if is_demo %}習慣トラッカーデモ | Life management{% else %}習慣トラッカー | Life management{% endif %}{% endblock %}
+{% block meta_description %}{% if is_demo %}習慣トラッカー機能のデモです。習慣の記録、ヒートマップ表示、継続日数の確認などを体験できます。{% endif %}{% endblock %}
+{% block meta_robots %}{% if is_demo %}index, follow{% else %}noindex, nofollow{% endif %}{% endblock %}
+{% block og_title %}{% if is_demo %}習慣トラッカーデモ | Life management{% else %}習慣トラッカー | Life management{% endif %}{% endblock %}
+{% block og_description %}{% if is_demo %}習慣トラッカー機能のデモ。習慣の記録、ヒートマップ表示、継続日数の確認を体験できます。{% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>

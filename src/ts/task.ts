@@ -368,6 +368,14 @@ async function openCreateTaskModal(): Promise<void> {
 
         const modalDialog = document.querySelector<HTMLElement>('#createTaskModal .modal-dialog');
         if (modalDialog) modalDialog.innerHTML = html;
+
+        // 日付フィールドに今日の日付をデフォルト設定
+        const todayStr = new Date().toISOString().split('T')[0];
+        const startDateField = document.getElementById('id_start_date') as HTMLInputElement | null;
+        const endDateField = document.getElementById('id_end_date') as HTMLInputElement | null;
+        if (startDateField && !startDateField.value) startDateField.value = todayStr;
+        if (endDateField && !endDateField.value) endDateField.value = todayStr;
+
         $('#createTaskModal').modal('show');
         initializeTaskFormControls();
 

@@ -1,6 +1,11 @@
 {% extends "app/base.html" %}
 {% load static %}
 {% load app_filters %}
+{% block title %}{% if is_demo %}メモデモ | Life management{% else %}メモ | Life management{% endif %}{% endblock %}
+{% block meta_description %}{% if is_demo %}メモ機能のデモです。Markdown対応のメモ作成、種別管理、お気に入り機能などを体験できます。{% endif %}{% endblock %}
+{% block meta_robots %}{% if is_demo %}index, follow{% else %}noindex, nofollow{% endif %}{% endblock %}
+{% block og_title %}{% if is_demo %}メモデモ | Life management{% else %}メモ | Life management{% endif %}{% endblock %}
+{% block og_description %}{% if is_demo %}メモ機能のデモ。Markdown対応のメモ作成、種別管理、お気に入り機能を体験できます。{% endif %}{% endblock %}
 {% block content %}
 <div class="container mt-2">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">

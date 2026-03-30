@@ -2,6 +2,11 @@
 {% load static %}
 {% load app_filters %}
 {% load l10n %}
+{% block title %}{% if is_demo %}家計簿デモ | Life management{% else %}家計簿 | Life management{% endif %}{% endblock %}
+{% block meta_description %}{% if is_demo %}家計簿機能のデモです。収入・支出の記録、月別グラフ、カテゴリ別集計などを体験できます。{% endif %}{% endblock %}
+{% block meta_robots %}{% if is_demo %}index, follow{% else %}noindex, nofollow{% endif %}{% endblock %}
+{% block og_title %}{% if is_demo %}家計簿デモ | Life management{% else %}家計簿 | Life management{% endif %}{% endblock %}
+{% block og_description %}{% if is_demo %}家計簿機能のデモ。収入・支出の記録、月別グラフ、カテゴリ別集計を体験できます。{% endif %}{% endblock %}
 {% block content %}
 <div class="container mt-2">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">

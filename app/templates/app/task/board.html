@@ -1,5 +1,10 @@
 {% extends "app/base.html" %}
 {% load static %}
+{% block title %}{% if is_demo %}一時タスクボードデモ | Life management{% else %}一時タスクボード | Life management{% endif %}{% endblock %}
+{% block meta_description %}{% if is_demo %}カンバンボード形式の一時タスク管理機能のデモです。ToDo・作業中・完了のステータスでタスクを素早く管理できます。{% endif %}{% endblock %}
+{% block meta_robots %}{% if is_demo %}index, follow{% else %}noindex, nofollow{% endif %}{% endblock %}
+{% block og_title %}{% if is_demo %}一時タスクボードデモ | Life management{% else %}一時タスクボード | Life management{% endif %}{% endblock %}
+{% block og_description %}{% if is_demo %}カンバンボード形式の一時タスク管理機能のデモ。ToDo・作業中・完了のステータスでタスクを素早く管理できます。{% endif %}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'app/temp_task.css' %}">

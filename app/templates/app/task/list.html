@@ -1,6 +1,11 @@
 {% extends "app/base.html" %}
 {% load static %}
 {% load app_filters %}
+{% block title %}{% if is_demo %}タスク管理デモ | Life management{% else %}スケジュール | Life management{% endif %}{% endblock %}
+{% block meta_description %}{% if is_demo %}タスク管理機能のデモです。カレンダー表示・ガントチャート・繰り返しタスクなどを体験できます。{% endif %}{% endblock %}
+{% block meta_robots %}{% if is_demo %}index, follow{% else %}noindex, nofollow{% endif %}{% endblock %}
+{% block og_title %}{% if is_demo %}タスク管理デモ | Life management{% else %}スケジュール | Life management{% endif %}{% endblock %}
+{% block og_description %}{% if is_demo %}タスク管理機能のデモ。カレンダー表示・ガントチャート・繰り返しタスクを体験できます。{% endif %}{% endblock %}
 {% block content %}
 <div class="container mt-5">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
@@ -177,9 +182,9 @@
                         {% for day_data in week %}
                         <td class="task-calendar-cell{% if not day_data.is_current_month %} other-month-cell{% endif %}{% if day_data.is_today %} today-cell{% endif %}"
                             data-day="{{ day_data.day }}"
-                            data-month="{{ day_data.year }}-{{ day_data.month|stringformat:'02d' }}"
+                            data-month="{{ day_data.year|stringformat:'d' }}-{{ day_data.month|stringformat:'02d' }}"
                             data-task-count="{{ day_data.task_count }}"
-                            data-year="{{ day_data.year }}"
+                            data-year="{{ day_data.year|stringformat:'d' }}"
                             data-month-num="{{ day_data.month|stringformat:'02d' }}">
                             <div class="day-number{% if not day_data.is_current_month %} text-muted{% endif %}{% if day_data.is_today %} today-number{% endif %}">{{ day_data.day }}</div>
                             <div class="task-list">

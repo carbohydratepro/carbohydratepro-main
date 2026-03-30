@@ -26,11 +26,10 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
-from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.contrib.admin.sites import AdminSite
-from django.contrib.auth import views as auth_views
-from django.views.generic import TemplateView
+from django.contrib.sitemaps.views import sitemap
+from auth_app.sitemaps import PublicPagesSitemap
 import os
 
 # 管理サイトのカスタマイズ
@@ -55,21 +54,35 @@ for app_config in apps.get_app_configs():
             secure_admin_site.register(model, model_admin.__class__)
 
 # robots.txt配信用のビュー
-def robots_txt(request):
+def robots_txt(request: HttpRequest) -> HttpResponse:
+    site_url = f"{settings.SITE_PROTOCOL}://{settings.SITE_DOMAIN}"
     lines = [
         "User-agent: *",
-        "Disallow: /",  # すべてのパスをdisallow
+        "# 認証が必要なページ・管理画面はクロール禁止",
+        "Disallow: /carbohydratepro/",
+        "Disallow: /system-control-panel/",
+        "Disallow: /admin/",
+        "Disallow: /password_reset/",
+        "Disallow: /password_change/",
+        "Disallow: /edit/",
+        "Disallow: /verify-email/",
         "",
-        "# すべてのページのインデックス化を防ぐ",
-        "# 検索エンジンによるクロールを完全に拒否",
+        f"Sitemap: {site_url}/sitemap.xml",
     ]
     return HttpResponse("\n".join(lines), content_type="text/plain")
+
+sitemaps = {
+    'static': PublicPagesSitemap,
+}
 
 urlpatterns = [
     # 推測困難な管理URL（本番環境では更に複雑にすること推奨）
     path('system-control-panel/', secure_admin_site.urls),
     # 元の管理URLは404エラーを返す
     path('admin/', lambda request: Http404()),
+    # SEO
+    path('robots.txt', robots_txt),
+    path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     path('carbohydratepro/', include('app.urls')),
     path('', include('auth_app.urls')),
 ]

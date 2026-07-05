@@ -1,0 +1,4 @@
+interface:
+  display_name: "CarbohydratePro Git操作"
+  short_description: "日本語コミットメッセージを徹底して安全にGit操作を実行"
+  default_prompt: "Use $carbohydrate-git-workflow to commit only the requested changes with a concise Japanese commit message."

@@ -34,9 +34,35 @@
 ### 前提条件
 
 - Docker / Docker Compose がインストール済みであること
+- Docker Desktopを使用する場合、Arch LinuxへのWSL integrationが有効であること
 - SSH 鍵認証が設定済みであること（本番操作時）
 
-### 起動
+### 開発環境操作Skill
+
+開発環境の操作は、プロジェクト共有Skillに同梱されたスクリプトを使用できます。
+
+```bash
+# 利用環境の確認
+bash .agents/skills/carbohydrate-dev-environment/scripts/manage-dev-environment.sh doctor
+
+# 起動
+bash .agents/skills/carbohydrate-dev-environment/scripts/manage-dev-environment.sh start
+
+# 停止
+bash .agents/skills/carbohydrate-dev-environment/scripts/manage-dev-environment.sh stop
+
+# 再起動と静的ファイル収集
+bash .agents/skills/carbohydrate-dev-environment/scripts/manage-dev-environment.sh restart
+
+# 状態確認
+bash .agents/skills/carbohydrate-dev-environment/scripts/manage-dev-environment.sh status
+```
+
+詳細は `.agents/skills/carbohydrate-dev-environment/SKILL.md` を参照してください。
+
+### 開発環境の直接操作
+
+Skillを使わず、Docker Composeを直接操作することもできます。
 
 ```bash
 # ビルド
@@ -47,11 +73,7 @@ docker-compose -f docker-compose-dev.yml up -d
 
 # 停止
 docker-compose -f docker-compose-dev.yml down
-```
 
-### マイグレーション・管理コマンド
-
-```bash
 # マイグレーション生成
 docker-compose -f docker-compose-dev.yml exec gunicorn python manage.py makemigrations
 
@@ -80,24 +102,44 @@ docker-compose -f docker-compose-dev.yml logs -f cron
 
 ## デプロイ
 
-`deploy.sh`（gitignore 対象、各自のローカルに配置）を使用します。
+本番環境はAmazon Lightsail上で完結する構成です。本番でも意図的に
+`docker-compose-dev.yml` を使用します。
+
+デプロイはプロジェクト共有Skillのスクリプトを使用します。
 
 ```bash
-# 本番サーバーに main ブランチをデプロイ
-./deploy.sh
+# mainブランチをデプロイ
+bash .agents/skills/carbohydrate-production-deploy/scripts/run-production-deploy.sh \
+  --host user@lightsail-host \
+  --branch main
 
-# ブランチを指定してデプロイ
-./deploy.sh develop
+# 接続先を環境変数で指定する場合
+DEPLOY_HOST=user@lightsail-host \
+  bash .agents/skills/carbohydrate-production-deploy/scripts/run-production-deploy.sh \
+  --branch main
 ```
 
 デプロイスクリプトは以下を自動実行します：
 
-1. ローカルの未コミット変更確認
-2. リモートサーバーで `git pull`
-3. Docker イメージのビルド
-4. コンテナ再起動
-5. `migrate` / `collectstatic`
-6. ヘルスチェック
+1. ローカルの未コミット変更・対象コミット確認
+2. 実行直前の確認
+3. リモートサーバーでfast-forward限定の `git pull`
+4. Docker イメージのビルド
+5. コンテナ再起動
+6. `migrate` / `collectstatic`
+7. JavaScriptファイルのハッシュ比較
+8. Nginx再起動とヘルスチェック
+
+詳細な安全ルールは
+`.agents/skills/carbohydrate-production-deploy/SKILL.md` を参照してください。
+
+## プロジェクト共有Skills
+
+Codexなどのエージェント向け手順は `.agents/skills/` でGit管理します。
+
+- `carbohydrate-dev-environment`: 開発環境の起動、停止、ログ、管理コマンド
+- `carbohydrate-production-deploy`: Lightsail本番デプロイ
+- `carbohydrate-git-workflow`: 安全なGit操作と日本語コミットメッセージ
 
 ## 本番サーバーの初回セットアップ
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "CarbohydratePro 本番デプロイ"
+  short_description: "Lightsail本番環境へ安全にデプロイして検証"
+  default_prompt: "Use $carbohydrate-production-deploy to prepare a safe deployment of the main branch to the configured Lightsail host."

@@ -7,6 +7,12 @@
 - [x] README、CLAUDE.md、主要設定、テスト手順を確認
 - [x] メモリバンクの内容を実プロジェクト情報で更新
 - [x] メモリバンクをWSL側リポジトリへ同期
+- [x] ルート `AGENTS.md` を作成
+- [x] 開発環境操作Skillを作成
+- [x] 本番デプロイSkillを作成
+- [x] Git操作Skillを作成
+- [x] Skill構造とスクリプトを検証
+- [x] README・AGENTS.md・メモリバンクをWSL側へ同期
 
 ## 未着手
 

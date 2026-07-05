@@ -1,0 +1,4 @@
+interface:
+  display_name: "CarbohydratePro 開発環境"
+  short_description: "Docker開発環境の起動、停止、ログ、テストを操作"
+  default_prompt: "Use $carbohydrate-dev-environment to start the CarbohydratePro development environment and verify its status."

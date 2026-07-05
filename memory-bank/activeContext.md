@@ -3,6 +3,17 @@
 ## 現在の作業
 
 `carbohydratepro` に複数アカウント切替機能を実装した。
+続けてセキュリティ・パフォーマンス・デザイン統一の改善を実施した（2026-07-06）。
+
+## 直近の改善内容（2026-07-06）
+
+- ログイン一時ロック: 15分間に5回失敗で認証を拒否（`services.is_login_locked`、閾値は `LOGIN_LOCKOUT_THRESHOLD` / `LOGIN_LOCKOUT_WINDOW_MINUTES` で変更可）。
+- `get_client_ip` は X-Forwarded-For の右端（信頼プロキシが付加した値）を使用。
+- ログイン履歴の地域解決（ipapi.co）はバックグラウンドスレッド化し、ログインをブロックしない。
+- DRF（rest_framework / simplejwt）は未使用のため削除。gunicorn イメージ再ビルド済み。
+- ログは RotatingFileHandler（10MB×5世代）、django ロガーは INFO に変更。
+- `link_accounts` は対象が他アカウントと連携済みの場合 `AccountLinkError` で拒否（グループ丸ごと合流を廃止）。
+- デザイントークン（CSS変数）を `static/app/styles.css` に定義。カードヘッダー・ボタンを統一し、認証系テンプレートのパステル色インラインスタイルを除去。`styles.css` は両 base.html で Bootstrap より後に読み込む。
 
 ## 対象リポジトリ
 

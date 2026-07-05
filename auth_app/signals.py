@@ -8,6 +8,7 @@ from . import services
 def record_login_history(sender, request, user, **kwargs):
     """ログイン成功時にログイン履歴を記録"""
     services.record_login_success(user, request)
+    services.remember_authenticated_account(request, user)
 
 
 @receiver(user_login_failed)

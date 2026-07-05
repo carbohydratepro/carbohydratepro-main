@@ -42,6 +42,7 @@ services:
     volumes:
       - ./gunicorn.conf:/etc/nginx/conf.d/default.conf
       - ./static_root:/var/www/static
+      - ./media:/var/www/media
       - gunicorn:/var/run/gunicorn
 
   cron:

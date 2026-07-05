@@ -2,14 +2,14 @@
 
 ## 現在の作業
 
-`carbohydratepro` の開発環境操作、本番デプロイ、Git操作をプロジェクト共有Skillとして整備した。
+`carbohydratepro` に複数アカウント切替機能を実装した。
 
 ## 対象リポジトリ
 
 - WSL: `archlinux`
 - パス: `/home/carbohydratepro-main`
 - ブランチ: `main`
-- HEAD: `fc87ed2 メモリバンクを追加`
+- HEAD: `28b0f93 リリース前テスト計画を追加`
 
 ## 現在の状態
 
@@ -19,14 +19,20 @@
   - modified: `.gitignore`, `docs/TESTING.md`, `package-lock.json`, `package.json`, `task.md`
   - untracked: `docs/e2e/`, `e2e/`, `playwright.config.ts`, `test.md`
 - これらはユーザーまたは既存作業の変更として扱い、無断で戻さない。
-- 新規作業として `AGENTS.md` と `.agents/skills/` を作成した。
-- 本番環境はLightsail上で完結し、`docker-compose-dev.yml` の使用は意図された構成。
+- 複数アカウント切替はDB永続の `AccountGroup` / `AccountMembership` と、セッション内の有効アカウント一覧で制御する。
+- アカウントアイコンは `CustomUser.avatar` の `FileField` で管理し、JPEG/PNG/WebP、2MB以下に制限する。
+- アップロードファイル配信用に `MEDIA_ROOT` / `MEDIA_URL`、Nginx `/media/` alias、Composeの `./media:/var/www/media` を追加した。
+- `.gitignore` には既存変更の `workspace/` に加えて `media/` を追加した。
+- アカウント追加画面では、新規アカウント作成は一旦提供せず、既存アカウントのログイン追加のみ対応する。
+- アカウント切替と解除は `accounts/edit/` のアカウント編集画面に統合し、解除時は確認ダイアログを表示する。
+- 現在アカウントをログアウトした場合は、そのアカウントだけをセッション上のログイン済み一覧から外し、残りのログイン済み連携アカウントへ自動切替する。
+- ログアウト済みの連携アカウントへ切り替える場合は、対象メールアドレス入力済みのログイン画面へ遷移する。
 
 ## 次に行うこと
 
-1. 既存のE2E関連変更と今回のSkill変更を分離して扱う。
-2. ユーザーから依頼があれば、Skill関連ファイルだけを日本語メッセージでコミットする。
-3. 開発環境操作時はDocker DesktopのArch Linux向けWSL integrationを確認する。
+1. 必要に応じてユーザー確認後、複数アカウント切替機能の変更を日本語メッセージでコミットする。
+2. 本番反映時はmigration、mediaディレクトリ、Nginx再起動を確認する。
+3. Playwrightでヘッダーのアカウントメニュー、追加、切替、解除、現在のみログアウトを追加確認する。
 
 ## 作業上の注意
 

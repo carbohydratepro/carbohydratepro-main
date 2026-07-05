@@ -1,0 +1,43 @@
+{% extends "registration/base.html" %}
+
+{% block title %}アカウント追加 | Life management{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h1 class="h3 mb-3">アカウント追加</h1>
+  <div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-header" style="background-color: #add8e6; color: #333;">
+          <h2 class="h5 mb-0">既存アカウントを追加</h2>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="existing">
+            <div class="text-danger mb-2">
+              {% for error in existing_form.non_field_errors %}
+                <div>{{ error }}</div>
+              {% endfor %}
+            </div>
+            {% for field in existing_form %}
+              <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                  <ul class="text-danger list-unstyled small mb-0">
+                    {% for error in field.errors %}
+                      <li>{{ error }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary btn-block">追加して切り替え</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

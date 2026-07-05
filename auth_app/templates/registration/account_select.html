@@ -1,0 +1,82 @@
+{% extends "registration/base.html" %}
+
+{% block title %}アカウント編集 | Life management{% endblock %}
+
+{% block content %}
+<style>
+  .account-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #6c757d;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .account-avatar img {
+    object-fit: cover;
+  }
+</style>
+<div class="container py-4">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+    <div>
+      <h1 class="h3 mb-1">アカウント編集</h1>
+    </div>
+    {% if user.is_authenticated %}
+      <a href="{% url 'account_add' %}" class="btn btn-primary mt-3 mt-md-0">
+        <i class="fas fa-user-plus mr-1"></i>アカウント追加
+      </a>
+    {% endif %}
+  </div>
+
+  <div class="list-group mb-4" id="account-remove">
+    {% for membership in memberships %}
+      <div class="list-group-item">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between">
+          <div class="d-flex align-items-center mb-3 mb-md-0">
+            <span class="account-avatar mr-3">
+              {% if membership.user.avatar %}
+                <img src="{{ membership.user.avatar.url }}" alt="{{ membership.user.username }} のアイコン" class="w-100 h-100">
+              {% else %}
+                <i class="fas fa-user"></i>
+              {% endif %}
+            </span>
+            <span>
+              <span class="d-block font-weight-bold">{{ membership.user.username }}</span>
+              <span class="d-block small text-muted">{{ membership.user.email }}</span>
+              {% if user.is_authenticated and membership.user_id == user.pk %}
+                <span class="badge badge-secondary mt-1">現在のアカウント</span>
+              {% elif membership.user_id not in active_user_ids %}
+                <span class="badge badge-light mt-1">ログアウト済み</span>
+              {% endif %}
+            </span>
+          </div>
+          <div class="d-flex flex-column flex-sm-row">
+            {% if user.is_authenticated and membership.user_id == user.pk %}
+              <button type="button" class="btn btn-outline-secondary btn-sm mb-2 mb-sm-0 mr-sm-2" disabled>選択中</button>
+            {% else %}
+              <form method="post" action="{% url 'account_switch' membership.user.pk %}" class="mb-2 mb-sm-0 mr-sm-2">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-sm">
+                  {% if membership.user_id in active_user_ids %}切り替え{% else %}ログインして切り替え{% endif %}
+                </button>
+              </form>
+            {% endif %}
+            {% if user.is_authenticated and membership.user_id != user.pk %}
+              <form method="post" action="{% url 'account_remove' membership.user.pk %}" onsubmit="return confirm('このアカウントの連携を解除しますか？');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-sm">解除</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="alert alert-info">切り替え可能なアカウントがありません。</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

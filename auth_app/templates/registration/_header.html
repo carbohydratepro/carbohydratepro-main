@@ -43,17 +43,9 @@
           <li class="nav-item m-1">
             <a class="nav-link" href="{% url 'shopping_list' %}">買いものリスト</a>
           </li>
-          <li class="nav-item m-1">
-            <a class="nav-link" href="{% url 'my_page' user.pk %}">マイページ</a>
-          </li>
-          <li class="nav-item m-1">
-            <form method="post" action="{% url 'logout' %}">
-              {% csrf_token %}
-              <button type="submit" class="nav-link" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.5);">ログアウト</button>
-            </form>
-          </li>
         {% endif %}
       </ul>
+      {% include "registration/_account_menu.html" %}
     </div>
     
   </nav>

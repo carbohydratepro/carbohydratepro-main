@@ -74,6 +74,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'auth_app.context_processors.account_switcher',
             ],
         },
     },
@@ -141,6 +142,9 @@ STATIC_ROOT = BASE_DIR / "static_root"
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+ACCOUNT_AVATAR_MAX_SIZE = 2 * 1024 * 1024
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",

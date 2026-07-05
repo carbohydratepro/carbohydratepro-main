@@ -2,7 +2,7 @@ from typing import Optional
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DefaultUserAdmin
 from django.http import HttpRequest
-from .models import CustomUser, LoginHistory, EmailVerificationToken
+from .models import AccountGroup, AccountMembership, CustomUser, EmailVerificationToken, LoginHistory
 
 
 class LoginHistoryInline(admin.TabularInline):
@@ -23,7 +23,7 @@ class CustomUserAdmin(DefaultUserAdmin):
     list_filter = ('is_active', 'is_superuser', 'is_email_verified', 'created_at', 'last_login_at')
     fieldsets = (
         (None, {'fields': ['password']}),
-        ('個人情報', {'fields': ['username', 'email', 'is_email_verified']}),
+        ('個人情報', {'fields': ['username', 'email', 'avatar', 'is_email_verified']}),
         ('権限', {'fields': ['is_active', 'is_superuser', 'is_staff', 'groups', 'user_permissions']}),
         ('重要な日時', {'fields': ['created_at', 'last_login_at']}),
         ('統計情報', {'fields': ['login_attempt_count', 'access_count']}),
@@ -89,3 +89,30 @@ class EmailVerificationTokenAdmin(admin.ModelAdmin):
 
 
 admin.site.register(EmailVerificationToken, EmailVerificationTokenAdmin)
+
+
+class AccountMembershipInline(admin.TabularInline):
+    model = AccountMembership
+    extra = 0
+    readonly_fields = ('created_at',)
+
+
+class AccountGroupAdmin(admin.ModelAdmin):
+    list_display = ('id', 'created_at', 'member_count')
+    readonly_fields = ('created_at',)
+    inlines = [AccountMembershipInline]
+
+    def member_count(self, obj: AccountGroup) -> int:
+        return obj.memberships.count()
+    member_count.short_description = '所属数'
+
+
+class AccountMembershipAdmin(admin.ModelAdmin):
+    list_display = ('group', 'user', 'created_by', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('user__username', 'user__email', 'created_by__username', 'created_by__email')
+    readonly_fields = ('created_at',)
+
+
+admin.site.register(AccountGroup, AccountGroupAdmin)
+admin.site.register(AccountMembership, AccountMembershipAdmin)

@@ -34,7 +34,13 @@
                     {{ field.label }}
                   {% endif %}
                 </label>
-                <input type="{{ field.field.widget.input_type }}" class="form-control {% if field.errors %}is-invalid{% endif %}" id="{{ field.id_for_label }}" name="{{ field.name }}">
+                <input
+                  type="{{ field.field.widget.input_type }}"
+                  class="form-control {% if field.errors %}is-invalid{% endif %}"
+                  id="{{ field.id_for_label }}"
+                  name="{{ field.name }}"
+                  {% if field.value and field.field.widget.input_type != 'password' %}value="{{ field.value }}"{% endif %}
+                >
                 {% if field.errors %}
                   <ul class="invalid-feedback list-unstyled mb-0">
                     {% for error in field.errors %}

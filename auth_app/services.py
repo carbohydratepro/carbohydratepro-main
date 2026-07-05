@@ -7,16 +7,20 @@ from typing import TYPE_CHECKING
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db import transaction
 from django.utils import timezone
 
 from app.models import Category, PaymentMethod
-from .models import LoginHistory
+from .models import AccountGroup, AccountMembership, LoginHistory
 
 if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
     from django.http import HttpRequest
 
 security_logger = logging.getLogger('security')
+
+ACCOUNT_GROUP_SESSION_KEY = 'account_group_id'
+ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY = 'account_active_user_ids'
 
 
 def get_client_ip(request: HttpRequest) -> str | None:
@@ -51,6 +55,194 @@ def create_default_user_data(user: AbstractBaseUser) -> None:
     """新規ユーザーのデフォルトデータを作成"""
     PaymentMethod.objects.create(user=user, name='現金')
     Category.objects.create(user=user, name='食費')
+
+
+def ensure_account_group(user: AbstractBaseUser, created_by: AbstractBaseUser | None = None) -> AccountGroup:
+    """ユーザーのアカウントグループを取得し、なければ作成する。"""
+    try:
+        return user.account_membership.group
+    except AccountMembership.DoesNotExist:
+        group = AccountGroup.objects.create()
+        AccountMembership.objects.create(group=group, user=user, created_by=created_by)
+        return group
+
+
+@transaction.atomic
+def link_accounts(
+    source_user: AbstractBaseUser,
+    target_user: AbstractBaseUser,
+    created_by: AbstractBaseUser | None = None,
+) -> AccountGroup:
+    """2つのユーザーを同じアカウントグループへ所属させる。"""
+    source_group = ensure_account_group(source_user, created_by=created_by)
+
+    try:
+        target_membership = target_user.account_membership
+    except AccountMembership.DoesNotExist:
+        AccountMembership.objects.create(
+            group=source_group,
+            user=target_user,
+            created_by=created_by or source_user,
+        )
+        return source_group
+
+    target_group = target_membership.group
+    if target_group.pk == source_group.pk:
+        return source_group
+
+    AccountMembership.objects.filter(group=target_group).update(group=source_group)
+    target_group.delete()
+    return source_group
+
+
+def remember_account_group(request: HttpRequest, group: AccountGroup) -> None:
+    """現在のセッションにアカウントグループを記録する。"""
+    request.session[ACCOUNT_GROUP_SESSION_KEY] = group.pk
+
+
+def activate_group_accounts(request: HttpRequest, group: AccountGroup) -> None:
+    """セッション内でログイン済みとして切替可能なアカウント一覧を更新する。"""
+    active_user_ids = list(
+        group.memberships
+        .filter(user__is_active=True, user__is_email_verified=True)
+        .order_by('created_at')
+        .values_list('user_id', flat=True)
+    )
+    request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = active_user_ids
+
+
+def remember_authenticated_account(request: HttpRequest, user: AbstractBaseUser) -> AccountGroup:
+    """ログイン済みユーザーのグループと有効アカウントをセッションへ保存する。"""
+    group = ensure_account_group(user)
+    remember_account_group(request, group)
+    active_user_ids = request.session.get(ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY)
+    if active_user_ids is not None:
+        normalized_user_ids = {int(user_id) for user_id in active_user_ids}
+        normalized_user_ids.add(user.pk)
+        verified_group_user_ids = set(
+            group.memberships
+            .filter(user__is_active=True, user__is_email_verified=True)
+            .values_list('user_id', flat=True)
+        )
+        request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = [
+            user_id for user_id in normalized_user_ids if user_id in verified_group_user_ids
+        ]
+    else:
+        activate_group_accounts(request, group)
+    return group
+
+
+def restore_account_session(
+    request: HttpRequest,
+    group: AccountGroup,
+    active_user_ids: list[int],
+    authenticated_user: AbstractBaseUser | None = None,
+) -> None:
+    """Djangoログイン後にアカウント切替用セッション情報を復元する。"""
+    remember_account_group(request, group)
+    normalized_user_ids = {int(user_id) for user_id in active_user_ids}
+    if authenticated_user is not None:
+        normalized_user_ids.add(authenticated_user.pk)
+
+    verified_group_user_ids = list(
+        group.memberships
+        .filter(user__is_active=True, user__is_email_verified=True)
+        .order_by('created_at')
+        .values_list('user_id', flat=True)
+    )
+    request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = [
+        user_id for user_id in verified_group_user_ids if user_id in normalized_user_ids
+    ]
+
+
+def get_session_account_group(request: HttpRequest) -> AccountGroup | None:
+    """セッションまたは認証済みユーザーからアカウントグループを取得する。"""
+    if request.user.is_authenticated:
+        return remember_authenticated_account(request, request.user)
+
+    group_id = request.session.get(ACCOUNT_GROUP_SESSION_KEY)
+    if not group_id:
+        return None
+
+    return AccountGroup.objects.filter(pk=group_id).first()
+
+
+def get_active_account_user_ids(request: HttpRequest, group: AccountGroup) -> list[int]:
+    """セッション上でログイン済みとして扱うユーザーIDを取得する。"""
+    raw_user_ids = request.session.get(ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY)
+    if raw_user_ids is None:
+        activate_group_accounts(request, group)
+        raw_user_ids = request.session.get(ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY, [])
+    return [int(user_id) for user_id in raw_user_ids]
+
+
+def get_account_memberships(request: HttpRequest) -> list[AccountMembership]:
+    """現在のセッションで連携済みの認証済みアカウント所属一覧を返す。"""
+    group = get_session_account_group(request)
+    if group is None:
+        return []
+
+    return list(
+        group.memberships
+        .filter(user__is_active=True, user__is_email_verified=True)
+        .select_related('user')
+        .order_by('created_at')
+    )
+
+
+def get_active_memberships(request: HttpRequest) -> list[AccountMembership]:
+    """現在のセッションでパスワードなしに切替可能なアカウント所属一覧を返す。"""
+    group = get_session_account_group(request)
+    if group is None:
+        return []
+
+    active_user_ids = get_active_account_user_ids(request, group)
+    if not active_user_ids:
+        return []
+
+    return list(
+        group.memberships
+        .filter(user_id__in=active_user_ids, user__is_active=True, user__is_email_verified=True)
+        .select_related('user')
+        .order_by('created_at')
+    )
+
+
+def deactivate_current_account(request: HttpRequest, user: AbstractBaseUser) -> list[AccountMembership]:
+    """現在のアカウントだけをログアウト済みにする。"""
+    group = ensure_account_group(user)
+    remember_account_group(request, group)
+    active_user_ids = get_active_account_user_ids(request, group)
+    active_user_ids = [user_id for user_id in active_user_ids if user_id != user.pk]
+    request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = active_user_ids
+    return list(
+        group.memberships
+        .filter(user_id__in=active_user_ids, user__is_active=True, user__is_email_verified=True)
+        .select_related('user')
+        .order_by('created_at')
+    )
+
+
+def remove_account_from_group(
+    current_user: AbstractBaseUser,
+    target_user: AbstractBaseUser,
+    request: HttpRequest | None = None,
+) -> bool:
+    """現在ユーザーのグループから対象ユーザーを解除する。"""
+    if current_user.pk == target_user.pk:
+        return False
+
+    group = ensure_account_group(current_user)
+    deleted, _ = AccountMembership.objects.filter(group=group, user=target_user).delete()
+    if deleted:
+        ensure_account_group(target_user)
+        if request is not None:
+            active_user_ids = get_active_account_user_ids(request, group)
+            request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = [
+                user_id for user_id in active_user_ids if user_id != target_user.pk
+            ]
+        return True
+    return False
 
 
 def record_login_success(user: AbstractBaseUser, request: HttpRequest) -> None:

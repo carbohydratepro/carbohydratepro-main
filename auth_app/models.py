@@ -1,8 +1,43 @@
+from pathlib import Path
+
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 import uuid
 from datetime import timedelta
+
+
+AVATAR_MAX_SIZE = 2 * 1024 * 1024
+AVATAR_ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
+AVATAR_ALLOWED_CONTENT_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
+
+
+def validate_avatar_file(file: object) -> None:
+    """アカウントアイコン用画像を検証する。"""
+    max_size = getattr(settings, 'ACCOUNT_AVATAR_MAX_SIZE', AVATAR_MAX_SIZE)
+    if getattr(file, 'size', 0) > max_size:
+        raise ValidationError('アカウントアイコンは2MB以下の画像を選択してください。')
+
+    extension = Path(getattr(file, 'name', '')).suffix.lower()
+    if extension not in AVATAR_ALLOWED_EXTENSIONS:
+        raise ValidationError('アカウントアイコンはJPEG、PNG、WebP形式のみ利用できます。')
+
+    content_type = getattr(file, 'content_type', '')
+    if content_type and content_type not in AVATAR_ALLOWED_CONTENT_TYPES:
+        raise ValidationError('アカウントアイコンはJPEG、PNG、WebP形式のみ利用できます。')
+
+    position = file.tell() if hasattr(file, 'tell') else None
+    header = file.read(16) if hasattr(file, 'read') else b''
+    if position is not None and hasattr(file, 'seek'):
+        file.seek(position)
+
+    is_jpeg = header.startswith(b'\xff\xd8\xff')
+    is_png = header.startswith(b'\x89PNG\r\n\x1a\n')
+    is_webp = len(header) >= 12 and header[:4] == b'RIFF' and header[8:12] == b'WEBP'
+    if header and not (is_jpeg or is_png or is_webp):
+        raise ValidationError('アカウントアイコンの画像形式を確認できません。')
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email: str, password: str | None = None, **extra_fields: object) -> 'CustomUser':
@@ -29,6 +64,12 @@ class CustomUserManager(BaseUserManager):
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(max_length=50, unique=True)
     email = models.EmailField(unique=True, null=True, default=None)
+    avatar = models.FileField(
+        'アカウントアイコン',
+        upload_to='account_avatars/',
+        blank=True,
+        validators=[validate_avatar_file],
+    )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     
@@ -49,6 +90,52 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         return self.email or "未指定ユーザー"
+
+
+class AccountGroup(models.Model):
+    """相互に切替可能なアカウント群。"""
+    created_at = models.DateTimeField('作成日時', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'アカウントグループ'
+        verbose_name_plural = 'アカウントグループ'
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f'AccountGroup #{self.pk}'
+
+
+class AccountMembership(models.Model):
+    """アカウントグループへのユーザー所属。"""
+    group = models.ForeignKey(
+        AccountGroup,
+        on_delete=models.CASCADE,
+        related_name='memberships',
+        verbose_name='アカウントグループ',
+    )
+    user = models.OneToOneField(
+        'CustomUser',
+        on_delete=models.CASCADE,
+        related_name='account_membership',
+        verbose_name='ユーザー',
+    )
+    created_by = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_account_memberships',
+        verbose_name='追加したユーザー',
+    )
+    created_at = models.DateTimeField('作成日時', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'アカウント所属'
+        verbose_name_plural = 'アカウント所属'
+        ordering = ['created_at']
+
+    def __str__(self) -> str:
+        return f'{self.user.email} in {self.group_id}'
 
 
 class LoginHistory(models.Model):

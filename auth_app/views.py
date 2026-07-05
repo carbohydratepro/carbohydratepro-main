@@ -1,15 +1,26 @@
 import logging
+from urllib.parse import urlencode
 
 from django.contrib.auth.views import (
-    LoginView, LogoutView, PasswordChangeView, PasswordChangeDoneView,
+    LoginView, PasswordChangeView, PasswordChangeDoneView,
     PasswordResetView, PasswordResetDoneView, PasswordResetConfirmView, PasswordResetCompleteView
 )
 from django.shortcuts import render, redirect, resolve_url
 from django.views import generic
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.mixins import UserPassesTestMixin
-from .forms import LoginForm, SignupForm, UserUpdateForm, MyPasswordChangeForm, MyPasswordResetForm, MySetPasswordForm
-from django.urls import reverse_lazy
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from .forms import (
+    AccountLinkLoginForm,
+    LoginForm,
+    MyPasswordChangeForm,
+    MyPasswordResetForm,
+    MySetPasswordForm,
+    SignupForm,
+    UserUpdateForm,
+)
+from django.urls import reverse, reverse_lazy
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_encode
@@ -23,6 +34,25 @@ from . import services
 logger = logging.getLogger(__name__)
 
 
+def send_verification_email(user) -> bool:
+    """メール認証リンクを送信する。"""
+    from .models import EmailVerificationToken
+
+    token = EmailVerificationToken.objects.create(user=user)
+    verification_url = f"{settings.SITE_PROTOCOL}://{settings.SITE_DOMAIN}/verify-email/{token.token}/"
+    context = {
+        'user': user,
+        'verification_url': verification_url,
+        'site_name': settings.SITE_NAME,
+    }
+    return send_html_email(
+        subject=f'{settings.SITE_NAME} - メールアドレスの確認',
+        template_name='registration/email_verification.html',
+        context=context,
+        recipient_list=[user.email],
+    )
+
+
 
 class TopView(generic.TemplateView):
     template_name = 'registration/top.html'
@@ -32,8 +62,33 @@ class Login(LoginView):
     form_class = LoginForm
     template_name = 'registration/login.html'
 
+    def get_initial(self):
+        initial = super().get_initial()
+        email = self.request.GET.get('email')
+        if email:
+            initial['username'] = email
+        return initial
+
+    def form_valid(self, form):
+        restore_group = None
+        restore_active_user_ids = None
+        if self.request.GET.get('account_switch') == '1':
+            restore_group = services.get_session_account_group(self.request)
+            if restore_group is not None:
+                restore_active_user_ids = services.get_active_account_user_ids(self.request, restore_group)
+
+        response = super().form_valid(form)
+        if restore_group is not None and restore_active_user_ids is not None:
+            services.restore_account_session(
+                self.request,
+                restore_group,
+                restore_active_user_ids,
+                authenticated_user=form.get_user(),
+            )
+        return response
+
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated:
+        if request.user.is_authenticated and request.GET.get('account_switch') != '1':
             return redirect(resolve_url('top'))
         return super().dispatch(request, *args, **kwargs)
     
@@ -61,8 +116,6 @@ class Signup(generic.CreateView):
     form_class = SignupForm
 
     def form_valid(self, form):
-        from .models import EmailVerificationToken
-
         user = form.save(commit=False)
         user.is_staff = False
         user.is_superuser = False
@@ -73,22 +126,7 @@ class Signup(generic.CreateView):
         # デフォルトデータを生成
         services.create_default_user_data(user)
 
-        # メール認証トークンを生成
-        token = EmailVerificationToken.objects.create(user=user)
-
-        # 認証メールを送信
-        verification_url = f"{settings.SITE_PROTOCOL}://{settings.SITE_DOMAIN}/verify-email/{token.token}/"
-        context = {
-            'user': user,
-            'verification_url': verification_url,
-            'site_name': settings.SITE_NAME,
-        }
-        send_html_email(
-            subject=f'{settings.SITE_NAME} - メールアドレスの確認',
-            template_name='registration/email_verification.html',
-            context=context,
-            recipient_list=[user.email],
-        )
+        send_verification_email(user)
 
         # サインアップ後に自動的にログインせず、メール確認ページにリダイレクト
         return redirect('signup_done')
@@ -217,6 +255,136 @@ class PasswordResetComplete(PasswordResetCompleteView):
     template_name = 'registration/password_reset_complete.html'
 
 
+def account_edit(request):
+    """セッション内で有効なアカウントの切替と解除を管理する。"""
+    memberships = services.get_account_memberships(request)
+    if not memberships:
+        messages.info(request, '切り替え可能なアカウントがありません。ログインしてください。')
+        return redirect('login')
+
+    group = services.get_session_account_group(request)
+    active_user_ids = services.get_active_account_user_ids(request, group) if group is not None else []
+    return render(
+        request,
+        'registration/account_select.html',
+        {
+            'active_user_ids': active_user_ids,
+            'memberships': memberships,
+        },
+    )
+
+
+account_select = account_edit
+
+
+def _login_with_account_session(request, user, group, active_user_ids: list[int]) -> None:
+    """Djangoログインでセッションが更新された後、アカウント切替状態を戻す。"""
+    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+    services.restore_account_session(request, group, active_user_ids, authenticated_user=user)
+
+
+@login_required
+def account_add(request):
+    """既存アカウントを現在のグループへ追加する。"""
+    existing_form = AccountLinkLoginForm(
+        prefix='existing',
+        current_user=request.user,
+        request=request,
+    )
+
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')
+        if form_type in ('existing', None, ''):
+            existing_form = AccountLinkLoginForm(
+                request.POST,
+                prefix='existing',
+                current_user=request.user,
+                request=request,
+            )
+            if existing_form.is_valid() and existing_form.user is not None:
+                target_user = existing_form.user
+                group = services.link_accounts(request.user, target_user, created_by=request.user)
+                services.remember_account_group(request, group)
+                services.activate_group_accounts(request, group)
+                active_user_ids = services.get_active_account_user_ids(request, group)
+                _login_with_account_session(request, target_user, group, active_user_ids)
+                messages.success(request, f'{target_user.username} に切り替えました。')
+                return redirect(settings.LOGIN_REDIRECT_URL)
+        else:
+            messages.error(request, 'このアカウント追加方法は現在利用できません。')
+
+    return render(
+        request,
+        'registration/account_add.html',
+        {
+            'existing_form': existing_form,
+        },
+    )
+
+
+@require_POST
+def account_switch(request, pk: int):
+    """セッション内で有効なアカウントへ切り替える。"""
+    group = services.get_session_account_group(request)
+    memberships = services.get_account_memberships(request)
+    target_membership = next((membership for membership in memberships if membership.user_id == pk), None)
+    if group is None or target_membership is None:
+        messages.error(request, 'このアカウントには切り替えできません。')
+        return redirect('account_edit' if memberships else 'login')
+
+    target_user = target_membership.user
+    active_user_ids = services.get_active_account_user_ids(request, group)
+    if target_user.pk not in active_user_ids or not request.user.is_authenticated:
+        messages.info(request, '切り替え先のアカウントでログインしてください。')
+        login_url = reverse('login')
+        query = urlencode({
+            'account_switch': '1',
+            'email': target_user.email,
+            'next': settings.LOGIN_REDIRECT_URL,
+        })
+        return redirect(f'{login_url}?{query}')
+
+    _login_with_account_session(request, target_user, group, active_user_ids)
+    messages.success(request, f'{target_user.username} に切り替えました。')
+    return redirect(settings.LOGIN_REDIRECT_URL)
+
+
+@login_required
+@require_POST
+def account_remove(request, pk: int):
+    """現在アカウント以外をアカウントグループから解除する。"""
+    User = get_user_model()
+    target_user = User.objects.filter(pk=pk).first()
+    if target_user is None:
+        messages.error(request, '解除対象のアカウントが見つかりません。')
+        return redirect('account_edit')
+
+    if services.remove_account_from_group(request.user, target_user, request=request):
+        messages.success(request, f'{target_user.username} をアカウント切替から解除しました。')
+    else:
+        messages.error(request, '現在のアカウントは解除できません。')
+    return redirect('account_edit')
+
+
+@require_POST
+def account_logout_current(request):
+    """現在のアカウントだけをログアウトする。"""
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    remaining_memberships = services.deactivate_current_account(request, request.user)
+    if not remaining_memberships:
+        logout(request)
+        return redirect('login')
+
+    group = remaining_memberships[0].group
+    active_user_ids = services.get_active_account_user_ids(request, group)
+    next_user = remaining_memberships[0].user
+    _login_with_account_session(request, next_user, group, active_user_ids)
+    messages.success(request, f'現在のアカウントからログアウトし、{next_user.username} に切り替えました。')
+    return redirect(settings.LOGIN_REDIRECT_URL)
+
+
 '''メールアドレス認証'''
 def verify_email(request, token):
     """メール認証トークンを検証するビュー"""
@@ -237,7 +405,7 @@ def verify_email(request, token):
             
             logger.info(f"Email verified for user: {user.email}")
             messages.success(request, 'メールアドレスの確認が完了しました。')
-            
+
             return redirect('login')
         else:
             # トークンが無効（期限切れまたは使用済み）

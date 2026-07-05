@@ -1,11 +1,15 @@
 from django.urls import path
 from . import views, demo_views
-from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('', views.Login.as_view(), name='login'),
     path('login/', views.Login.as_view(), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('logout/', views.account_logout_current, name='logout'),
+    path('accounts/edit/', views.account_edit, name='account_edit'),
+    path('accounts/select/', views.account_select, name='account_select'),
+    path('accounts/add/', views.account_add, name='account_add'),
+    path('accounts/switch/<int:pk>/', views.account_switch, name='account_switch'),
+    path('accounts/remove/<int:pk>/', views.account_remove, name='account_remove'),
     path('top/', views.TopView.as_view(), name='top'),
     # デモ画面
     path('demo/', demo_views.demo_redirect, name='demo'),

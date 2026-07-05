@@ -27,6 +27,10 @@ ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY = 'account_active_user_ids'
 LOCAL_IP_ADDRESSES = frozenset({'127.0.0.1', 'localhost', '::1'})
 
 
+class AccountLinkError(Exception):
+    """アカウント連携に失敗したときのエラー。"""
+
+
 def get_client_ip(request: HttpRequest) -> str | None:
     """クライアントのIPアドレスを取得
 
@@ -164,6 +168,14 @@ def link_accounts(
     target_group = target_membership.group
     if target_group.pk == source_group.pk:
         return source_group
+
+    # 対象が他のアカウントとも連携済みの場合、グループ丸ごとの合流は
+    # 意図しないアカウントまで連携される恐れがあるため拒否する
+    if target_group.memberships.exclude(user=target_user).exists():
+        raise AccountLinkError(
+            'このアカウントは既に別のアカウントと連携されています。'
+            '既存の連携を解除してから追加してください。'
+        )
 
     AccountMembership.objects.filter(group=target_group).update(group=source_group)
     target_group.delete()

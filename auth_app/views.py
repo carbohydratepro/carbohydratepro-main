@@ -303,13 +303,17 @@ def account_add(request):
             )
             if existing_form.is_valid() and existing_form.user is not None:
                 target_user = existing_form.user
-                group = services.link_accounts(request.user, target_user, created_by=request.user)
-                services.remember_account_group(request, group)
-                services.activate_group_accounts(request, group)
-                active_user_ids = services.get_active_account_user_ids(request, group)
-                _login_with_account_session(request, target_user, group, active_user_ids)
-                messages.success(request, f'{target_user.username} に切り替えました。')
-                return redirect(settings.LOGIN_REDIRECT_URL)
+                try:
+                    group = services.link_accounts(request.user, target_user, created_by=request.user)
+                except services.AccountLinkError as e:
+                    existing_form.add_error(None, str(e))
+                else:
+                    services.remember_account_group(request, group)
+                    services.activate_group_accounts(request, group)
+                    active_user_ids = services.get_active_account_user_ids(request, group)
+                    _login_with_account_session(request, target_user, group, active_user_ids)
+                    messages.success(request, f'{target_user.username} に切り替えました。')
+                    return redirect(settings.LOGIN_REDIRECT_URL)
         else:
             messages.error(request, 'このアカウント追加方法は現在利用できません。')
 

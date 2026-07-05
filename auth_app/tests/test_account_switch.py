@@ -102,6 +102,29 @@ class AccountSwitchViewTest(TestCase):
         self.assertContains(response, '既存アカウントを追加')
         self.assertFalse(get_user_model().objects.filter(email='linked@example.com').exists())
 
+    def test_add_account_linked_to_other_group_is_rejected(self) -> None:
+        # other_user と third_user を先に連携させておく
+        services.link_accounts(self.other_user, self.third_user, created_by=self.other_user)
+
+        response = self.client.post(
+            reverse('account_add'),
+            {
+                'form_type': 'existing',
+                'existing-email': self.other_user.email,
+                'existing-password': self.password,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'このアカウントは既に別のアカウントと連携されています。')
+        # グループが合流していないこと
+        self.assertNotEqual(
+            self.user.account_membership.group_id,
+            self.other_user.account_membership.group_id,
+        )
+        # ログインユーザーが切り替わっていないこと
+        self.assertEqual(int(self.client.session['_auth_user_id']), self.user.pk)
+
     def test_current_account_logout_switches_to_next_and_requires_login_only_for_logged_out_account(self) -> None:
         group = services.link_accounts(self.user, self.other_user, created_by=self.user)
         services.link_accounts(self.user, self.third_user, created_by=self.user)

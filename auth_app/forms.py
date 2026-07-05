@@ -3,6 +3,10 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model # ユーザーモデルを取得するため
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm, PasswordChangeForm, PasswordResetForm, SetPasswordForm
 
+from . import services
+
+LOGIN_LOCKED_MESSAGE = 'ログインの失敗が続いたため、このアカウントは一時的にロックされています。しばらくしてから再度お試しください。'
+
 '''ログイン用フォーム'''
 class LoginForm(AuthenticationForm):
     username = forms.CharField(label="メールアドレス")
@@ -18,6 +22,12 @@ class LoginForm(AuthenticationForm):
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control'
             field.widget.attrs['placeholder'] = field.label  # placeholderにフィールドのラベルを入れる
+
+    def clean(self) -> dict[str, object]:
+        # ロック中は認証処理自体を行わない（正しいパスワードでも拒否する）
+        if services.is_login_locked(self.cleaned_data.get('username')):
+            raise forms.ValidationError(LOGIN_LOCKED_MESSAGE, code='locked')
+        return super().clean()
 
 '''サインアップ用フォーム'''
 class SignupForm(UserCreationForm):
@@ -89,6 +99,9 @@ class AccountLinkLoginForm(forms.Form):
         password = cleaned_data.get('password')
         if not email or not password:
             return cleaned_data
+
+        if services.is_login_locked(email):
+            raise forms.ValidationError(LOGIN_LOCKED_MESSAGE, code='locked')
 
         user = authenticate(self.request, username=email, password=password)
         if user is None:

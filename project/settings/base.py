@@ -165,6 +165,10 @@ LOGOUT_REDIRECT_URL = '/login/'
 
 AUTH_USER_MODEL = 'auth_app.CustomUser'
 
+# ログイン失敗による一時ロック（ウィンドウ内の失敗が閾値に達すると認証を拒否）
+LOGIN_LOCKOUT_THRESHOLD = env.int('LOGIN_LOCKOUT_THRESHOLD', default=5)
+LOGIN_LOCKOUT_WINDOW_MINUTES = env.int('LOGIN_LOCKOUT_WINDOW_MINUTES', default=15)
+
 SITE_NAME = env('SITE_NAME', default='carbohydratepro')
 
 LOGGING = {

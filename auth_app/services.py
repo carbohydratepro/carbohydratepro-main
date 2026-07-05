@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
 import requests
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
@@ -49,6 +50,43 @@ def get_location_from_ip(ip_address: str | None) -> str:
         security_logger.debug(f'IP地域情報取得エラー: {str(e)}')
 
     return '不明'
+
+
+def is_login_locked(email: str | None) -> bool:
+    """直近のログイン失敗が上限に達し、一時ロック中のアカウントかを判定する。
+
+    直近 LOGIN_LOCKOUT_WINDOW_MINUTES 分間で、最後の成功より後の失敗が
+    LOGIN_LOCKOUT_THRESHOLD 回以上あればロックとみなす。
+    ロック中は認証処理自体を行わないため失敗履歴は増えず、
+    最後の失敗から時間経過すれば自動的に解除される。
+    """
+    if not email:
+        return False
+
+    User = get_user_model()
+    user = User.objects.filter(email=email).first()
+    if user is None:
+        return False
+
+    threshold = getattr(settings, 'LOGIN_LOCKOUT_THRESHOLD', 5)
+    window_minutes = getattr(settings, 'LOGIN_LOCKOUT_WINDOW_MINUTES', 15)
+    window_start = timezone.now() - timedelta(minutes=window_minutes)
+
+    recent_histories = user.login_histories.filter(login_time__gte=window_start)
+    last_success_time = (
+        recent_histories.filter(success=True)
+        .order_by('-login_time')
+        .values_list('login_time', flat=True)
+        .first()
+    )
+    failures = recent_histories.filter(success=False)
+    if last_success_time is not None:
+        failures = failures.filter(login_time__gt=last_success_time)
+
+    if failures.count() >= threshold:
+        security_logger.warning(f'ロック中アカウントへのログイン試行: {email}')
+        return True
+    return False
 
 
 def create_default_user_data(user: AbstractBaseUser) -> None:

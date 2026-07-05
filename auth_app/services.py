@@ -23,18 +23,24 @@ security_logger = logging.getLogger('security')
 ACCOUNT_GROUP_SESSION_KEY = 'account_group_id'
 ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY = 'account_active_user_ids'
 
+LOCAL_IP_ADDRESSES = frozenset({'127.0.0.1', 'localhost', '::1'})
+
 
 def get_client_ip(request: HttpRequest) -> str | None:
-    """クライアントのIPアドレスを取得"""
+    """クライアントのIPアドレスを取得
+
+    X-Forwarded-For はクライアントが任意の値を先頭に付加できるため、
+    信頼できるリバースプロキシ（Nginx）が最後に付加した右端の値を使う。
+    """
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
-        return x_forwarded_for.split(',')[0]
+        return x_forwarded_for.split(',')[-1].strip()
     return request.META.get('REMOTE_ADDR')
 
 
 def get_location_from_ip(ip_address: str | None) -> str:
     """IPアドレスから地域情報を取得"""
-    if not ip_address or ip_address in ['127.0.0.1', 'localhost', '::1']:
+    if not ip_address or ip_address in LOCAL_IP_ADDRESSES:
         return 'ローカルホスト'
 
     try:

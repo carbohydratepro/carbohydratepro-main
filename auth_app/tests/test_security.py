@@ -1,9 +1,9 @@
 """
-セキュリティ関連機能のテスト（ログインロック）
+セキュリティ関連機能のテスト（ログインロック・IPアドレス取得）
 """
 from datetime import timedelta
 
-from django.test import Client, TestCase, override_settings
+from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -11,6 +11,27 @@ from auth_app import services
 from auth_app.forms import LOGIN_LOCKED_MESSAGE
 from auth_app.models import LoginHistory
 from tests.factories import UserFactory
+
+
+class GetClientIpTest(TestCase):
+    """クライアントIP取得のテスト"""
+
+    def setUp(self) -> None:
+        self.factory = RequestFactory()
+
+    def test_remote_addr_without_forwarded_header(self) -> None:
+        """X-Forwarded-For がない場合は REMOTE_ADDR を返すこと"""
+        request = self.factory.get('/', REMOTE_ADDR='203.0.113.10')
+        self.assertEqual(services.get_client_ip(request), '203.0.113.10')
+
+    def test_spoofed_forwarded_for_is_ignored(self) -> None:
+        """クライアントが偽装したXFF先頭値ではなく、プロキシが付加した右端の値を使うこと"""
+        request = self.factory.get(
+            '/',
+            HTTP_X_FORWARDED_FOR='1.2.3.4, 203.0.113.10',
+            REMOTE_ADDR='10.0.0.1',
+        )
+        self.assertEqual(services.get_client_ip(request), '203.0.113.10')
 
 
 @override_settings(LOGIN_LOCKOUT_THRESHOLD=5, LOGIN_LOCKOUT_WINDOW_MINUTES=15)

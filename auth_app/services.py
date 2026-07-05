@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -8,7 +9,7 @@ import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
-from django.db import transaction
+from django.db import close_old_connections, transaction
 from django.utils import timezone
 
 from app.models import Category, PaymentMethod
@@ -56,6 +57,36 @@ def get_location_from_ip(ip_address: str | None) -> str:
         security_logger.debug(f'IP地域情報取得エラー: {str(e)}')
 
     return '不明'
+
+
+def _update_login_history_location(history_pk: int, ip_address: str | None) -> None:
+    """バックグラウンドスレッドからログイン履歴の地域情報を更新する。"""
+    try:
+        location = get_location_from_ip(ip_address)
+        LoginHistory.objects.filter(pk=history_pk).update(location=location)
+    except Exception as e:
+        security_logger.debug(f'ログイン履歴の地域情報更新エラー: {str(e)}')
+    finally:
+        close_old_connections()
+
+
+def schedule_location_resolution(history: LoginHistory) -> None:
+    """地域情報の解決をログイン処理をブロックせずに行う。
+
+    外部API（ipapi.co）への問い合わせが必要な場合のみバックグラウンドで実行する。
+    """
+    ip_address = history.ip_address
+    if not ip_address or ip_address in LOCAL_IP_ADDRESSES:
+        history.location = get_location_from_ip(ip_address)
+        history.save(update_fields=['location'])
+        return
+
+    thread = threading.Thread(
+        target=_update_login_history_location,
+        args=(history.pk, ip_address),
+        daemon=True,
+    )
+    thread.start()
 
 
 def is_login_locked(email: str | None) -> bool:
@@ -293,15 +324,14 @@ def record_login_success(user: AbstractBaseUser, request: HttpRequest) -> None:
     """ログイン成功時の処理（履歴記録・ユーザー情報更新）"""
     ip_address = get_client_ip(request)
     user_agent = request.META.get('HTTP_USER_AGENT', 'Unknown')
-    location = get_location_from_ip(ip_address)
 
-    LoginHistory.objects.create(
+    history = LoginHistory.objects.create(
         user=user,
         ip_address=ip_address,
         user_agent=user_agent,
-        location=location,
         success=True,
     )
+    schedule_location_resolution(history)
 
     user.last_login_at = timezone.now()
     user.login_attempt_count += 1
@@ -311,22 +341,20 @@ def record_login_success(user: AbstractBaseUser, request: HttpRequest) -> None:
 
 def record_login_failure(email: str | None, request: HttpRequest) -> None:
     """ログイン失敗時の処理（履歴記録・試行回数更新）"""
-    from django.contrib.auth import get_user_model
     User = get_user_model()
 
     try:
         user = User.objects.get(email=email)
         ip_address = get_client_ip(request)
         user_agent = request.META.get('HTTP_USER_AGENT', 'Unknown')
-        location = get_location_from_ip(ip_address)
 
-        LoginHistory.objects.create(
+        history = LoginHistory.objects.create(
             user=user,
             ip_address=ip_address,
             user_agent=user_agent,
-            location=location,
             success=False,
         )
+        schedule_location_resolution(history)
 
         user.login_attempt_count += 1
         user.save(update_fields=['login_attempt_count'])

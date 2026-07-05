@@ -1,7 +1,8 @@
 """
-セキュリティ関連機能のテスト（ログインロック・IPアドレス取得）
+セキュリティ関連機能のテスト（ログインロック・IPアドレス取得・地域解決）
 """
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
@@ -114,3 +115,37 @@ class LoginLockoutTest(TestCase):
             LoginHistory.objects.filter(user=self.user, success=False).count(),
             failure_count,
         )
+
+
+class LoginLocationResolutionTest(TestCase):
+    """ログイン履歴の地域解決のテスト"""
+
+    def setUp(self) -> None:
+        self.client = Client()
+        self.password = 'testpass123'
+        self.user = UserFactory()
+
+    def test_local_ip_resolved_synchronously(self) -> None:
+        """ローカルIPは外部APIを呼ばず同期的に解決されること"""
+        with patch('auth_app.services.requests.get') as mock_get:
+            self.client.post(
+                reverse('login'),
+                {'username': self.user.email, 'password': self.password},
+            )
+            mock_get.assert_not_called()
+        history = LoginHistory.objects.filter(user=self.user, success=True).first()
+        self.assertIsNotNone(history)
+        self.assertEqual(history.location, 'ローカルホスト')
+
+    def test_external_ip_does_not_block_login(self) -> None:
+        """外部IPの地域解決はログイン処理をブロックしないこと"""
+        with patch('auth_app.services.threading.Thread') as mock_thread:
+            response = self.client.post(
+                reverse('login'),
+                {'username': self.user.email, 'password': self.password},
+                REMOTE_ADDR='203.0.113.10',
+            )
+            self.assertEqual(response.status_code, 302)
+            mock_thread.assert_called_once()
+            _, kwargs = mock_thread.call_args
+            self.assertTrue(kwargs.get('daemon'))

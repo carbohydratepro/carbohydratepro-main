@@ -2,7 +2,7 @@ from typing import Optional
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DefaultUserAdmin
 from django.http import HttpRequest
-from .models import AccountGroup, AccountMembership, CustomUser, EmailVerificationToken, LoginHistory
+from .models import AccountGroup, AccountGroupLink, AccountMembership, CustomUser, EmailVerificationToken, LoginHistory
 
 
 class LoginHistoryInline(admin.TabularInline):
@@ -114,5 +114,13 @@ class AccountMembershipAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at',)
 
 
+class AccountGroupLinkAdmin(admin.ModelAdmin):
+    list_display = ('parent', 'child', 'created_by', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('created_by__username', 'created_by__email')
+    readonly_fields = ('created_at',)
+
+
 admin.site.register(AccountGroup, AccountGroupAdmin)
 admin.site.register(AccountMembership, AccountMembershipAdmin)
+admin.site.register(AccountGroupLink, AccountGroupLinkAdmin)

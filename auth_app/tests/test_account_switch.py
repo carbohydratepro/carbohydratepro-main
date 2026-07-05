@@ -9,7 +9,7 @@ from django.urls import reverse
 
 from auth_app import services
 from auth_app.forms import UserUpdateForm
-from auth_app.models import AccountMembership
+from auth_app.models import AccountGroupLink, AccountMembership
 
 
 def create_user(
@@ -61,9 +61,16 @@ class AccountSwitchViewTest(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(int(self.client.session['_auth_user_id']), self.other_user.pk)
-        self.assertEqual(
+        # グループは合流せず、親子リンクが作られる
+        self.assertNotEqual(
             self.user.account_membership.group_id,
             self.other_user.account_membership.group_id,
+        )
+        self.assertTrue(
+            AccountGroupLink.objects.filter(
+                parent=self.user.account_membership.group,
+                child=self.other_user.account_membership.group,
+            ).exists()
         )
 
     def test_unverified_account_cannot_be_added(self) -> None:
@@ -102,8 +109,8 @@ class AccountSwitchViewTest(TestCase):
         self.assertContains(response, '既存アカウントを追加')
         self.assertFalse(get_user_model().objects.filter(email='linked@example.com').exists())
 
-    def test_add_account_linked_to_other_group_is_rejected(self) -> None:
-        # other_user と third_user を先に連携させておく
+    def test_add_account_linked_elsewhere_does_not_expose_other_links(self) -> None:
+        # other_user は third_user を既に連携済み（other が親、third が子）
         services.link_accounts(self.other_user, self.third_user, created_by=self.other_user)
 
         response = self.client.post(
@@ -115,15 +122,58 @@ class AccountSwitchViewTest(TestCase):
             },
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'このアカウントは既に別のアカウントと連携されています。')
-        # グループが合流していないこと
-        self.assertNotEqual(
-            self.user.account_membership.group_id,
-            self.other_user.account_membership.group_id,
-        )
-        # ログインユーザーが切り替わっていないこと
-        self.assertEqual(int(self.client.session['_auth_user_id']), self.user.pk)
+        # 連携は成功し other_user に切り替わる
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(int(self.client.session['_auth_user_id']), self.other_user.pk)
+
+        # user から見ると other は切替候補だが、other の子（孫にあたる third）は見えない
+        user_related = {
+            membership.user_id
+            for membership in services.get_related_memberships(self.user.account_membership.group)
+        }
+        self.assertEqual(user_related, {self.user.pk, self.other_user.pk})
+
+        # other から見ると親（user）と子（third）の両方が切替候補
+        other_related = {
+            membership.user_id
+            for membership in services.get_related_memberships(self.other_user.account_membership.group)
+        }
+        self.assertEqual(other_related, {self.user.pk, self.other_user.pk, self.third_user.pk})
+
+    def test_siblings_under_same_parent_can_switch_mutually(self) -> None:
+        # user が other と third を追加すると、兄弟同士も相互に切替候補になる
+        services.link_accounts(self.user, self.other_user, created_by=self.user)
+        services.link_accounts(self.user, self.third_user, created_by=self.user)
+
+        other_related = {
+            membership.user_id
+            for membership in services.get_related_memberships(self.other_user.account_membership.group)
+        }
+        self.assertEqual(other_related, {self.user.pk, self.other_user.pk, self.third_user.pk})
+
+    def test_child_with_multiple_parents_does_not_cross_families(self) -> None:
+        # other は user と third の両方の子になれる（複数グループへの所属）
+        services.link_accounts(self.user, self.other_user, created_by=self.user)
+        services.link_accounts(self.third_user, self.other_user, created_by=self.third_user)
+
+        # other からは両方のファミリーが見える
+        other_related = {
+            membership.user_id
+            for membership in services.get_related_memberships(self.other_user.account_membership.group)
+        }
+        self.assertEqual(other_related, {self.user.pk, self.other_user.pk, self.third_user.pk})
+
+        # user と third は other を介してつながらない
+        user_related = {
+            membership.user_id
+            for membership in services.get_related_memberships(self.user.account_membership.group)
+        }
+        self.assertEqual(user_related, {self.user.pk, self.other_user.pk})
+        third_related = {
+            membership.user_id
+            for membership in services.get_related_memberships(self.third_user.account_membership.group)
+        }
+        self.assertEqual(third_related, {self.third_user.pk, self.other_user.pk})
 
     def test_current_account_logout_switches_to_next_and_requires_login_only_for_logged_out_account(self) -> None:
         group = services.link_accounts(self.user, self.other_user, created_by=self.user)
@@ -196,16 +246,33 @@ class AccountSwitchViewTest(TestCase):
         response = self.client.post(reverse('account_remove', kwargs={'pk': self.other_user.pk}))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse('account_edit'))
-        self.other_user.refresh_from_db()
-        self.assertNotEqual(
-            self.user.account_membership.group_id,
-            self.other_user.account_membership.group_id,
-        )
+        # 解除後は切替候補から消える（親子リンクが削除される）
+        user_related = {
+            membership.user_id
+            for membership in services.get_related_memberships(self.user.account_membership.group)
+        }
+        self.assertNotIn(self.other_user.pk, user_related)
+        self.assertFalse(AccountGroupLink.objects.exists())
 
         response = self.client.post(reverse('account_remove', kwargs={'pk': self.user.pk}))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse('account_edit'))
         self.assertEqual(AccountMembership.objects.filter(user=self.user).count(), 1)
+
+    def test_remove_legacy_same_group_member(self) -> None:
+        # 旧仕様データ（同一グループ所属）は対象を新しいグループへ分離する
+        group = services.ensure_account_group(self.user)
+        services.ensure_account_group(self.other_user)
+        AccountMembership.objects.filter(user=self.other_user).update(group=group)
+
+        # リレーションキャッシュを避けるため再取得する
+        other_user = get_user_model().objects.get(pk=self.other_user.pk)
+        self.assertTrue(services.remove_account_from_group(self.user, other_user))
+        other_user = get_user_model().objects.get(pk=self.other_user.pk)
+        self.assertNotEqual(
+            self.user.account_membership.group_id,
+            other_user.account_membership.group_id,
+        )
 
 
 class AvatarValidationTest(TestCase):

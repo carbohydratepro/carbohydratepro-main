@@ -138,6 +138,48 @@ class AccountMembership(models.Model):
         return f'{self.user.email} in {self.group_id}'
 
 
+class AccountGroupLink(models.Model):
+    """アカウントグループ間の親子関係。
+
+    親グループとその直接の子グループが1つの「ファミリー」を構成し、
+    ファミリー内のアカウントは相互に切替できる。
+    子グループは複数の親を持てるが、孫（子の子）や子の別の親は辿らない。
+    """
+    parent = models.ForeignKey(
+        AccountGroup,
+        on_delete=models.CASCADE,
+        related_name='child_links',
+        verbose_name='親グループ',
+    )
+    child = models.ForeignKey(
+        AccountGroup,
+        on_delete=models.CASCADE,
+        related_name='parent_links',
+        verbose_name='子グループ',
+    )
+    created_by = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_account_group_links',
+        verbose_name='作成したユーザー',
+    )
+    created_at = models.DateTimeField('作成日時', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'アカウントグループ連携'
+        verbose_name_plural = 'アカウントグループ連携'
+        ordering = ['created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['parent', 'child'], name='unique_account_group_link'),
+            models.CheckConstraint(check=~models.Q(parent=models.F('child')), name='account_group_link_not_self'),
+        ]
+
+    def __str__(self) -> str:
+        return f'AccountGroup #{self.parent_id} -> #{self.child_id}'
+
+
 class LoginHistory(models.Model):
     """ログイン履歴モデル"""
     user = models.ForeignKey(

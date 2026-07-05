@@ -10,10 +10,11 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.db import close_old_connections, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from app.models import Category, PaymentMethod
-from .models import AccountGroup, AccountMembership, LoginHistory
+from .models import AccountGroup, AccountGroupLink, AccountMembership, LoginHistory
 
 if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
@@ -25,10 +26,6 @@ ACCOUNT_GROUP_SESSION_KEY = 'account_group_id'
 ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY = 'account_active_user_ids'
 
 LOCAL_IP_ADDRESSES = frozenset({'127.0.0.1', 'localhost', '::1'})
-
-
-class AccountLinkError(Exception):
-    """アカウント連携に失敗したときのエラー。"""
 
 
 def get_client_ip(request: HttpRequest) -> str | None:
@@ -146,39 +143,74 @@ def ensure_account_group(user: AbstractBaseUser, created_by: AbstractBaseUser | 
         return group
 
 
+def get_related_group_ids(group: AccountGroup) -> set[int]:
+    """切替候補となるグループIDを返す。
+
+    「ファミリー」= 親グループ + その直接の子グループ。
+    自分が親のファミリー（自分＋直接の子）と、自分が子として属する
+    ファミリー（親＋その兄弟）を合わせた範囲を返す。
+    孫（子の子）や、子・兄弟の別の親は辿らない。
+    """
+    related_ids = {group.pk}
+
+    # 自分が親のファミリー: 直接の子グループ
+    related_ids.update(
+        AccountGroupLink.objects.filter(parent=group).values_list('child_id', flat=True)
+    )
+
+    # 自分が子として属するファミリー: 親グループとその子（兄弟）グループ
+    parent_ids = set(
+        AccountGroupLink.objects.filter(child=group).values_list('parent_id', flat=True)
+    )
+    related_ids.update(parent_ids)
+    if parent_ids:
+        related_ids.update(
+            AccountGroupLink.objects.filter(parent_id__in=parent_ids).values_list('child_id', flat=True)
+        )
+
+    return related_ids
+
+
+def get_related_memberships(group: AccountGroup) -> list[AccountMembership]:
+    """グループから切替可能な全アカウント所属を返す（認証済み・有効のみ）。"""
+    return list(
+        AccountMembership.objects
+        .filter(
+            group_id__in=get_related_group_ids(group),
+            user__is_active=True,
+            user__is_email_verified=True,
+        )
+        .select_related('user')
+        .order_by('created_at')
+    )
+
+
 @transaction.atomic
 def link_accounts(
     source_user: AbstractBaseUser,
     target_user: AbstractBaseUser,
     created_by: AbstractBaseUser | None = None,
 ) -> AccountGroup:
-    """2つのユーザーを同じアカウントグループへ所属させる。"""
+    """対象ユーザーのグループを現在ユーザーのグループの子として連携する。
+
+    グループの合流は行わないため、対象が既に持っている他の連携
+    （対象の子や別の親）が現在ユーザー側へ波及することはない。
+    """
     source_group = ensure_account_group(source_user, created_by=created_by)
+    target_group = ensure_account_group(target_user, created_by=created_by or source_user)
 
-    try:
-        target_membership = target_user.account_membership
-    except AccountMembership.DoesNotExist:
-        AccountMembership.objects.create(
-            group=source_group,
-            user=target_user,
-            created_by=created_by or source_user,
-        )
-        return source_group
-
-    target_group = target_membership.group
     if target_group.pk == source_group.pk:
         return source_group
 
-    # 対象が他のアカウントとも連携済みの場合、グループ丸ごとの合流は
-    # 意図しないアカウントまで連携される恐れがあるため拒否する
-    if target_group.memberships.exclude(user=target_user).exists():
-        raise AccountLinkError(
-            'このアカウントは既に別のアカウントと連携されています。'
-            '既存の連携を解除してから追加してください。'
-        )
+    # 逆方向（対象が親）の関係が既にあれば、二重の親子関係は作らない
+    if AccountGroupLink.objects.filter(parent=target_group, child=source_group).exists():
+        return source_group
 
-    AccountMembership.objects.filter(group=target_group).update(group=source_group)
-    target_group.delete()
+    AccountGroupLink.objects.get_or_create(
+        parent=source_group,
+        child=target_group,
+        defaults={'created_by': created_by or source_user},
+    )
     return source_group
 
 
@@ -189,12 +221,7 @@ def remember_account_group(request: HttpRequest, group: AccountGroup) -> None:
 
 def activate_group_accounts(request: HttpRequest, group: AccountGroup) -> None:
     """セッション内でログイン済みとして切替可能なアカウント一覧を更新する。"""
-    active_user_ids = list(
-        group.memberships
-        .filter(user__is_active=True, user__is_email_verified=True)
-        .order_by('created_at')
-        .values_list('user_id', flat=True)
-    )
+    active_user_ids = [membership.user_id for membership in get_related_memberships(group)]
     request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = active_user_ids
 
 
@@ -206,13 +233,11 @@ def remember_authenticated_account(request: HttpRequest, user: AbstractBaseUser)
     if active_user_ids is not None:
         normalized_user_ids = {int(user_id) for user_id in active_user_ids}
         normalized_user_ids.add(user.pk)
-        verified_group_user_ids = set(
-            group.memberships
-            .filter(user__is_active=True, user__is_email_verified=True)
-            .values_list('user_id', flat=True)
-        )
+        verified_user_ids = {
+            membership.user_id for membership in get_related_memberships(group)
+        }
         request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = [
-            user_id for user_id in normalized_user_ids if user_id in verified_group_user_ids
+            user_id for user_id in normalized_user_ids if user_id in verified_user_ids
         ]
     else:
         activate_group_accounts(request, group)
@@ -231,14 +256,11 @@ def restore_account_session(
     if authenticated_user is not None:
         normalized_user_ids.add(authenticated_user.pk)
 
-    verified_group_user_ids = list(
-        group.memberships
-        .filter(user__is_active=True, user__is_email_verified=True)
-        .order_by('created_at')
-        .values_list('user_id', flat=True)
-    )
+    verified_user_ids = [
+        membership.user_id for membership in get_related_memberships(group)
+    ]
     request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = [
-        user_id for user_id in verified_group_user_ids if user_id in normalized_user_ids
+        user_id for user_id in verified_user_ids if user_id in normalized_user_ids
     ]
 
 
@@ -269,12 +291,7 @@ def get_account_memberships(request: HttpRequest) -> list[AccountMembership]:
     if group is None:
         return []
 
-    return list(
-        group.memberships
-        .filter(user__is_active=True, user__is_email_verified=True)
-        .select_related('user')
-        .order_by('created_at')
-    )
+    return get_related_memberships(group)
 
 
 def get_active_memberships(request: HttpRequest) -> list[AccountMembership]:
@@ -287,12 +304,10 @@ def get_active_memberships(request: HttpRequest) -> list[AccountMembership]:
     if not active_user_ids:
         return []
 
-    return list(
-        group.memberships
-        .filter(user_id__in=active_user_ids, user__is_active=True, user__is_email_verified=True)
-        .select_related('user')
-        .order_by('created_at')
-    )
+    return [
+        membership for membership in get_related_memberships(group)
+        if membership.user_id in active_user_ids
+    ]
 
 
 def deactivate_current_account(request: HttpRequest, user: AbstractBaseUser) -> list[AccountMembership]:
@@ -302,34 +317,51 @@ def deactivate_current_account(request: HttpRequest, user: AbstractBaseUser) -> 
     active_user_ids = get_active_account_user_ids(request, group)
     active_user_ids = [user_id for user_id in active_user_ids if user_id != user.pk]
     request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = active_user_ids
-    return list(
-        group.memberships
-        .filter(user_id__in=active_user_ids, user__is_active=True, user__is_email_verified=True)
-        .select_related('user')
-        .order_by('created_at')
-    )
+    return [
+        membership for membership in get_related_memberships(group)
+        if membership.user_id in active_user_ids
+    ]
 
 
+@transaction.atomic
 def remove_account_from_group(
     current_user: AbstractBaseUser,
     target_user: AbstractBaseUser,
     request: HttpRequest | None = None,
 ) -> bool:
-    """現在ユーザーのグループから対象ユーザーを解除する。"""
+    """現在ユーザーと対象ユーザーの連携を解除する。
+
+    親子リンクがあればリンクを削除する。同一グループ所属（旧仕様データ）の
+    場合は対象を新しいグループへ分離する。
+    """
     if current_user.pk == target_user.pk:
         return False
 
     group = ensure_account_group(current_user)
-    deleted, _ = AccountMembership.objects.filter(group=group, user=target_user).delete()
-    if deleted:
-        ensure_account_group(target_user)
-        if request is not None:
-            active_user_ids = get_active_account_user_ids(request, group)
-            request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = [
-                user_id for user_id in active_user_ids if user_id != target_user.pk
-            ]
-        return True
-    return False
+
+    try:
+        target_membership = target_user.account_membership
+    except AccountMembership.DoesNotExist:
+        return False
+
+    target_group = target_membership.group
+    if target_group.pk == group.pk:
+        # 旧仕様の同一グループ所属: 対象を新しい単独グループへ分離する
+        new_group = AccountGroup.objects.create()
+        AccountMembership.objects.filter(pk=target_membership.pk).update(group=new_group)
+        removed = True
+    else:
+        deleted, _ = AccountGroupLink.objects.filter(
+            Q(parent=group, child=target_group) | Q(parent=target_group, child=group)
+        ).delete()
+        removed = deleted > 0
+
+    if removed and request is not None:
+        active_user_ids = get_active_account_user_ids(request, group)
+        request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = [
+            user_id for user_id in active_user_ids if user_id != target_user.pk
+        ]
+    return removed
 
 
 def record_login_success(user: AbstractBaseUser, request: HttpRequest) -> None:

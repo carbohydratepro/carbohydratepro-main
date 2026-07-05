@@ -12,7 +12,7 @@
 - ログイン履歴の地域解決（ipapi.co）はバックグラウンドスレッド化し、ログインをブロックしない。
 - DRF（rest_framework / simplejwt）は未使用のため削除。gunicorn イメージ再ビルド済み。
 - ログは RotatingFileHandler（10MB×5世代）、django ロガーは INFO に変更。
-- `link_accounts` は対象が他アカウントと連携済みの場合 `AccountLinkError` で拒否（グループ丸ごと合流を廃止）。
+- アカウント連携は親子リンク方式（`AccountGroupLink`）に変更。追加時は親→子のリンクを作成し、グループ合流はしない。切替候補は「自分＋直接の子」＋「親＋その兄弟」のファミリー範囲。孫や子の別の親は辿らない。子は複数の親に所属可能。旧仕様の同一グループ所属データは解除時に分離される。
 - デザイントークン（CSS変数）を `static/app/styles.css` に定義。カードヘッダー・ボタンを統一し、認証系テンプレートのパステル色インラインスタイルを除去。`styles.css` は両 base.html で Bootstrap より後に読み込む。
 
 ## 対象リポジトリ

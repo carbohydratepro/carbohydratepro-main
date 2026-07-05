@@ -14,3 +14,5 @@ staticfiles/
 playwright-report/
 test-results/
 media/
+workspace/
+*.log.*

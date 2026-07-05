@@ -11,7 +11,7 @@
     <div class="col-md-6">
       <div class="card mt-3 mb-3 shadow">
         <!-- カードヘッダー -->
-        <div class="card-header" style="background-color: #add8e6; color: #333;">
+        <div class="card-header">
           <h4>{{ process_name }}</h4>
         </div>
         <!-- カードボディー -->
@@ -37,7 +37,7 @@
             {% endfor %}
             {% csrf_token %}
             <!-- ボタン -->
-            <button type="submit" class="btn btn-lg btn-block mt-2" style="background-color: #add8e6; color: #333;">{{ button_text }}</button>
+            <button type="submit" class="btn btn-primary btn-lg btn-block mt-2">{{ button_text }}</button>
             <button type="button" class="btn btn-outline-secondary btn-lg btn-block mt-4" onclick="history.back()">キャンセル</button>
           </form>
         </div>

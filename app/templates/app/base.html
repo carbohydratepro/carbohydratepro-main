@@ -24,15 +24,17 @@
     <meta name="twitter:description" content="{% block twitter_description %}家計簿・タスク・習慣・メモを一元管理するライフマネジメントツールです。{% endblock %}">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="{% static 'app/styles.css' %}">
-    <link rel="stylesheet" href="{% static 'app/footer.css' %}">
     <link rel="icon" type="image/png" href="{% static 'app/rice-icon.png' %}">
     <link rel="apple-touch-icon" href="{% static 'app/rice-icon.png' %}">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'app/rice-icon.png' %}">
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-   
+
+    <!-- 共通スタイル（Bootstrapを上書きするため必ずBootstrapより後に読み込む） -->
+    <link rel="stylesheet" href="{% static 'app/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'app/footer.css' %}">
+
     {% block extra_css %}{% endblock %}
    
     <!-- Optional JavaScript -->
@@ -88,7 +90,7 @@
     {% endif %}
 
     <!-- コンテンツ -->
-    <div class="pl-4 small" style="background-color: #e2e3e5 ; border-bottom: solid 1px #f3f3f3;">
+    <div class="pl-4 small page-greeting">
         {% if not user.is_authenticated %}
           こんにちは！ ゲスト さん
         {% else %}

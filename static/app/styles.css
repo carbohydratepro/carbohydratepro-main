@@ -1,11 +1,109 @@
+/* ==========================================================================
+   デザイントークン（全画面共通）
+   色・角丸・影はここで一元管理し、各画面のCSSでは直接カラーコードを書かず
+   var(--xxx) を参照すること。
+   ========================================================================== */
+:root {
+    /* アクセント（Bootstrap primary と同一。変更時はここだけ変える） */
+    --color-primary: #007bff;
+    --color-primary-dark: #0069d9;
+
+    /* テキスト・サーフェス */
+    --color-text: #333333;
+    --color-text-muted: #6c757d;
+    --color-surface: #ffffff;
+    --color-surface-alt: #f8f9fa;
+    --color-border: #dee2e6;
+
+    /* セマンティックカラー（Bootstrap準拠） */
+    --color-success: #28a745;
+    --color-danger: #dc3545;
+    --color-warning: #ffc107;
+    --color-info: #17a2b8;
+
+    /* 形状 */
+    --radius: 8px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
 .m-5 {
     margin: 5%;
 }
 
 html, body {
     height: 100%;
-    background-color: #ffffff; /* 明るい背景色 */
-    color: #333333; /* 明るい背景に映える文字色 */
+    background-color: var(--color-surface);
+    color: var(--color-text);
+}
+
+/* ==========================================================================
+   共通コンポーネント（Bootstrap の上書き。base.html で Bootstrap より後に
+   読み込むこと）
+   ========================================================================== */
+
+/* カード：角丸と控えめな影で統一。ヘッダーはニュートラルな背景に統一し、
+   画面ごとの色付きヘッダーは使わない */
+.card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+}
+
+.card-header {
+    background-color: var(--color-surface-alt);
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+/* あいさつバー（ヘッダー直下） */
+.page-greeting {
+    background-color: var(--color-surface-alt);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+}
+
+/* アカウントメニュー（ヘッダー共通） */
+.account-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--color-text-muted);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.account-avatar-sm {
+    width: 30px;
+    height: 30px;
+    font-size: 0.85rem;
+}
+
+.account-avatar img {
+    object-fit: cover;
+}
+
+.account-menu-button {
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.account-menu-button:hover,
+.account-menu-button:focus {
+    color: #fff;
+}
+
+.account-dropdown {
+    min-width: 18rem;
+}
+
+.account-switch-item {
+    white-space: normal;
 }
 
 /* グラフエリア */
@@ -90,22 +188,22 @@ h1 {
 }
 
 .message-dialog-content.success {
-    border-left: 5px solid #28a745;
+    border-left: 5px solid var(--color-success);
     background-color: #f8fff9;  /* 薄い緑背景 */
 }
 
 .message-dialog-content.error {
-    border-left: 5px solid #dc3545;
+    border-left: 5px solid var(--color-danger);
     background-color: #fff8f8;  /* 薄い赤背景 */
 }
 
 .message-dialog-content.warning {
-    border-left: 5px solid #ffc107;
+    border-left: 5px solid var(--color-warning);
     background-color: #fffef8;  /* 薄い黄色背景 */
 }
 
 .message-dialog-content.info {
-    border-left: 5px solid #17a2b8;
+    border-left: 5px solid var(--color-info);
     background-color: #f8fcff;  /* 薄い青背景 */
 }
 
@@ -115,25 +213,25 @@ h1 {
 }
 
 .message-dialog-content.success .message-icon {
-    color: #28a745;
+    color: var(--color-success);
 }
 
 .message-dialog-content.error .message-icon {
-    color: #dc3545;
+    color: var(--color-danger);
 }
 
 .message-dialog-content.warning .message-icon {
-    color: #ffc107;
+    color: var(--color-warning);
 }
 
 .message-dialog-content.info .message-icon {
-    color: #17a2b8;
+    color: var(--color-info);
 }
 
 .message-text {
     flex: 1;
     font-size: 16px;
-    color: #333;
+    color: var(--color-text);
     line-height: 1.5;
 }
 
@@ -152,7 +250,7 @@ h1 {
 }
 
 .message-close-btn:hover {
-    color: #333;
+    color: var(--color-text);
 }
 
 /* 長押し削除オーバーレイ（全画面共通） */

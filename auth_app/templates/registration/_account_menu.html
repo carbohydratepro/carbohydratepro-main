@@ -1,41 +1,5 @@
 {% if user.is_authenticated %}
-<style>
-  .account-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    object-fit: cover;
-    background: #6c757d;
-    color: #fff;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-  }
-  .account-avatar-sm {
-    width: 30px;
-    height: 30px;
-    font-size: 0.85rem;
-  }
-  .account-avatar img {
-    object-fit: cover;
-  }
-  .account-menu-button {
-    border: 0;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.75);
-  }
-  .account-menu-button:hover,
-  .account-menu-button:focus {
-    color: #fff;
-  }
-  .account-dropdown {
-    min-width: 18rem;
-  }
-  .account-switch-item {
-    white-space: normal;
-  }
-</style>
+{# アカウントメニューのスタイルは styles.css（共通スタイル）で定義 #}
 <ul class="navbar-nav ml-auto">
   <li class="nav-item dropdown">
     <button

@@ -13,7 +13,7 @@
     <div class="col-md-6">
       <div class="card mt-3 mb-3 shadow">
         <!-- カードヘッダー -->
-        <div class="card-header" style="background-color: #addeaa; color: #333;">
+        <div class="card-header">
           <h4>ログイン</h4>
         </div>
         <!-- カードボディー -->
@@ -50,7 +50,7 @@
                 {% endif %}
               </div>
             {% endfor %}
-              <button type="submit" class="btn btn-lg btn-block mt-2" style="background-color: #addeaa; color: #333;">ログイン</button>
+              <button type="submit" class="btn btn-primary btn-lg btn-block mt-2">ログイン</button>
               <input type="hidden" name="next" value="{{ next }}" />
             {% csrf_token %}
           </form>

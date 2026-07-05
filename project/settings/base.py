@@ -33,7 +33,6 @@ INSTALLED_APPS = [
     'django.contrib.humanize',  # 数値のカンマ区切り表示用
     'django.contrib.sitemaps',  # サイトマップ
     'app',
-    'rest_framework',
 ]
 
 # サイトのドメイン・プロトコル（本番環境は production.py で上書き）
@@ -230,14 +229,6 @@ LOGGING = {
             'propagate': False,
         },
     },
-}
-
-# Django Rest Framework の設定
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.BasicAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
-    ),
 }
 
 CORS_ALLOWED_ORIGINS = [

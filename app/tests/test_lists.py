@@ -293,24 +293,26 @@ class TaskListViewTest(TestCase):
         Task.objects.bulk_create(tasks)
         return label
 
-    def test_month_pagination_default(self) -> None:
-        """月表示でのデフォルトページネーションのテスト"""
+    def test_month_view_builds_calendar(self) -> None:
+        """月表示でカレンダーデータが生成されるテスト"""
         self._create_tasks(25)
         resp = self.client.get(reverse('task_list'))
-        page = resp.context['tasks_page']
-        self.assertEqual(page.paginator.per_page, 20)
-        self.assertEqual(page.paginator.count, 25)
-        self.assertEqual(len(page.object_list), 20)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context['view_mode'], 'month')
+        self.assertIn('calendar_data', resp.context)
+        self.assertIn('weekday_labels', resp.context)
 
-    def test_day_pagination_10(self) -> None:
-        """日表示でのページネーション（10件）のテスト"""
-        self._create_tasks(12)
-        today_str = timezone.now().date().strftime('%Y-%m-%d')
+    def test_day_view_builds_gantt(self) -> None:
+        """日表示でガントチャートデータが生成されるテスト"""
+        self._create_tasks(1)
+        today_str = timezone.localdate().strftime('%Y-%m-%d')
         resp = self.client.get(
-            reverse('task_list') + f'?view_mode=day&target_date={today_str}&per_page=10'
+            reverse('task_list') + f'?view_mode=day&target_date={today_str}'
         )
-        page = resp.context['tasks_page']
-        self.assertEqual(page.paginator.per_page, 10)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context['view_mode'], 'day')
+        self.assertIn('gantt_data', resp.context)
+        self.assertGreaterEqual(resp.context['tasks_count'], 1)
 
     def test_week_start_session_default(self) -> None:
         """週開始日のデフォルト値（日曜日）のテスト"""

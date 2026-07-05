@@ -152,7 +152,7 @@ class ChartColorsTest(TestCase):
     def test_category_colors_exist(self) -> None:
         """カテゴリ色が存在することをテスト"""
         self.assertIn('category', CHART_COLORS)
-        self.assertEqual(len(CHART_COLORS['category']), 5)
+        self.assertEqual(len(CHART_COLORS['category']), 15)
 
     def test_major_category_colors_exist(self) -> None:
         """大分類色が存在することをテスト"""

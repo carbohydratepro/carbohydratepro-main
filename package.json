@@ -1,10 +1,17 @@
 {
   "scripts": {
     "build": "tsc",
-    "watch": "tsc --watch"
+    "typecheck:e2e": "tsc -p tsconfig.e2e.json --noEmit",
+    "check": "npm run build && npm run typecheck:e2e",
+    "watch": "tsc --watch",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/jquery": "^3.5.32",
+    "@types/node": "^25.9.3",
     "typescript": "^5.7.3"
   }
 }

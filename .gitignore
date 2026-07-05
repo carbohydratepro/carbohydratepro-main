@@ -11,3 +11,5 @@ settings.local.json
 node_modules/
 static_root/
 staticfiles/
+playwright-report/
+test-results/

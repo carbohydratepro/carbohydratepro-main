@@ -29,6 +29,35 @@ project/
 
 ## テストの実行
 
+### Playwright E2E テスト
+
+リリース前のブラウザ操作確認は Playwright で自動化します。
+
+```bash
+# 初回のみ
+npm install
+npx playwright install chromium
+
+# 開発サーバーを起動してから実行
+docker-compose -f docker-compose-dev.yml up -d
+npm run test:e2e
+```
+
+認証後フローを含める場合:
+
+```bash
+python manage.py seed_e2e_user --email user@dev.local --username e2e-user --password 'your-password' --reset --settings=project.settings.e2e
+E2E_USER_EMAIL=user@dev.local E2E_USER_PASSWORD='your-password' npm run test:e2e
+```
+
+TypeScript と E2E テストコードの静的確認:
+
+```bash
+npm run check
+```
+
+詳細なルールと仕様は `docs/e2e/README.md`、`docs/e2e/rules.md`、`docs/e2e/release-test-spec.md` を参照してください。
+
 ### Docker環境でのテスト実行
 
 開発環境ではDocker Composeを使用してテストを実行します。

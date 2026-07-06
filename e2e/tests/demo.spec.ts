@@ -1,6 +1,7 @@
 import { expect, test } from "../fixtures/base";
 
 const demoPages = [
+  { path: "/demo/home/", text: "ホーム" },
   { path: "/demo/expenses/", text: "家計簿" },
   { path: "/demo/tasks/", text: "スケジュール" },
   { path: "/demo/board/", text: "一時タスク" },

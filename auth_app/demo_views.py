@@ -9,6 +9,12 @@ def demo_redirect(request: HttpRequest) -> HttpResponse:
     return redirect('demo_expenses')
 
 
+def demo_home(request: HttpRequest) -> HttpResponse:
+    context = demo_data.get_home_context()
+    context['is_demo'] = True
+    return render(request, 'app/dashboard.html', context)
+
+
 def demo_expenses(request: HttpRequest) -> HttpResponse:
     context = demo_data.get_expenses_context()
     context['is_demo'] = True

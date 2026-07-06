@@ -22,7 +22,7 @@ test.describe("認証", () => {
 
     await login(page, credentials);
 
-    await expect(page.getByRole("heading", { name: /家計簿/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "ホーム" })).toBeVisible();
     // マイページはヘッダーのアカウントメニュー内に表示される
     await openAccountMenu(page);
     await expect(page.getByRole("link", { name: "マイページ" })).toBeVisible();

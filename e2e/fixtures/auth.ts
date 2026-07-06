@@ -52,7 +52,7 @@ export async function login(page: Page, credentials: Credentials): Promise<void>
   await page.getByLabel("メールアドレス").fill(credentials.email);
   await page.getByLabel(/パスワード|Password/).fill(credentials.password);
   await page.getByRole("button", { name: "ログイン" }).click();
-  await expect(page).toHaveURL(/\/carbohydratepro\/expenses\/?$/);
+  await expect(page).toHaveURL(/\/carbohydratepro\/home\/?$/);
   await expect(page.getByText(/こんにちは！ .* さん/)).toBeVisible();
 }
 

@@ -2,6 +2,7 @@ import { expect, test } from "../fixtures/base";
 import { getCredentialsOrSkip, login, openAccountMenu } from "../fixtures/auth";
 
 const authenticatedPages = [
+  { name: "ホーム", expectedPath: "/carbohydratepro/home/", text: "ホーム" },
   { name: "家計簿", expectedPath: "/carbohydratepro/expenses/", text: "家計簿" },
   { name: "スケジュール", expectedPath: "/carbohydratepro/tasks/", text: "スケジュール" },
   { name: "一時タスク", expectedPath: "/carbohydratepro/tasks/board/", text: "一時タスク" },
@@ -23,7 +24,12 @@ test.describe("ログイン後ナビゲーション", () => {
       if (target.inAccountMenu) {
         await openAccountMenu(page);
       }
-      await page.getByRole("link", { name: target.name }).click();
+      // ナビ項目はダッシュボードのカード内リンク（「家計簿へ」等）と区別するため完全一致で選択する。
+      // アカウントメニュー内はアイコンのCSS生成文字が名前に含まれるため部分一致にする。
+      const link = target.inAccountMenu
+        ? page.getByRole("link", { name: target.name })
+        : page.getByRole("link", { name: target.name, exact: true });
+      await link.click();
 
       if (typeof target.expectedPath === "string") {
         await expect(page).toHaveURL(new RegExp(`${target.expectedPath.replaceAll("/", "\\/")}$`));

@@ -3,6 +3,7 @@ import { getCredentialsOrSkip, login } from "../fixtures/auth";
 import { expectNoHorizontalOverflow, expectVisibleControlsHaveNames } from "../fixtures/http";
 
 const authenticatedPages = [
+  { id: "E2E-HOME-001", path: "/carbohydratepro/home/", text: "ホーム" },
   { id: "E2E-EXPENSES-001", path: "/carbohydratepro/expenses/", text: "家計簿" },
   { id: "E2E-EXPENSES-SET-001", path: "/carbohydratepro/expenses/settings/", text: "支払方法" },
   { id: "E2E-RECURRING-001", path: "/carbohydratepro/expenses/recurring/", text: "定期支払い" },

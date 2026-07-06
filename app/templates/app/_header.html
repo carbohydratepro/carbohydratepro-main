@@ -16,6 +16,10 @@
         {% if is_demo %}
         <!-- デモモード用ナビ -->
         <li class="nav-item m-1">
+          <a class="nav-link {% if request.resolver_match.url_name == 'demo_home' %}active{% endif %}"
+             href="{% url 'demo_home' %}">ホーム</a>
+        </li>
+        <li class="nav-item m-1">
           <a class="nav-link {% if request.resolver_match.url_name == 'demo_expenses' %}active{% endif %}"
              href="{% url 'demo_expenses' %}">家計簿</a>
         </li>
@@ -46,6 +50,9 @@
         </li>
         {% elif user.is_authenticated %}
         <!-- ログイン済みユーザー用ナビ -->
+        <li class="nav-item m-1">
+          <a class="nav-link" href="{% url 'dashboard' %}">ホーム</a>
+        </li>
         <li class="nav-item m-1">
           <a class="nav-link" href="{% url 'expense_list' %}">家計簿</a>
         </li>

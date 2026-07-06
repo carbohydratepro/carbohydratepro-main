@@ -158,7 +158,7 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-LOGIN_REDIRECT_URL = '/carbohydratepro/expenses/'
+LOGIN_REDIRECT_URL = '/carbohydratepro/home/'
 LOGIN_URL = '/login/'
 LOGOUT_REDIRECT_URL = '/login/'
 

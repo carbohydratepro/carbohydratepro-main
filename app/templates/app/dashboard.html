@@ -1,0 +1,155 @@
+{% extends "app/base.html" %}
+{% load humanize %}
+
+{% block title %}ホーム | Life management{% endblock %}
+
+{% block content %}
+<div class="container mt-2">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+        <h2 class="mb-0">ホーム</h2>
+        <span class="text-muted small">{{ today|date:"Y年m月d日 (D)" }}</span>
+    </div>
+
+    <!-- 今月の収支サマリー -->
+    <div class="row">
+        <div class="col-12 mb-3">
+            <div class="card">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-wallet mr-1"></i>今月の収支（{{ target_month }}）</span>
+                    <a href="{% url 'expense_list' %}" class="small">家計簿へ <i class="fas fa-angle-right"></i></a>
+                </div>
+                <div class="card-body py-3">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="small text-muted">収入</div>
+                            <div class="h5 mb-0 text-success">{{ income_total|floatformat:0|intcomma }}円</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="small text-muted">支出</div>
+                            <div class="h5 mb-0 text-danger">{{ expense_total|floatformat:0|intcomma }}円</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="small text-muted">収支</div>
+                            <div class="h5 mb-0 {% if balance_total >= 0 %}text-success{% else %}text-danger{% endif %}">{{ balance_total|floatformat:0|intcomma }}円</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 今日のタスク -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-calendar-day mr-1"></i>今日のタスク{% if today_tasks_count %}（{{ today_tasks_count }}件）{% endif %}</span>
+                    <a href="{% url 'task_list' %}" class="small">スケジュールへ <i class="fas fa-angle-right"></i></a>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for task in today_tasks %}
+                    <li class="list-group-item py-2 d-flex align-items-center">
+                        {% if task.all_day %}
+                        <span class="badge badge-secondary mr-2">終日</span>
+                        {% elif task.start_date %}
+                        <span class="text-muted small mr-2">{{ task.start_date|date:"H:i" }}</span>
+                        {% endif %}
+                        <span class="text-truncate">{{ task.title }}</span>
+                        {% if task.status == 'completed' %}
+                        <span class="badge badge-success ml-auto">完了</span>
+                        {% endif %}
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item py-3 text-center text-muted">
+                        今日のタスクはありません。<br>
+                        <a href="{% url 'task_list' %}">スケジュールを登録する</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- 今日の習慣 -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-fire mr-1"></i>今日の習慣{% if habits_total %}（{{ habits_completed }}/{{ habits_total }}）{% endif %}</span>
+                    <a href="{% url 'habit_dashboard' %}" class="small">習慣へ <i class="fas fa-angle-right"></i></a>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for habit in habit_status %}
+                    <li class="list-group-item py-2 d-flex align-items-center">
+                        {% if habit.completed %}
+                        <i class="fas fa-check-circle mr-2" style="color: {{ habit.color }};"></i>
+                        {% else %}
+                        <i class="far fa-circle text-muted mr-2"></i>
+                        {% endif %}
+                        <span class="text-truncate">{{ habit.title }}</span>
+                        <span class="small text-muted ml-auto">{{ habit.frequency }}</span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item py-3 text-center text-muted">
+                        習慣が登録されていません。<br>
+                        <a href="{% url 'habit_list' %}">習慣を追加する</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 買い物リスト -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-shopping-basket mr-1"></i>買い物リスト{% if shopping_count %}（残り{{ shopping_count }}件{% if shopping_insufficient_count %}・不足{{ shopping_insufficient_count }}件{% endif %}）{% endif %}</span>
+                    <a href="{% url 'shopping_list' %}" class="small">リストへ <i class="fas fa-angle-right"></i></a>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for item in shopping_items %}
+                    <li class="list-group-item py-2 d-flex align-items-center">
+                        {% if item.status == 'insufficient' %}
+                        <span class="badge badge-warning mr-2">不足</span>
+                        {% endif %}
+                        <span class="text-truncate">{{ item.title }}</span>
+                        <span class="small text-muted ml-auto">残 {{ item.remaining_count }}</span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item py-3 text-center text-muted">
+                        未購入の商品はありません。<br>
+                        <a href="{% url 'shopping_list' %}">買い物リストを見る</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- 最近のメモ -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-sticky-note mr-1"></i>最近のメモ</span>
+                    <a href="{% url 'memo_list' %}" class="small">メモへ <i class="fas fa-angle-right"></i></a>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for memo in recent_memos %}
+                    <li class="list-group-item py-2 d-flex align-items-center">
+                        <span class="badge mr-2" style="background-color: {{ memo.memo_type.color }}; color: #fff;">{{ memo.memo_type.name }}</span>
+                        <span class="text-truncate">{{ memo.title }}</span>
+                        {% if memo.is_favorite %}
+                        <i class="fas fa-star text-warning ml-auto"></i>
+                        {% endif %}
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item py-3 text-center text-muted">
+                        メモがありません。<br>
+                        <a href="{% url 'memo_list' %}">メモを作成する</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

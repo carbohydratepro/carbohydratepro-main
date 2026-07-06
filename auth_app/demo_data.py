@@ -52,6 +52,16 @@ class FakeTask:
         self.label = label
 
 
+class FakeHomeTask:
+    def __init__(self, id: int, title: str, start_date: datetime | None,
+                 all_day: bool = False, status: str = 'not_started') -> None:
+        self.id = id
+        self.title = title
+        self.start_date = start_date
+        self.all_day = all_day
+        self.status = status
+
+
 class FakeMemoType:
     def __init__(self, id: int, name: str, color: str, user: object = None) -> None:
         self.id = id
@@ -667,3 +677,60 @@ def get_recurring_payments_context() -> dict:
                              last_executed=date(2026, 3, 25)),
     ]
     return {'recurring_payments': recurring_payments}
+
+
+# ---------------------------------------------------------------------------
+# ホーム（統合ダッシュボード）デモデータ
+# ---------------------------------------------------------------------------
+
+def get_home_context() -> dict:
+    today = date(2026, 3, 27)
+
+    today_tasks = [
+        FakeHomeTask(1, '燃えるゴミの日', None, all_day=True, status='completed'),
+        FakeHomeTask(2, '歯医者の予約', datetime(2026, 3, 27, 10, 0)),
+        FakeHomeTask(3, 'プレゼン資料の作成', datetime(2026, 3, 27, 14, 0), status='in_progress'),
+        FakeHomeTask(4, 'ジムでトレーニング', datetime(2026, 3, 27, 19, 0)),
+    ]
+
+    habit_status = [
+        FakeHabitItem(1, '朝のランニング',      '毎日',  '#28a745', True,  5, 5, True),
+        FakeHabitItem(2, '読書30分',            '毎日',  '#28a745', True,  3, 3, True),
+        FakeHabitItem(3, '筋トレ',              '週3回', '#28a745', False, 8, 8, True),
+        FakeHabitItem(4, 'スマホ使用2時間以内', '毎日',  '#dc3545', False, 4, 4, False),
+    ]
+    habits_completed = sum(1 for habit in habit_status if habit.completed)
+
+    shopping_items = [
+        FakeShoppingItem(1, 'ティッシュペーパー', remaining_count=1, status='insufficient'),
+        FakeShoppingItem(2, 'ケーキ（誕生日用）', memo='3月28日 誕生日', remaining_count=0, status='insufficient'),
+        FakeShoppingItem(3, 'シャンプー', remaining_count=2, status='available'),
+    ]
+
+    type_work = FakeMemoType(1, '仕事', '#6f42c1')
+    type_idea = FakeMemoType(2, 'アイデア', '#20c997')
+    recent_memos = [
+        FakeMemo(1, '4月の目標整理', '', datetime(2026, 3, 26, 21, 30), True, type_idea),
+        FakeMemo(2, '会議メモ（新プロジェクト）', '', datetime(2026, 3, 26, 15, 0), False, type_work),
+        FakeMemo(3, '読みたい本リスト', '', datetime(2026, 3, 25, 22, 10), False, type_idea),
+    ]
+
+    income_total = 285000
+    expense_total = 163450
+
+    return {
+        'today': today,
+        'today_tasks': today_tasks,
+        'today_tasks_count': len(today_tasks),
+        'habit_status': habit_status,
+        'habits_completed': habits_completed,
+        'habits_total': len(habit_status),
+        'income_total': income_total,
+        'expense_total': expense_total,
+        'balance_total': income_total - expense_total,
+        'target_month': today.strftime('%Y年%m月'),
+        'shopping_items': shopping_items,
+        'shopping_count': len(shopping_items),
+        'shopping_insufficient_count': sum(1 for item in shopping_items if item.status == 'insufficient'),
+        'recent_memos': recent_memos,
+    }

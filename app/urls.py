@@ -4,7 +4,9 @@ from . import views
 
 
 urlpatterns = [
-    path('', RedirectView.as_view(url='expenses/', permanent=True)),
+    path('', RedirectView.as_view(url='home/', permanent=False)),
+    # ホーム（統合ダッシュボード）
+    path('home/', views.dashboard, name='dashboard'),
     # 支出管理
     path('expenses/', views.expenses_list, name='expense_list'),
     path('expenses/create/', views.create_expenses, name='create_expenses'),

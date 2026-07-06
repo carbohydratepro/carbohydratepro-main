@@ -21,7 +21,7 @@ async function addSecondaryAccount(page: Page, email: string, password: string):
   await page.getByLabel("メールアドレス").fill(email);
   await page.getByLabel("パスワード").fill(password);
   await page.getByRole("button", { name: "追加して切り替え" }).click();
-  await expect(page).toHaveURL(/\/carbohydratepro\/expenses\/?$/);
+  await expect(page).toHaveURL(/\/carbohydratepro\/home\/?$/);
   await expect(page.getByText(/に切り替えました/)).toBeVisible();
 }
 
@@ -56,7 +56,7 @@ test.describe("複数アカウント切替", () => {
     await page.getByLabel("メールアドレス").fill(secondary.email);
     await page.getByLabel("パスワード").fill(secondary.password);
     await page.getByRole("button", { name: "追加して切り替え" }).click();
-    await expect(page).toHaveURL(/\/carbohydratepro\/expenses\/?$/);
+    await expect(page).toHaveURL(/\/carbohydratepro\/home\/?$/);
     await expect(page.getByText(/に切り替えました/)).toBeVisible();
 
     // 編集ページ: 現在=サブ、メインは切替候補
@@ -68,7 +68,7 @@ test.describe("複数アカウント切替", () => {
 
     // メインへパスワードなしで切り替えられる
     await accountRow(page, main.email).getByRole("button", { name: "切り替え", exact: true }).click();
-    await expect(page).toHaveURL(/\/carbohydratepro\/expenses\/?$/);
+    await expect(page).toHaveURL(/\/carbohydratepro\/home\/?$/);
     await expect(page.getByText(/に切り替えました/)).toBeVisible();
     await page.goto("/accounts/edit/");
     await expect(accountRow(page, main.email)).toContainText("現在のアカウント");
@@ -88,7 +88,7 @@ test.describe("複数アカウント切替", () => {
     await dismissMessageDialog(page);
     await openAccountMenu(page);
     await page.getByRole("button", { name: "ログアウト" }).click();
-    await expect(page).toHaveURL(/\/carbohydratepro\/expenses\/?$/);
+    await expect(page).toHaveURL(/\/carbohydratepro\/home\/?$/);
     await expect(page.getByText(/現在のアカウントからログアウトし、.*に切り替えました/)).toBeVisible();
 
     // 編集ページ: メインが現在、サブはログアウト済み表示

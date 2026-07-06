@@ -69,7 +69,7 @@ def _escape_ics_text(value: str) -> str:
     """RFC 5545のTEXT値エスケープ。"""
     return (
         value.replace('\\', '\\\\')
-        .replace(';', '\;')
+        .replace(';', '\\;')
         .replace(',', '\\,')
         .replace('\r\n', '\\n')
         .replace('\n', '\\n')

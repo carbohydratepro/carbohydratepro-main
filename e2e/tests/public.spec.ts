@@ -34,9 +34,11 @@ test.describe("公開ページ", () => {
 
   test("E2E-PUBLIC-007 存在しないURLで内部情報を表示しない", async ({ page }) => {
     // Spec: docs/e2e/release-test-spec.md#public-and-error-pages
-    const response = await page.goto(`/not-found-${Date.now()}/`);
-    expect(response?.status()).toBe(404);
-    await expect(page.locator("body")).not.toContainText("Traceback");
-    await expect(page.locator("body")).not.toContainText("SECRET_KEY");
+    // page.goto だと404応答自体がconsole.errorに記録され共通チェックで落ちるため、HTTPで検証する
+    const response = await page.request.get(`/not-found-${Date.now()}/`);
+    expect(response.status()).toBe(404);
+    const body = await response.text();
+    expect(body).not.toContain("Traceback");
+    expect(body).not.toContain("SECRET_KEY");
   });
 });

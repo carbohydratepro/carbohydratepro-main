@@ -34,7 +34,7 @@ test.describe("主要CRUDとAPI", () => {
     await submitAndWaitForNavigation(page, modal.getByRole("button", { name: /^登録$/ }));
 
     await page.goto(`/carbohydratepro/memos/?search=${encodeURIComponent(title)}`);
-    await expect(page.getByText(title)).toBeVisible();
+    await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
 
     const memoId = await itemAttributeByText(page, ".lp-delete-item", title);
     const favorite = await postForm(page, `/carbohydratepro/memos/toggle-favorite/${memoId}/`, {});
@@ -88,7 +88,7 @@ test.describe("主要CRUDとAPI", () => {
     await submitAndWaitForNavigation(page, modal.getByRole("button", { name: /^登録$/ }));
 
     await page.goto(`/carbohydratepro/tasks/?view_mode=day&target_date=${date}`);
-    await expect(page.getByText(title)).toBeVisible();
+    await expect(page.getByText(title).first()).toBeVisible();
 
     const taskId = await page.locator("[data-task-id]", { hasText: title }).first().getAttribute("data-task-id");
     expect(taskId).toBeTruthy();
@@ -120,7 +120,7 @@ test.describe("主要CRUDとAPI", () => {
     await page.goto("/carbohydratepro/habits/");
     const toggle = await postForm(page, "/carbohydratepro/habits/toggle/", {
       habit_id: habitId ?? "",
-      date: new Date().toISOString().slice(0, 10),
+      date: todayIsoDate(),
       coefficient: "3",
     });
     expect(toggle.ok()).toBeTruthy();
@@ -156,7 +156,7 @@ test.describe("主要CRUDとAPI", () => {
     await page.goto(
       `/carbohydratepro/expenses/?view_mode=month&target_date=${targetMonth}&search=${encodeURIComponent(purpose)}`,
     );
-    await expect(page.getByText(purpose)).toBeVisible();
+    await expect(page.getByText(purpose, { exact: true }).first()).toBeVisible();
 
     await deleteFirstItemContaining(page, `/carbohydratepro/expenses/?view_mode=month&target_date=${targetMonth}`, purpose);
   });
@@ -180,7 +180,7 @@ test.describe("主要CRUDとAPI", () => {
     await submitAndWaitForNavigation(page, page.getByRole("button", { name: /^登録$/ }));
 
     await expect(page).toHaveURL(/\/carbohydratepro\/expenses\/recurring\/?$/);
-    await expect(page.getByText(purpose)).toBeVisible();
+    await expect(page.getByText(purpose, { exact: true }).first()).toBeVisible();
 
     const recurringId = await itemAttributeByText(page, ".lp-delete-item", purpose);
     const toggle = await postForm(page, `/carbohydratepro/expenses/recurring/toggle/${recurringId}/`, {});
@@ -221,5 +221,6 @@ test.describe("主要CRUDとAPI", () => {
 });
 
 function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  // 画面はJSTで動くため、UTCではなくJSTの日付を使う（深夜帯の日付ずれ防止）
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date());
 }

@@ -3,7 +3,8 @@ import { APIResponse, Page, expect, type Locator } from "@playwright/test";
 type FormValue = string | number | boolean;
 
 export function uniqueName(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  // 一覧表示の切り詰め（最短20文字）に収まるよう短い一意名を生成する
+  return `${prefix}-${Date.now().toString(36).slice(-4)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
 export async function csrfToken(page: Page): Promise<string> {

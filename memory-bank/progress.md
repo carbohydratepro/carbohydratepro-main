@@ -39,7 +39,7 @@
 ## 未着手
 
 - [ ] 本番反映時のmigration（0004/0005）とNginx/media配信確認
-- [ ] E2E残課題: authenticated-pages（操作要素のアクセシブル名不足）、crud/settings系、DEBUG=Trueの404ページ検出（既知のtask.md項目と対応）
+- [x] E2E残課題を解消しスイート全59件成功（aria-label付与、デモ習慣JSエラー修正、テストの曖昧ロケーター/UTC日付/404検証方法を修正）
 
 ## 既知の状態
 

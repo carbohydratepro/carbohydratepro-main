@@ -30,6 +30,14 @@
     <!-- 共通スタイル（Bootstrapを上書きするため必ずBootstrapより後に読み込む） -->
     <link rel="stylesheet" href="{% static 'app/styles.css' %}">
 
+    <!-- PWA -->
+    <link rel="manifest" href="{% static 'app/manifest.webmanifest' %}">
+    <meta name="theme-color" content="#343a40">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <script src="{% static 'app/pwa.js' %}" defer></script>
+
     <link rel="icon" type="image/png" href="{% static 'app/rice-icon.png' %}">
     <link rel="apple-touch-icon" href="{% static 'app/rice-icon.png' %}">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'app/rice-icon.png' %}">

@@ -7,6 +7,9 @@ The `urlpatterns` list routes urlpatterns = [
     path('admin/', lambda request: Http404()),
     # SEO対策
     path('robots.txt', robots_txt),
+    # PWA: Service Worker はルートスコープで配信する必要がある
+    path('sw.js', TemplateView.as_view(template_name='sw.js', content_type='application/javascript'), name='service_worker'),
+    path('offline/', TemplateView.as_view(template_name='offline.html'), name='offline'),
     # ICSカレンダー配信（トークン認証のためログイン不要）
     path('calendar/<uuid:token>.ics', calendar_feed, name='calendar_feed'),
     path('carbohydratepro/', include('app.urls')),
@@ -28,6 +31,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
+from django.views.generic import TemplateView
 from django.http import Http404, HttpRequest, HttpResponse
 from django.contrib.admin.sites import AdminSite
 from django.contrib.sitemaps.views import sitemap
@@ -86,6 +90,9 @@ urlpatterns = [
     # SEO
     path('robots.txt', robots_txt),
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
+    # PWA: Service Worker はルートスコープで配信する必要がある
+    path('sw.js', TemplateView.as_view(template_name='sw.js', content_type='application/javascript'), name='service_worker'),
+    path('offline/', TemplateView.as_view(template_name='offline.html'), name='offline'),
     # ICSカレンダー配信（トークン認証のためログイン不要）
     path('calendar/<uuid:token>.ics', calendar_feed, name='calendar_feed'),
     path('carbohydratepro/', include('app.urls')),

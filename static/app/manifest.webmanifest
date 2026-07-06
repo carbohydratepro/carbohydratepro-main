@@ -1,0 +1,19 @@
+{
+  "name": "Life management",
+  "short_name": "ライフ管理",
+  "description": "家計簿・タスク・習慣・メモを一元管理するライフマネジメントツール",
+  "lang": "ja",
+  "start_url": "/carbohydratepro/home/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#343a40",
+  "icons": [
+    {
+      "src": "/static/app/rice-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

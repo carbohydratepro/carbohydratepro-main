@@ -31,10 +31,15 @@
 - [x] デザイントークン導入と認証系画面のスタイル統一
 - [x] 古い仕様のままだったテスト3件を現仕様に修正（タスク一覧・チャート色）
 
+- [x] 複数アカウント切替のPlaywright E2E追加（account-switch.spec.ts、サブユーザーはE2E_SECONDARY_USER_*で指定）
+- [x] WSL(Arch)にChromium実行用ライブラリを導入しE2Eを実行可能化
+- [x] サインアップ/プロフィール編集のエラー表示リグレッションを修復
+- [x] 未認証マイページアクセスを403→ログインリダイレクトに変更
+
 ## 未着手
 
-- [ ] 複数アカウント切替のPlaywright E2E追加
-- [ ] 本番反映時のmigrationとNginx/media配信確認
+- [ ] 本番反映時のmigration（0004/0005）とNginx/media配信確認
+- [ ] E2E残課題: authenticated-pages（操作要素のアクセシブル名不足）、crud/settings系、DEBUG=Trueの404ページ検出（既知のtask.md項目と対応）
 
 ## 既知の状態
 

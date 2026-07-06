@@ -1,5 +1,9 @@
 # 完了タスク
 
+## タスク管理画面のカレンダー連携（ICS配信）
+- **実装内容**: ユーザー別トークン付きURL（`/calendar/<token>.ics`）でスケジュールを読み取り専用配信する `CalendarToken` モデルとICSフィード生成を追加。タスク設定画面に配信URLの表示・コピー・再生成（旧URL無効化）UIを実装。GoogleカレンダーのURL追加・iPhoneの照会カレンダーに対応。終日/時間指定イベント、RFC 5545エスケープ、75オクテット折り返しをサポート。テスト9件追加。あわせて統合ダッシュボード（ホーム画面）とPWA対応（マニフェスト・Service Worker・オフラインページ）も実装。
+- **実装日時**: 2026-07-07 03:25
+
 ## デモ習慣ページのJavaScriptエラー修正
 - **実装内容**: `/demo/habits/` で `heatmap_data_json` がデモ用コンテキストに含まれておらず、`var heatmapData = ;` と出力されて `SyntaxError` と `ReferenceError: heatmapData is not defined` が発生していた。`auth_app/demo_data.py` の習慣コンテキストに過去1年分の決定的なフェイク達成データ（`heatmap_data_json`）を追加し、ヒートマップが正常に描画されるようにした。E2E（E2E-DEMO-001）のpageerrorチェックで回帰検知できる。
 - **実装日時**: 2026-07-06 10:15

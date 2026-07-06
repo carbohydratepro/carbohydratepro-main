@@ -42,10 +42,10 @@
                 <input type="hidden" name="update_week_start" value="1">
                 <div class="btn-group btn-group-toggle" data-toggle="buttons">
                     <label class="btn btn-sm btn-{% if current_week_start == 'sunday' %}primary active{% else %}outline-primary{% endif %}">
-                        <input type="radio" name="week_start" value="sunday" autocomplete="off" {% if current_week_start == 'sunday' %}checked{% endif %}> 日曜開始
+                        <input type="radio" name="week_start" value="sunday" aria-label="日曜開始" autocomplete="off" {% if current_week_start == 'sunday' %}checked{% endif %}> 日曜開始
                     </label>
                     <label class="btn btn-sm btn-{% if current_week_start == 'monday' %}primary active{% else %}outline-primary{% endif %}">
-                        <input type="radio" name="week_start" value="monday" autocomplete="off" {% if current_week_start == 'monday' %}checked{% endif %}> 月曜開始
+                        <input type="radio" name="week_start" value="monday" aria-label="月曜開始" autocomplete="off" {% if current_week_start == 'monday' %}checked{% endif %}> 月曜開始
                     </label>
                 </div>
             </form>

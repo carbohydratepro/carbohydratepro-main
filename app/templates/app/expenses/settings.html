@@ -24,7 +24,7 @@
                 <td>{{ payment.name }}</td>
                 <td class="lp-actions-cell">
                     <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn"
+                    <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="編集"
                             data-toggle="modal" data-target="#editPaymentModal{{ payment.id }}"
                             onclick="event.stopPropagation();">
                         <i class="fas fa-pencil-alt"></i>
@@ -94,7 +94,7 @@
                     {% csrf_token %}
                     <td colspan="2">
                         <div class="form-group mb-0">
-                            <input type="text" name="payment-name" placeholder="新しい支払方法" class="form-control" maxlength="20">
+                            <input type="text" name="payment-name" aria-label="新しい支払方法" placeholder="新しい支払方法" class="form-control" maxlength="20">
                             <input type="hidden" name="payment" value="true">
                         </div>
                         {% if payment_form.non_field_errors %}
@@ -145,7 +145,7 @@
                 </td>
                 <td class="lp-actions-cell">
                     <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn"
+                    <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="編集"
                             data-toggle="modal" data-target="#editPurposeModal{{ purpose.id }}"
                             onclick="event.stopPropagation();">
                         <i class="fas fa-pencil-alt"></i>
@@ -229,7 +229,7 @@
                     {% csrf_token %}
                     <td colspan="2">
                         <div class="form-group mb-0">
-                            <input type="text" name="purpose-name" placeholder="新しい使用用途" class="form-control" maxlength="20">
+                            <input type="text" name="purpose-name" aria-label="新しい使用用途" placeholder="新しい使用用途" class="form-control" maxlength="20">
                             <input type="hidden" name="purpose" value="true">
                         </div>
                         {% if purpose_form.non_field_errors %}

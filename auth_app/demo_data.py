@@ -416,6 +416,15 @@ def get_habits_context() -> dict:
         FakeWeekHabitRow(5, 'お菓子を食べない',    '#dc3545', [True, True, True, False, True, True, True], 6, 7, False),
     ]
 
+    # ヒートマップ用のフェイク達成データ（過去1年分、決定的なパターン）
+    heatmap_data: dict[str, int] = {}
+    heatmap_start = today - timedelta(days=364)
+    for i in range(365):
+        day = heatmap_start + timedelta(days=i)
+        count = (i * 7 + day.day) % 6  # 0〜5件の達成数を決定的に散らす
+        if count:
+            heatmap_data[day.isoformat()] = count
+
     return {
         'selected_date':  today.isoformat(),
         'min_date':       '2025-01-01',
@@ -425,6 +434,7 @@ def get_habits_context() -> dict:
         'week_data':      week_data,
         'selected_year':  None,
         'year_choices':   [2025, 2026],
+        'heatmap_data_json': json.dumps(heatmap_data),
     }
 
 

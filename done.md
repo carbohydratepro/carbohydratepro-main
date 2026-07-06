@@ -1,5 +1,9 @@
 # 完了タスク
 
+## デモ習慣ページのJavaScriptエラー修正
+- **実装内容**: `/demo/habits/` で `heatmap_data_json` がデモ用コンテキストに含まれておらず、`var heatmapData = ;` と出力されて `SyntaxError` と `ReferenceError: heatmapData is not defined` が発生していた。`auth_app/demo_data.py` の習慣コンテキストに過去1年分の決定的なフェイク達成データ（`heatmap_data_json`）を追加し、ヒートマップが正常に描画されるようにした。E2E（E2E-DEMO-001）のpageerrorチェックで回帰検知できる。
+- **実装日時**: 2026-07-06 10:15
+
 ## 未ログインユーザー用のデモ画面実装
 - **実装内容**: `/demo/` URLにアクセスできる `DemoView` を `auth_app/views.py` に追加。Bootstrap タブ形式で家計簿・タスク管理・習慣トラッカー・メモ・買い物リスト・一時タスク（カンバン）の6機能をサンプルデータで閲覧できるデモページ（`registration/demo.html`）を作成。トップページのCTAに「デモを見る」ボタンを追加し、ナビバーにも「デモ」リンクを追加（未ログイン時のみ表示）。
 - **実装日時**: 2026-03-27 05:27

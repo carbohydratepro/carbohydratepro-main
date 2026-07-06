@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures/base";
-import { getCredentialsOrSkip, login, logout } from "../fixtures/auth";
+import { getCredentialsOrSkip, login, logout, openAccountMenu } from "../fixtures/auth";
 import { uniqueName } from "../fixtures/http";
 
 test.describe("認証", () => {
@@ -23,6 +23,8 @@ test.describe("認証", () => {
     await login(page, credentials);
 
     await expect(page.getByRole("heading", { name: /家計簿/ })).toBeVisible();
+    // マイページはヘッダーのアカウントメニュー内に表示される
+    await openAccountMenu(page);
     await expect(page.getByRole("link", { name: "マイページ" })).toBeVisible();
   });
 
@@ -34,7 +36,7 @@ test.describe("認証", () => {
     await logout(page);
     await page.goto("/carbohydratepro/expenses/");
 
-    await expect(page).toHaveURL(/\/login\/\?next=%2Fcarbohydratepro%2Fexpenses%2F$/);
+    await expect(page).toHaveURL(/\/login\/\?next=(?:%2F|\/)carbohydratepro(?:%2F|\/)expenses(?:%2F|\/)$/);
     await expect(page.getByRole("heading", { name: "ログイン" })).toBeVisible();
   });
 

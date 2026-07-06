@@ -21,7 +21,13 @@ CI と同じ前提データを手元で作る場合:
 ```bash
 python manage.py migrate --settings=project.settings.e2e
 python manage.py seed_e2e_user --email e2e@example.com --username e2e-user --password 'e2e-password-123' --reset --settings=project.settings.e2e
+# アカウント切替テスト用のサブユーザー
+python manage.py seed_e2e_user --email e2e-sub@example.com --username e2e-sub-user --password 'e2e-password-123' --reset --settings=project.settings.e2e
 ```
+
+アカウント切替テスト（`account-switch.spec.ts`）はサブユーザーの認証情報を
+`E2E_SECONDARY_USER_EMAIL` と `E2E_SECONDARY_USER_PASSWORD` で渡します。
+メインとサブは互いに未連携の状態で実行してください（テスト内で連携と解除を行います）。
 
 ## Chrome DevTools MCP
 

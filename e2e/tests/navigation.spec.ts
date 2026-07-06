@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures/base";
-import { getCredentialsOrSkip, login } from "../fixtures/auth";
+import { getCredentialsOrSkip, login, openAccountMenu } from "../fixtures/auth";
 
 const authenticatedPages = [
   { name: "家計簿", expectedPath: "/carbohydratepro/expenses/", text: "家計簿" },
@@ -8,7 +8,8 @@ const authenticatedPages = [
   { name: "習慣", expectedPath: "/carbohydratepro/habits/", text: "習慣" },
   { name: "メモ", expectedPath: "/carbohydratepro/memos/", text: "メモ" },
   { name: "買いものリスト", expectedPath: "/carbohydratepro/shopping/", text: "買い物" },
-  { name: "マイページ", expectedPath: /\/my_page\/\d+\/?$/, text: "マイページ" },
+  // マイページはヘッダーのアカウントメニュー内へ移動した
+  { name: "マイページ", expectedPath: /\/my_page\/\d+\/?$/, text: "マイページ", inAccountMenu: true },
 ];
 
 test.describe("ログイン後ナビゲーション", () => {
@@ -19,6 +20,9 @@ test.describe("ログイン後ナビゲーション", () => {
     await login(page, credentials);
 
     for (const target of authenticatedPages) {
+      if (target.inAccountMenu) {
+        await openAccountMenu(page);
+      }
       await page.getByRole("link", { name: target.name }).click();
 
       if (typeof target.expectedPath === "string") {

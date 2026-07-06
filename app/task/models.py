@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.conf import settings
 
@@ -99,3 +101,31 @@ class TempTaskItem(models.Model):
         ordering = ['order', 'created_at']
         verbose_name = '一時タスク'
         verbose_name_plural = '一時タスク'
+
+
+class CalendarToken(models.Model):
+    """ICSカレンダー配信用のユーザー別トークン。
+
+    URLを知っている人だけが購読できるcapability方式。
+    漏えい時は再生成で旧URLを無効化する。
+    """
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='calendar_token',
+        verbose_name='ユーザー',
+    )
+    token = models.UUIDField('トークン', default=uuid.uuid4, unique=True, editable=False)
+    created_at = models.DateTimeField('作成日時', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'カレンダー配信トークン'
+        verbose_name_plural = 'カレンダー配信トークン'
+
+    def __str__(self) -> str:
+        return f'{self.user} のカレンダートークン'
+
+    def regenerate(self) -> None:
+        """トークンを再生成して旧URLを無効化する。"""
+        self.token = uuid.uuid4()
+        self.save(update_fields=['token'])

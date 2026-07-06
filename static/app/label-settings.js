@@ -139,3 +139,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+// カレンダー配信URLをクリップボードへコピーする（タスク設定画面）
+function copyCalendarFeedUrl() {
+    const input = document.getElementById('calendar-feed-url');
+    const button = document.getElementById('copy-calendar-url');
+    if (!input) {
+        return;
+    }
+    input.select();
+    navigator.clipboard.writeText(input.value).then(() => {
+        if (button) {
+            const original = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check"></i> コピーしました';
+            setTimeout(() => { button.innerHTML = original; }, 2000);
+        }
+    }).catch(() => {
+        // クリップボードAPIが使えない環境では選択状態のままにする
+    });
+}

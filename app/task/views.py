@@ -5,10 +5,11 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.timezone import make_aware
 
 from .forms import TaskForm, TaskLabelForm
-from .models import Task, TaskLabel, TempTaskItem, TempTaskSet
+from .models import CalendarToken, Task, TaskLabel, TempTaskItem, TempTaskSet
 from . import selectors, services
 
 
@@ -354,7 +355,26 @@ def task_settings(request: HttpRequest) -> HttpResponse:
                 messages.error(request, '不正な入力です。')
             return redirect('task_settings')
 
+        elif 'regenerate_calendar_token' in request.POST:
+            calendar_token, _ = CalendarToken.objects.get_or_create(user=request.user)
+            calendar_token.regenerate()
+            messages.success(request, 'カレンダー配信URLを再生成しました。以前のURLは無効になります。')
+            return redirect('task_settings')
+
+    calendar_token, _ = CalendarToken.objects.get_or_create(user=request.user)
+    calendar_feed_url = request.build_absolute_uri(
+        reverse('calendar_feed', kwargs={'token': calendar_token.token})
+    )
+
     return render(request, 'app/task/settings.html', {
         'labels': labels,
         'current_week_start': current_week_start,
+        'calendar_feed_url': calendar_feed_url,
     })
+
+
+def calendar_feed(request: HttpRequest, token: str) -> HttpResponse:
+    """ICSカレンダーフィードを配信する（トークンURLを知っている人のみアクセス可能）。"""
+    calendar_token = get_object_or_404(CalendarToken, token=token)
+    content = services.build_calendar_feed(calendar_token.user)
+    return HttpResponse(content, content_type='text/calendar; charset=utf-8')

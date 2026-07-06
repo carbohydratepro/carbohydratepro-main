@@ -595,6 +595,7 @@ def get_expenses_settings_context() -> dict:
 
 
 def get_task_settings_context() -> dict:
+    calendar_feed_url = 'https://carbohydratepro.com/calendar/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.ics'
     labels = [
         FakeLabel('#e83e8c', 1, '仕事'),
         FakeLabel('#20c997', 2, '健康'),
@@ -604,6 +605,7 @@ def get_task_settings_context() -> dict:
     return {
         'labels': labels,
         'current_week_start': 'sunday',
+        'calendar_feed_url': calendar_feed_url,
     }
 
 

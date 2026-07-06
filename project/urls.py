@@ -7,6 +7,8 @@ The `urlpatterns` list routes urlpatterns = [
     path('admin/', lambda request: Http404()),
     # SEO対策
     path('robots.txt', robots_txt),
+    # ICSカレンダー配信（トークン認証のためログイン不要）
+    path('calendar/<uuid:token>.ics', calendar_feed, name='calendar_feed'),
     path('carbohydratepro/', include('app.urls')),
     path('', include('auth_app.urls')),
 ]views. For more information please see:
@@ -30,6 +32,7 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.contrib.admin.sites import AdminSite
 from django.contrib.sitemaps.views import sitemap
 from auth_app.sitemaps import PublicPagesSitemap
+from app.task.views import calendar_feed
 import os
 
 # 管理サイトのカスタマイズ
@@ -83,6 +86,8 @@ urlpatterns = [
     # SEO
     path('robots.txt', robots_txt),
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
+    # ICSカレンダー配信（トークン認証のためログイン不要）
+    path('calendar/<uuid:token>.ics', calendar_feed, name='calendar_feed'),
     path('carbohydratepro/', include('app.urls')),
     path('', include('auth_app.urls')),
 ]

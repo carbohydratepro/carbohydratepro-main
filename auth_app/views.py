@@ -101,6 +101,12 @@ class OnlyYouMixin(UserPassesTestMixin):
         user = self.request.user
         return user.pk == self.kwargs['pk']
 
+    def handle_no_permission(self):
+        # 未認証は他の保護ページと同様にログイン画面へ、認証済みの他人は403
+        if not self.request.user.is_authenticated:
+            self.raise_exception = False
+        return super().handle_no_permission()
+
 
 '''マイページ'''
 class MyPage(OnlyYouMixin, generic.DetailView):

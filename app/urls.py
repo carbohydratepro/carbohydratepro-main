@@ -4,7 +4,7 @@ from . import views
 
 
 urlpatterns = [
-    path('', RedirectView.as_view(url='home/', permanent=False)),
+    path('', RedirectView.as_view(url='home/', permanent=False), name='app_root'),
     # ホーム（統合ダッシュボード）
     path('home/', views.dashboard, name='dashboard'),
     # 支出管理

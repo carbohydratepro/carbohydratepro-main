@@ -42,7 +42,10 @@ class AdminSecurityMiddleware:
         if not getattr(settings, 'ADMIN_ENABLED', True):
             try:
                 resolved = resolve(request.path_info)
-                if 'admin' in resolved.namespace or 'admin' in resolved.url_name:
+                # 名前なしのURLパターンでは url_name が None になる
+                namespace = resolved.namespace or ''
+                url_name = resolved.url_name or ''
+                if 'admin' in namespace or 'admin' in url_name:
                     logger.warning(f"Blocked admin access attempt from {request.META.get('REMOTE_ADDR', 'unknown')} to {request.path}")
                     raise Http404("Page not found")
             except (Http404, ValueError, AttributeError):

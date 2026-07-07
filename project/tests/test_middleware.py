@@ -5,7 +5,7 @@ from django.test import TestCase, RequestFactory, override_settings
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 
-from project.middleware import MaintenanceModeMiddleware
+from project.middleware import AdminSecurityMiddleware, MaintenanceModeMiddleware
 
 User = get_user_model()
 
@@ -48,5 +48,31 @@ class MaintenanceModeMiddlewareTest(TestCase):
         """静的ファイルはメンテナンス中でも通過する"""
         request = self.factory.get('/static/app/styles.css')
         request.user = type('AnonymousUser', (), {'is_authenticated': False, 'is_staff': False})()
+        response = self.middleware(request)
+        self.assertEqual(response.status_code, 200)
+
+
+class AdminSecurityMiddlewareTest(TestCase):
+    """AdminSecurityMiddleware のテスト"""
+
+    def setUp(self) -> None:
+        self.factory = RequestFactory()
+        self.get_response = lambda req: HttpResponse("OK", status=200)
+        self.middleware = AdminSecurityMiddleware(self.get_response)
+
+    @override_settings(ADMIN_ENABLED=False)
+    def test_unnamed_url_pattern_does_not_crash(self) -> None:
+        """url_name が None の名前なしURLパターンでも500にならない（本番障害の回帰テスト）"""
+        # /admin/ は名前なしパターンのため resolve 結果の url_name が None になる
+        request = self.factory.get('/admin/')
+        request.user = type('AnonymousUser', (), {'is_authenticated': False})()
+        response = self.middleware(request)
+        self.assertEqual(response.status_code, 200)
+
+    @override_settings(ADMIN_ENABLED=False)
+    def test_unresolvable_path_passes_through(self) -> None:
+        """resolve できないパスは通常処理を続行する"""
+        request = self.factory.get('/no-such-path-xyz/')
+        request.user = type('AnonymousUser', (), {'is_authenticated': False})()
         response = self.middleware(request)
         self.assertEqual(response.status_code, 200)

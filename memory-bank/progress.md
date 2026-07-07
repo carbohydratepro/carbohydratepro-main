@@ -40,9 +40,12 @@
 - [x] ICSカレンダー配信（Google/iPhoneカレンダー連携）を追加
 - [x] PWA対応（マニフェスト・Service Worker・オフラインページ）
 
+- [x] 新機能一式（ダッシュボード・ICS・PWA）を本番へデプロイ（migration 0032適用、2026-07-08）
+- [x] 本番ルートURL500エラーのホットフィックス（AdminSecurityMiddleware の url_name=None 対応）
+
 ## 未着手
 
-- [ ] 本番反映時のmigration（0004/0005）とNginx/media配信確認
+- [ ] AdminSecurityMiddleware の握りつぶされた Http404（管理ブロック無効）の扱いをユーザーと決める
 - [x] E2E残課題を解消しスイート全59件成功（aria-label付与、デモ習慣JSエラー修正、テストの曖昧ロケーター/UTC日付/404検証方法を修正）
 
 ## 既知の状態

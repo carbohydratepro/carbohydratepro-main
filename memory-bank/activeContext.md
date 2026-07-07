@@ -45,11 +45,12 @@
 - ICSカレンダー配信 `/calendar/<token>.ics`（`CalendarToken` モデル、タスク設定画面でURL表示・コピー・再生成）。
 - PWA対応（`manifest.webmanifest`、`/sw.js` はルートスコープ配信のため `templates/sw.js`、オフライン時は `/offline/`）。
 
-## デプロイ状況（2026-07-06）
+## デプロイ状況（2026-07-08）
 
-- コミット d5e2d5c までを本番（54.238.169.177）へデプロイ済み。マイグレーション0004/0005適用、media配信、メンテナンスモード有効→解除の手順で実施。
-- それ以降のコミット（aria-label付与、デモ習慣JSエラー修正、E2E安定化）は未デプロイ。次回デプロイ対象。
-- Playwright E2E はスイート全59件成功。WSL(Arch)に pacman でChromium実行用ライブラリを導入済み。
+- コミット 3e627cd までを本番（54.238.169.177）へデプロイ済み（ダッシュボード・ICS配信・PWA・E2E安定化を含む）。マイグレーション0032適用。メンテナンスモード有効→解除の手順で実施。
+- デプロイ直後にルートURLが500になる障害が発生。原因は AdminSecurityMiddleware が名前なしURLパターン（url_name=None）で `'admin' in None` の TypeError を起こすこと（ADMIN_ENABLED=False の本番のみ発火、devでは再現しない）。None を空文字扱いに修正しホットフィックス済み（3e627cd）。
+- 既知の残バグ: AdminSecurityMiddleware の `raise Http404` は自身の `except (Http404, ...)` に捕捉され管理ブロックが実質無効。修正すると namespace に admin を含む `/system-control-panel/`（secure_admin）も404になるため、意図確認が必要で未修正。
+- Playwright E2E はスイート全60件成功。WSL(Arch)に pacman でChromium実行用ライブラリを導入済み。
 
 ## 次に行うこと
 

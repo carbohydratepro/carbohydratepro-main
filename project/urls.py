@@ -1,31 +1,7 @@
 """project URL Configuration
 
-The `urlpatterns` list routes urlpatterns = [
-    # 推測困難な管理URL（本番環境では更に複雑にすることを推奨）
-    path('system-control-panel/', secure_admin_site.urls),
-    # 元の管理URLは404エラーを返す
-    path('admin/', lambda request: Http404()),
-    # SEO対策
-    path('robots.txt', robots_txt),
-    # PWA: Service Worker はルートスコープで配信する必要がある
-    path('sw.js', TemplateView.as_view(template_name='sw.js', content_type='application/javascript'), name='service_worker'),
-    path('offline/', TemplateView.as_view(template_name='offline.html'), name='offline'),
-    # ICSカレンダー配信（トークン認証のためログイン不要）
-    path('calendar/<uuid:token>.ics', calendar_feed, name='calendar_feed'),
-    path('carbohydratepro/', include('app.urls')),
-    path('', include('auth_app.urls')),
-]views. For more information please see:
-    https://docs.djangoproject.com/en/3.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/stable/topics/http/urls/
 """
 from django.contrib import admin
 from django.conf import settings
@@ -60,6 +36,11 @@ for app_config in apps.get_app_configs():
             model_admin = admin.site._registry[model]
             secure_admin_site.register(model, model_admin.__class__)
 
+# 旧管理URL用のビュー（Http404 は return ではなく raise しないと500になる）
+def admin_not_found(request: HttpRequest) -> HttpResponse:
+    raise Http404("Page not found")
+
+
 # robots.txt配信用のビュー
 def robots_txt(request: HttpRequest) -> HttpResponse:
     site_url = f"{settings.SITE_PROTOCOL}://{settings.SITE_DOMAIN}"
@@ -86,7 +67,7 @@ urlpatterns = [
     # 推測困難な管理URL（本番環境では更に複雑にすること推奨）
     path('system-control-panel/', secure_admin_site.urls),
     # 元の管理URLは404エラーを返す
-    path('admin/', lambda request: Http404()),
+    path('admin/', admin_not_found),
     # SEO
     path('robots.txt', robots_txt),
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),

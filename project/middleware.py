@@ -42,15 +42,17 @@ class AdminSecurityMiddleware:
         if not getattr(settings, 'ADMIN_ENABLED', True):
             try:
                 resolved = resolve(request.path_info)
+            except Http404:
+                # resolve に失敗した場合は通常通り処理を続行
+                resolved = None
+            if resolved is not None:
                 # 名前なしのURLパターンでは url_name が None になる
                 namespace = resolved.namespace or ''
                 url_name = resolved.url_name or ''
-                if 'admin' in namespace or 'admin' in url_name:
+                # secure_admin（/system-control-panel/）は自前の権限チェックを持つため除外
+                if namespace != 'secure_admin' and ('admin' in namespace or 'admin' in url_name):
                     logger.warning(f"Blocked admin access attempt from {request.META.get('REMOTE_ADDR', 'unknown')} to {request.path}")
                     raise Http404("Page not found")
-            except (Http404, ValueError, AttributeError):
-                # resolve に失敗した場合は通常通り処理を続行
-                pass
         
         # 管理サイトへのアクセス試行をログに記録
         if '/admin' in request.path or 'system-control-panel' in request.path:

@@ -42,10 +42,11 @@
 
 - [x] 新機能一式（ダッシュボード・ICS・PWA）を本番へデプロイ（migration 0032適用、2026-07-08）
 - [x] 本番ルートURL500エラーのホットフィックス（AdminSecurityMiddleware の url_name=None 対応）
+- [x] 管理ブロックの有効化（secure_admin除外）と旧 /admin/ の500修正を本番反映
 
 ## 未着手
 
-- [ ] AdminSecurityMiddleware の握りつぶされた Http404（管理ブロック無効）の扱いをユーザーと決める
+- [ ] UI一新の方向性を決めて実施（ユーザーと相談中）
 - [x] E2E残課題を解消しスイート全59件成功（aria-label付与、デモ習慣JSエラー修正、テストの曖昧ロケーター/UTC日付/404検証方法を修正）
 
 ## 既知の状態

@@ -47,9 +47,9 @@
 
 ## デプロイ状況（2026-07-08）
 
-- コミット 3e627cd までを本番（54.238.169.177）へデプロイ済み（ダッシュボード・ICS配信・PWA・E2E安定化を含む）。マイグレーション0032適用。メンテナンスモード有効→解除の手順で実施。
+- コミット 780be2d までを本番（54.238.169.177）へデプロイ済み（ダッシュボード・ICS配信・PWA・E2E安定化・ミドルウェア修正を含む）。マイグレーション0032適用。メンテナンスモード有効→解除の手順で実施。
 - デプロイ直後にルートURLが500になる障害が発生。原因は AdminSecurityMiddleware が名前なしURLパターン（url_name=None）で `'admin' in None` の TypeError を起こすこと（ADMIN_ENABLED=False の本番のみ発火、devでは再現しない）。None を空文字扱いに修正しホットフィックス済み（3e627cd）。
-- 既知の残バグ: AdminSecurityMiddleware の `raise Http404` は自身の `except (Http404, ...)` に捕捉され管理ブロックが実質無効。修正すると namespace に admin を含む `/system-control-panel/`（secure_admin）も404になるため、意図確認が必要で未修正。
+- AdminSecurityMiddleware の握りつぶされていた `raise Http404` を修正し管理ブロックを有効化（secure_admin は除外）。旧 /admin/ が Http404 を return していて500になる問題も修正（780be2d、ユーザー承認済み・本番反映済み）。
 - Playwright E2E はスイート全60件成功。WSL(Arch)に pacman でChromium実行用ライブラリを導入済み。
 
 ## 次に行うこと

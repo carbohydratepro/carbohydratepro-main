@@ -47,6 +47,12 @@
 - スケルトンスクリーン: `src/ts/skeleton.ts` が遷移を伴うクリック/フォーム送信で `.skeleton-overlay` を表示。preventDefault済み・外部リンク・アンカーは対象外、bfcache復元で自動解除。
 - 注意: PWAのService Workerが有効なブラウザでは Playwright の `page.route` がナビゲーションを捕捉できない。E2Eで遷移を遅延させたい場合は `serviceWorkers: "block"` を使うこと。
 
+## 外部カレンダー取り込み（2026-07-09）
+
+- ICS購読: `ExternalCalendar`（URL登録）→ cron（30分ごと、`sync_external_calendars`）で `ExternalEvent` に洗い替え。RRULEは recurring-ical-events で展開。依存に icalendar / recurring-ical-events を追加（イメージ再ビルド必要、migration 0033）。
+- SSRF対策: `services._assert_public_host`（is_global チェック）+ リダイレクトごと再検証 + 5MB上限。webcal:// は https:// に正規化。
+- 表示: ExternalEvent は Task 互換プロパティ（is_external/label=calendar）を持ち、月カレンダー・ガント・日別JSON・ダッシュボードにマージ。テンプレートは `task.is_external` で編集リンクを外す。
+
 ## 新機能（2026-07-07）
 
 - 統合ダッシュボード `/carbohydratepro/home/`（ログイン後の遷移先。今日のタスク・習慣・今月の収支・買い物・メモを集約。デモは `/demo/home/`）。

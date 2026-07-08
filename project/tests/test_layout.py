@@ -29,6 +29,12 @@ class AppShellTest(TestCase):
         content = response.content.decode('utf-8')
         self.assertIn('side-link active', content)
 
+    def test_skeleton_script_loaded(self) -> None:
+        """スケルトンスクリーンのスクリプトが読み込まれること"""
+        response = self.client.get('/carbohydratepro/home/')
+        # 静的ファイル名はコンテンツハッシュ付きになるため接頭辞で確認する
+        self.assertContains(response, '/static/app/skeleton.')
+
     def test_authenticated_registration_page_uses_shell(self) -> None:
         """ログイン済みのアカウント編集画面も同じシェルを使うこと"""
         response = self.client.get('/accounts/edit/')
@@ -50,6 +56,11 @@ class AnonymousLayoutTest(TestCase):
         self.assertContains(response, 'navbar')
         self.assertNotContains(response, 'app-sidebar')
         self.assertNotContains(response, 'app-bottomnav')
+
+    def test_login_page_loads_skeleton_script(self) -> None:
+        """未ログインページでもスケルトンスクリプトは読み込まれること"""
+        response = self.client.get('/login/')
+        self.assertContains(response, '/static/app/skeleton.')
 
 
 class DemoShellTest(TestCase):

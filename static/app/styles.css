@@ -282,6 +282,106 @@ a:hover {
 }
 
 /* ==========================================================================
+   スケルトンスクリーン（画面遷移時に skeleton.js が表示する）
+   ========================================================================== */
+.skeleton-overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    /* トップバー/ボトムタブ（z-index:1030）より下、コンテンツより上 */
+    z-index: 1029;
+    background-color: var(--color-bg);
+    display: none;
+    padding: 24px 16px;
+    overflow: hidden;
+}
+
+.skeleton-overlay.show {
+    display: block;
+}
+
+/* アプリシェル内ではトップバー・サイドバー・ボトムタブを覆わない */
+body.has-bottomnav .skeleton-overlay {
+    top: var(--topbar-height);
+}
+
+@media (min-width: 768px) {
+    body.has-bottomnav .skeleton-overlay {
+        left: var(--sidebar-width);
+    }
+}
+
+/* モバイルのボトムタブは z-index:1030 でオーバーレイより上に残るため bottom:0 のままでよい */
+
+.skeleton-page {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.sk {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--color-border);
+    border-radius: 8px;
+}
+
+.sk::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+    100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sk::after {
+        animation: none;
+    }
+}
+
+.sk-title {
+    height: 28px;
+    width: 40%;
+    max-width: 220px;
+    margin-bottom: 16px;
+}
+
+.sk-block {
+    height: 96px;
+    margin-bottom: 16px;
+}
+
+.sk-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.sk-card {
+    height: 180px;
+}
+
+@media (max-width: 767.98px) {
+    .sk-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .sk-card {
+        height: 140px;
+    }
+}
+
+/* ==========================================================================
    共通コンポーネント（Bootstrap の上書き。base.html で Bootstrap より後に
    読み込むこと）
    ========================================================================== */

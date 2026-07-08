@@ -93,6 +93,23 @@ function showDayTasksModal(year, month, day, monthLabel) {
             return;
         if (((_a = data.tasks) === null || _a === void 0 ? void 0 : _a.length) > 0) {
             modalBody.innerHTML = data.tasks.map(task => {
+                var _a, _b, _c, _d;
+                // 外部カレンダーのイベントは読み取り専用（編集・削除不可）のカードで表示する
+                if (task.is_external) {
+                    const calendarColor = (_b = (_a = task.calendar) === null || _a === void 0 ? void 0 : _a.color) !== null && _b !== void 0 ? _b : '#6c8ebf';
+                    const calendarName = (_d = (_c = task.calendar) === null || _c === void 0 ? void 0 : _c.name) !== null && _d !== void 0 ? _d : '外部カレンダー';
+                    return `
+                            <div class="card task-card-mini mb-2" style="border-left: 4px solid ${calendarColor};">
+                                <div class="card-body">
+                                    <h6 class="mb-1">${truncateText(task.title, 30)}</h6>
+                                    ${task.due_date ? `<p class="small text-muted mb-2"><i class="far fa-clock"></i> ${task.due_date}</p>` : ''}
+                                    <span class="badge" style="background-color: ${calendarColor}; color: white;">
+                                        <i class="far fa-calendar"></i> ${truncateText(calendarName, 20)}
+                                    </span>
+                                </div>
+                            </div>
+                        `;
+                }
                 const statusBadge = task.status === 'completed' ? 'badge-success' :
                     task.status === 'in_progress' ? 'badge-info' : 'badge-secondary';
                 const priorityBadge = task.priority === 'high' ? 'badge-danger' :

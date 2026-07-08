@@ -594,6 +594,17 @@ def get_expenses_settings_context() -> dict:
     }
 
 
+class FakeExternalCalendar:
+    """外部カレンダー（ICS購読）のフェイク"""
+
+    def __init__(self, id: int, name: str, color: str, last_error: str = '') -> None:
+        self.id = id
+        self.name = name
+        self.color = color
+        self.last_synced_at = datetime.now() - timedelta(minutes=12)
+        self.last_error = last_error
+
+
 def get_task_settings_context() -> dict:
     calendar_feed_url = 'https://carbohydratepro.com/calendar/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.ics'
     labels = [
@@ -602,10 +613,15 @@ def get_task_settings_context() -> dict:
         FakeLabel('#fd7e14', 3, '勉強'),
         FakeLabel('#6f42c1', 4, 'プライベート'),
     ]
+    external_calendars = [
+        FakeExternalCalendar(1, 'Googleカレンダー', '#4285f4'),
+        FakeExternalCalendar(2, '家族の予定', '#20c997'),
+    ]
     return {
         'labels': labels,
         'current_week_start': 'sunday',
         'calendar_feed_url': calendar_feed_url,
+        'external_calendars': external_calendars,
     }
 
 

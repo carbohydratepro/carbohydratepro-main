@@ -29,13 +29,17 @@ def build_dashboard_context(user: Any) -> dict[str, Any]:
     day_start = make_aware(datetime.combine(today, time.min))
     day_end = make_aware(datetime.combine(today, time.max))
 
-    # 今日のタスク
+    # 今日のタスク（外部カレンダーのイベントもマージ）
     today_tasks_qs = (
         task_selectors.get_day_view_tasks(user, day_start, day_end)
         .order_by('-all_day', 'start_date')
     )
-    today_tasks_count = today_tasks_qs.count()
-    today_tasks = list(today_tasks_qs[:DASHBOARD_TASK_LIMIT])
+    today_externals = task_selectors.get_external_events(user, day_start, day_end)
+    today_items = task_selectors.merge_tasks_and_external_events(
+        list(today_tasks_qs), today_externals,
+    )
+    today_tasks_count = len(today_items)
+    today_tasks = today_items[:DASHBOARD_TASK_LIMIT]
 
     # 今日の習慣
     habit_status = habit_selectors.get_today_status(user, today)

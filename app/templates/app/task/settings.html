@@ -77,6 +77,85 @@
                 <input type="hidden" name="regenerate_calendar_token" value="1">
                 <button type="submit" class="btn btn-outline-danger btn-sm">URLを再生成（旧URLを無効化）</button>
             </form>
+
+            <hr>
+
+            <!-- 外部カレンダーの取り込み（ICS購読） -->
+            <h6 class="mb-2"><i class="fas fa-cloud-download-alt"></i> 外部カレンダーの取り込み</h6>
+            <p class="small text-muted mb-2">
+                GoogleカレンダーのICS URL（設定 → カレンダーの統合 → 「非公開のiCal URL」）を登録すると、
+                外部の予定をスケジュールに読み取り専用で表示できます（30分ごとに自動同期）。
+                iCloudカレンダーは「パブリックカレンダー」のURL（公開共有）に対応しています。
+            </p>
+
+            {% if external_calendars %}
+            <div class="table-responsive mb-3">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">色</th>
+                            <th>カレンダー名</th>
+                            <th>最終同期</th>
+                            <th style="width: 150px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for external_calendar in external_calendars %}
+                        <tr>
+                            <td><span class="d-inline-block rounded" style="width: 18px; height: 18px; background-color: {{ external_calendar.color }};" aria-label="カレンダーの色"></span></td>
+                            <td>
+                                {{ external_calendar.name }}
+                                {% if external_calendar.last_error %}
+                                <div class="small text-danger">同期エラー: {{ external_calendar.last_error }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted">
+                                {% if external_calendar.last_synced_at %}{{ external_calendar.last_synced_at|date:"m/d H:i" }}{% else %}未同期{% endif %}
+                            </td>
+                            <td class="text-right">
+                                <form method="post" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="sync_external_calendar" value="1">
+                                    <input type="hidden" name="external_calendar_id" value="{{ external_calendar.id }}">
+                                    <button type="submit" class="btn btn-outline-primary btn-sm" aria-label="{{ external_calendar.name }}を今すぐ同期">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </form>
+                                <form method="post" class="d-inline" onsubmit="return confirm('外部カレンダー「{{ external_calendar.name }}」を削除しますか？取り込んだ予定も表示されなくなります。');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="delete_external_calendar" value="1">
+                                    <input type="hidden" name="external_calendar_id" value="{{ external_calendar.id }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" aria-label="{{ external_calendar.name }}を削除">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <form method="post" class="form-row align-items-end">
+                {% csrf_token %}
+                <input type="hidden" name="add_external_calendar" value="1">
+                <div class="form-group col-sm-3 mb-2">
+                    <label for="external-calendar-name" class="small mb-1">カレンダー名</label>
+                    <input type="text" id="external-calendar-name" name="name" class="form-control form-control-sm" maxlength="100" placeholder="例: Googleカレンダー" required>
+                </div>
+                <div class="form-group col-sm-5 mb-2">
+                    <label for="external-calendar-url" class="small mb-1">ICS URL</label>
+                    <input type="text" id="external-calendar-url" name="url" class="form-control form-control-sm" maxlength="500" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" required>
+                </div>
+                <div class="form-group col-sm-2 mb-2">
+                    <label for="external-calendar-color" class="small mb-1">色</label>
+                    <input type="color" id="external-calendar-color" name="color" class="form-control form-control-sm" value="#6c8ebf">
+                </div>
+                <div class="form-group col-sm-2 mb-2">
+                    <button type="submit" class="btn btn-primary btn-sm btn-block">追加して同期</button>
+                </div>
+            </form>
         </div>
     </div>
     {% endif %}

@@ -17,3 +17,4 @@ from .test_lists import *
 from .test_manage import *
 from .test_dashboard import *
 from .test_calendar_feed import *
+from .test_external_calendar import *

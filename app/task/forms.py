@@ -1,6 +1,6 @@
 from django import forms
 from django.utils import timezone
-from .models import Task, TaskLabel
+from .models import ExternalCalendar, Task, TaskLabel
 from typing import Optional
 from django.contrib.auth import get_user_model
 
@@ -23,6 +23,37 @@ class TaskLabelForm(forms.ModelForm):
             'max_length': '上限文字数は30です。',
             'required': 'この項目は必須です。',
         }
+
+
+class ExternalCalendarForm(forms.ModelForm):
+    """外部カレンダー（ICS購読URL）の登録フォーム"""
+
+    # webcal:// を受け付けるため URLField ではなく CharField で受けて正規化する
+    url = forms.CharField(
+        label='ICS URL',
+        max_length=500,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'https://calendar.google.com/calendar/ical/.../basic.ics',
+            'inputmode': 'url',
+        }),
+    )
+
+    class Meta:
+        model = ExternalCalendar
+        fields = ['name', 'url', 'color']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'maxlength': '100', 'placeholder': '例: Googleカレンダー'}),
+            'color': forms.TextInput(attrs={'type': 'color', 'class': 'form-control form-control-color'}),
+        }
+
+    def clean_url(self) -> str:
+        from . import services
+
+        try:
+            return services.normalize_external_calendar_url(self.cleaned_data['url'])
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc))
 
 
 class TaskForm(forms.ModelForm):

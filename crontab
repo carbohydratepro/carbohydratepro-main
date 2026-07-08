@@ -9,4 +9,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 # デバッグログ監視 - 5分ごとに実行
 */5 * * * * root cd /code && python manage.py check_debug_log >> /var/log/cron.log 2>&1
 
+# 外部カレンダー同期 - 30分ごとに実行
+*/30 * * * * root cd /code && python manage.py sync_external_calendars >> /var/log/cron.log 2>&1
+
 # 空行が必要（cron仕様）

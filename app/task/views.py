@@ -8,8 +8,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.timezone import make_aware
 
-from .forms import TaskForm, TaskLabelForm
-from .models import CalendarToken, Task, TaskLabel, TempTaskItem, TempTaskSet
+from django.db import IntegrityError, transaction
+
+from .forms import ExternalCalendarForm, TaskForm, TaskLabelForm
+from .models import CalendarToken, ExternalCalendar, Task, TaskLabel, TempTaskItem, TempTaskSet
 from . import selectors, services
 
 
@@ -39,11 +41,13 @@ def task_list(request: HttpRequest) -> HttpResponse:
         tasks_qs = selectors.get_day_view_tasks(request.user, day_start, day_end)
         tasks_qs = tasks_qs.order_by('start_date', 'priority')
 
-        gantt_data = selectors.build_gantt_data(tasks_qs, day_start, day_end)
+        external_events = selectors.get_external_events(request.user, day_start, day_end)
+        day_items = list(tasks_qs) + external_events
+        gantt_data = selectors.build_gantt_data(day_items, day_start, day_end)
 
         return render(request, 'app/task/list.html', {
             'view_mode': 'day',
-            'tasks_count': tasks_qs.count(),
+            'tasks_count': len(day_items),
             'gantt_data': gantt_data,
             'target_date': target_date.strftime('%Y-%m-%d'),
             'target_date_display': target_date.strftime('%Y年%m月%d日'),
@@ -58,8 +62,10 @@ def task_list(request: HttpRequest) -> HttpResponse:
     extended_start = start_date - timedelta(days=7)
     extended_end = end_date + timedelta(days=7)
     month_tasks = selectors.get_month_tasks(request.user, extended_start, extended_end)
+    external_events = selectors.get_external_events(request.user, extended_start, extended_end)
     calendar_data, weekday_labels = selectors.build_calendar_data(
-        month_tasks, target_date.year, target_date.month, week_start
+        month_tasks, target_date.year, target_date.month, week_start,
+        external_events=external_events,
     )
 
     return render(request, 'app/task/list.html', {
@@ -145,6 +151,8 @@ def get_day_tasks(request: HttpRequest, date: str) -> JsonResponse:
 
         tasks = selectors.get_day_view_tasks(request.user, day_start, day_end).order_by('start_date')
         tasks_data = selectors.build_task_api_json(tasks)
+        external_events = selectors.get_external_events(request.user, day_start, day_end)
+        tasks_data.extend(selectors.build_external_api_json(external_events))
 
         return JsonResponse({'success': True, 'tasks': tasks_data})
     except Exception as e:
@@ -361,6 +369,50 @@ def task_settings(request: HttpRequest) -> HttpResponse:
             messages.success(request, 'カレンダー配信URLを再生成しました。以前のURLは無効になります。')
             return redirect('task_settings')
 
+        elif 'add_external_calendar' in request.POST:
+            form = ExternalCalendarForm(request.POST)
+            if form.is_valid():
+                external_calendar = form.save(commit=False)
+                external_calendar.user = request.user
+                try:
+                    with transaction.atomic():
+                        external_calendar.save()
+                except IntegrityError:
+                    messages.error(request, 'このURLの外部カレンダーは既に登録されています。')
+                    return redirect('task_settings')
+                success, sync_message = services.sync_external_calendar_safe(external_calendar)
+                if success:
+                    messages.success(request, f'外部カレンダーを追加しました。{sync_message}')
+                else:
+                    messages.warning(request, f'外部カレンダーを追加しましたが、同期に失敗しました: {sync_message}')
+            else:
+                first_error = next(iter(form.errors.values()))[0]
+                messages.error(request, f'外部カレンダーを追加できませんでした: {first_error}')
+            return redirect('task_settings')
+
+        elif 'sync_external_calendar' in request.POST:
+            external_calendar = get_object_or_404(
+                ExternalCalendar,
+                id=request.POST.get('external_calendar_id'),
+                user=request.user,
+            )
+            success, sync_message = services.sync_external_calendar_safe(external_calendar)
+            if success:
+                messages.success(request, f'「{external_calendar.name}」を同期しました。{sync_message}')
+            else:
+                messages.error(request, f'「{external_calendar.name}」の同期に失敗しました: {sync_message}')
+            return redirect('task_settings')
+
+        elif 'delete_external_calendar' in request.POST:
+            external_calendar = get_object_or_404(
+                ExternalCalendar,
+                id=request.POST.get('external_calendar_id'),
+                user=request.user,
+            )
+            external_calendar.delete()
+            messages.success(request, f'外部カレンダー「{external_calendar.name}」を削除しました。')
+            return redirect('task_settings')
+
     calendar_token, _ = CalendarToken.objects.get_or_create(user=request.user)
     calendar_feed_url = request.build_absolute_uri(
         reverse('calendar_feed', kwargs={'token': calendar_token.token})
@@ -370,6 +422,8 @@ def task_settings(request: HttpRequest) -> HttpResponse:
         'labels': labels,
         'current_week_start': current_week_start,
         'calendar_feed_url': calendar_feed_url,
+        'external_calendars': ExternalCalendar.objects.filter(user=request.user),
+        'external_calendar_form': ExternalCalendarForm(),
     })
 
 

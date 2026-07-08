@@ -141,12 +141,14 @@
                                 <div class="gantt-grid-line"></div>
 
                                 <!-- タスクバー -->
-                                <div class="gantt-bar {% if item.is_all_day %}gantt-bar-allday{% endif %}"
+                                <div class="gantt-bar {% if item.is_all_day %}gantt-bar-allday{% endif %}{% if item.task.is_external %} gantt-bar-external{% endif %}"
                                      style="left: {{ item.start_percent }}%; width: {{ item.width_percent }}%;
                                             background-color: {% if item.task.label %}{{ item.task.label.color }}{% else %}#007bff{% endif %};"
+                                     {% if not item.task.is_external %}
                                      data-task-id="{{ item.task.id }}"
                                      onclick="openEditTaskModal({{ item.task.id }})"
-                                     title="{% if item.is_all_day %}[終日] {% endif %}{{ item.task.title }}{% if not item.is_all_day %} ({{ item.start_time }} 〜 {{ item.end_time }}){% endif %}">
+                                     {% endif %}
+                                     title="{% if item.task.is_external %}[{{ item.task.calendar.name }}] {% endif %}{% if item.is_all_day %}[終日] {% endif %}{{ item.task.title }}{% if not item.is_all_day %} ({{ item.start_time }} 〜 {{ item.end_time }}){% endif %}">
                                     <span class="gantt-bar-label">{{ item.task.title|truncatechars:20 }}</span>
                                 </div>
                             </div>
@@ -189,8 +191,8 @@
                             <div class="day-number{% if not day_data.is_current_month %} text-muted{% endif %}{% if day_data.is_today %} today-number{% endif %}">{{ day_data.day }}</div>
                             <div class="task-list">
                                 {% for task in day_data.tasks %}
-                                <div class="task-item"
-                                     data-task-id="{{ task.id }}"
+                                <div class="task-item{% if task.is_external %} external-event{% endif %}"
+                                     {% if not task.is_external %}data-task-id="{{ task.id }}"{% endif %}
                                      {% if task.label %}style="background-color: {{ task.label.color }}; color: white; border-left: 3px solid {{ task.label.color|darker }};"{% endif %}>
                                     {{ task.title|truncatechars:30 }}
                                 </div>

@@ -15,6 +15,8 @@ interface TaskApiData {
   due_date: string | null;
   description: string | null;
   label: TaskLabelData | null;
+  is_external?: boolean;
+  calendar?: TaskLabelData;
 }
 
 interface TaskApiResponse {
@@ -122,6 +124,22 @@ function showDayTasksModal(year: string, month: string, day: string, monthLabel:
 
             if (data.tasks?.length > 0) {
                 modalBody.innerHTML = data.tasks.map(task => {
+                    // 外部カレンダーのイベントは読み取り専用（編集・削除不可）のカードで表示する
+                    if (task.is_external) {
+                        const calendarColor = task.calendar?.color ?? '#6c8ebf';
+                        const calendarName = task.calendar?.name ?? '外部カレンダー';
+                        return `
+                            <div class="card task-card-mini mb-2" style="border-left: 4px solid ${calendarColor};">
+                                <div class="card-body">
+                                    <h6 class="mb-1">${truncateText(task.title, 30)}</h6>
+                                    ${task.due_date ? `<p class="small text-muted mb-2"><i class="far fa-clock"></i> ${task.due_date}</p>` : ''}
+                                    <span class="badge" style="background-color: ${calendarColor}; color: white;">
+                                        <i class="far fa-calendar"></i> ${truncateText(calendarName, 20)}
+                                    </span>
+                                </div>
+                            </div>
+                        `;
+                    }
                     const statusBadge = task.status === 'completed' ? 'badge-success' :
                                        task.status === 'in_progress' ? 'badge-info' : 'badge-secondary';
                     const priorityBadge = task.priority === 'high' ? 'badge-danger' :

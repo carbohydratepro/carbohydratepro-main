@@ -2,15 +2,47 @@ from __future__ import annotations
 
 import calendar
 from datetime import date, datetime
+from datetime import timezone as dt_timezone
 from typing import TYPE_CHECKING
 
 from django.db.models import Q, QuerySet
 from django.utils.timezone import localtime, make_aware
 
-from .models import Task, TaskLabel
+from .models import ExternalEvent, Task, TaskLabel
 
 if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
+
+
+def get_external_events(
+    user: AbstractBaseUser,
+    range_start: datetime,
+    range_end: datetime,
+) -> list[ExternalEvent]:
+    """範囲内の外部カレンダーイベントを取得（読み取り専用表示用）"""
+    return list(
+        ExternalEvent.objects.filter(
+            calendar__user=user,
+            start_date__lte=range_end,
+        ).filter(
+            Q(end_date__gte=range_start) |
+            Q(end_date__isnull=True, start_date__gte=range_start)
+        ).select_related('calendar').order_by('start_date')
+    )
+
+
+# start_date が未設定の項目をソート末尾に回すための番兵値
+_FAR_FUTURE = datetime(9999, 1, 1, tzinfo=dt_timezone.utc)
+
+
+def merge_tasks_and_external_events(
+    tasks: list,
+    external_events: list[ExternalEvent],
+) -> list:
+    """タスクと外部イベントを表示順（終日→開始時刻）にマージする"""
+    combined = list(tasks) + list(external_events)
+    combined.sort(key=lambda item: (not item.all_day, item.start_date or _FAR_FUTURE))
+    return combined
 
 
 def get_day_view_tasks(user: AbstractBaseUser, day_start: datetime, day_end: datetime) -> QuerySet:
@@ -106,8 +138,9 @@ def build_calendar_data(
     year: int,
     month: int,
     week_start: str,
+    external_events: list[ExternalEvent] | None = None,
 ) -> tuple[list[list[dict[str, object]]], list[str]]:
-    """カレンダーデータと曜日ラベルを生成"""
+    """カレンダーデータと曜日ラベルを生成（外部イベントも日別にマージする）"""
     firstweekday = 6 if week_start == 'sunday' else 0
     cal = calendar.Calendar(firstweekday=firstweekday).monthdatescalendar(year, month)
     weekday_labels = (
@@ -115,6 +148,7 @@ def build_calendar_data(
         if week_start == 'sunday'
         else ['月', '火', '水', '木', '金', '土', '日']
     )
+    external_events = external_events or []
 
     today = date.today()
     calendar_data: list[list[dict[str, object]]] = []
@@ -129,13 +163,18 @@ def build_calendar_data(
                 Q(start_date__lte=day_end, end_date__gte=day_start) |
                 Q(start_date__lte=day_end, end_date__isnull=True) |
                 Q(start_date__isnull=True, end_date__gte=day_start)
-            ).order_by('start_date')[:5])
+            ).order_by('start_date'))
+            day_externals = [
+                event for event in external_events
+                if event.start_date <= day_end and (event.end_date or event.start_date) >= day_start
+            ]
+            day_items = merge_tasks_and_external_events(day_tasks, day_externals)
             week_data.append({
                 'day': d.day,
                 'month': d.month,
                 'year': d.year,
-                'tasks': day_tasks,
-                'task_count': len(day_tasks),
+                'tasks': day_items[:5],
+                'task_count': len(day_items),
                 'is_current_month': is_current_month,
                 'is_today': is_today,
             })
@@ -177,6 +216,36 @@ def build_task_api_json(tasks: QuerySet) -> list[dict[str, object]]:
             } if task.label else None,
         })
     return tasks_data
+
+
+def build_external_api_json(external_events: list[ExternalEvent]) -> list[dict[str, object]]:
+    """APIレスポンス用の外部イベントデータを構築（読み取り専用）"""
+    events_data: list[dict[str, object]] = []
+    for event in external_events:
+        local_start = localtime(event.start_date)
+        local_end = localtime(event.end_date) if event.end_date else None
+        if event.all_day:
+            date_display = local_start.strftime('%Y-%m-%d')
+            if local_end and local_start.date() != local_end.date():
+                date_display += f" 〜 {local_end.strftime('%Y-%m-%d')}"
+        else:
+            date_display = local_start.strftime('%Y-%m-%d %H:%M')
+            if local_end:
+                if local_start.date() == local_end.date():
+                    date_display += f" 〜 {local_end.strftime('%H:%M')}"
+                else:
+                    date_display += f" 〜 {local_end.strftime('%Y-%m-%d %H:%M')}"
+
+        events_data.append({
+            'is_external': True,
+            'title': event.title,
+            'due_date': date_display,
+            'calendar': {
+                'name': event.calendar.name,
+                'color': event.calendar.color,
+            },
+        })
+    return events_data
 
 
 def get_labels(user: AbstractBaseUser) -> QuerySet:

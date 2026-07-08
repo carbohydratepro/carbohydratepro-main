@@ -39,6 +39,14 @@
 - 現在アカウントをログアウトした場合は、そのアカウントだけをセッション上のログイン済み一覧から外し、残りのログイン済み連携アカウントへ自動切替する。
 - ログアウト済みの連携アカウントへ切り替える場合は、対象メールアドレス入力済みのログイン画面へ遷移する。
 
+## UI刷新（2026-07-08）
+
+- アプリシェル: デスクトップは左サイドバー（`app/_sidebar.html`）、モバイルは下部タブ（`app/_bottomnav.html`、その他はドロップアップ）、共通トップバー（`app/_topbar.html`）。ヘッダー帯はユーザー要望で従来のダークカラー（#343a40、`--color-topbar`）を維持。
+- デザイントークン: 藍 `--color-primary: #33518e` + 寒色ニュートラル + グレー背景。Bootstrap primary系クラス（.btn-primary等）はstyles.cssでトークンに追従させている。
+- ログイン済みの registration 系画面も同じシェル。未ログインページは従来の `registration/_header.html`。旧 `app/_header.html` と挨拶バー（page-greeting）は廃止（E2Eの `login()` はホーム見出しで検証）。
+- スケルトンスクリーン: `src/ts/skeleton.ts` が遷移を伴うクリック/フォーム送信で `.skeleton-overlay` を表示。preventDefault済み・外部リンク・アンカーは対象外、bfcache復元で自動解除。
+- 注意: PWAのService Workerが有効なブラウザでは Playwright の `page.route` がナビゲーションを捕捉できない。E2Eで遷移を遅延させたい場合は `serviceWorkers: "block"` を使うこと。
+
 ## 新機能（2026-07-07）
 
 - 統合ダッシュボード `/carbohydratepro/home/`（ログイン後の遷移先。今日のタスク・習慣・今月の収支・買い物・メモを集約。デモは `/demo/home/`）。

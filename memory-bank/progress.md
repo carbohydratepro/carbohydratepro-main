@@ -43,6 +43,8 @@
 - [x] 新機能一式（ダッシュボード・ICS・PWA）を本番へデプロイ（migration 0032適用、2026-07-08）
 - [x] 本番ルートURL500エラーのホットフィックス（AdminSecurityMiddleware の url_name=None 対応）
 - [x] 管理ブロックの有効化（secure_admin除外）と旧 /admin/ の500修正を本番反映
+- [x] UI刷新: サイドバー+モバイルボトムタブのアプリシェル（帯はダーク維持・藍アクセント）
+- [x] 画面遷移時のスケルトンスクリーン（skeleton.ts、E2E-UI-001）
 
 ## 未着手
 

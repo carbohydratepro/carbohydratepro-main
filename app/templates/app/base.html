@@ -55,10 +55,9 @@
     <script src="{% static 'app/app.js' %}"></script>
 
   </head>
-  <body>
-    <!-- ナビバー -->
-
-    {% include "app/_header.html" %}
+  <body class="has-bottomnav">
+    <!-- トップバー -->
+    {% include "app/_topbar.html" %}
 
     {% if is_demo %}
     <!-- デモバナー -->
@@ -97,15 +96,6 @@
     </script>
     {% endif %}
 
-    <!-- コンテンツ -->
-    <div class="pl-4 small page-greeting">
-        {% if not user.is_authenticated %}
-          こんにちは！ ゲスト さん
-        {% else %}
-          こんにちは！ {{ user.username }} さん
-        {% endif %}
-    </div>
-
     <!-- 成功/エラーダイアログ -->
     {% if messages %}
     <div id="messageDialog" class="message-dialog-overlay">
@@ -133,7 +123,16 @@
     </div>
     {% endif %}
 
-    {% block content %}{% endblock %}
+    <!-- コンテンツ（サイドバー + メイン） -->
+    <div class="app-shell">
+      {% include "app/_sidebar.html" %}
+      <main class="app-main">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+
+    <!-- ボトムタブ（モバイル） -->
+    {% include "app/_bottomnav.html" %}
 
     {% if is_demo %}
     <!-- ============================================================

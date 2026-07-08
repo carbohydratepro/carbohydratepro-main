@@ -43,21 +43,27 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'app/rice-icon.png' %}">
 
   </head>
-  <body>
-    <!-- ナビバー -->
-
-    {% include "registration/_header.html" %}
+  <body {% if user.is_authenticated %}class="has-bottomnav"{% endif %}>
+    <!-- ナビゲーション（ログイン済みはアプリシェル、未ログインは従来のトップナビ） -->
+    {% if user.is_authenticated %}
+      {% include "app/_topbar.html" %}
+    {% else %}
+      {% include "registration/_header.html" %}
+    {% endif %}
 
     <!-- コンテンツ -->
-    <div class="pl-4 small page-greeting">
-        {% if not user.is_authenticated %}
-          こんにちは！ ゲスト さん
-        {% else %}
-          こんにちは！ {{ user.username }} さん
-        {% endif %}
+    <div class="app-shell">
+      {% if user.is_authenticated %}
+        {% include "app/_sidebar.html" %}
+      {% endif %}
+      <main class="app-main">
+        {% block content %}{% endblock %}
+      </main>
     </div>
-      
-    {% block content %}{% endblock %}
+
+    {% if user.is_authenticated %}
+      {% include "app/_bottomnav.html" %}
+    {% endif %}
 
     <!-- Optional JavaScript -->
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->

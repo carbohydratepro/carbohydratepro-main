@@ -4,16 +4,18 @@
    var(--xxx) を参照すること。
    ========================================================================== */
 :root {
-    /* アクセント（Bootstrap primary と同一。変更時はここだけ変える） */
-    --color-primary: #007bff;
-    --color-primary-dark: #0069d9;
+    /* アクセント（藍。Bootstrap primary もこの色に上書きする） */
+    --color-primary: #33518e;
+    --color-primary-dark: #2a4376;
+    --color-primary-soft: #eceff6;
 
-    /* テキスト・サーフェス */
-    --color-text: #333333;
-    --color-text-muted: #6c757d;
+    /* テキスト・サーフェス（寒色系ニュートラル） */
+    --color-text: #191c21;
+    --color-text-muted: #676e79;
+    --color-bg: #f5f6f8;
     --color-surface: #ffffff;
-    --color-surface-alt: #f8f9fa;
-    --color-border: #dee2e6;
+    --color-surface-alt: #f5f6f8;
+    --color-border: #e3e6ea;
 
     /* セマンティックカラー（Bootstrap準拠） */
     --color-success: #28a745;
@@ -22,9 +24,16 @@
     --color-info: #17a2b8;
 
     /* 形状 */
-    --radius: 8px;
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --radius: 10px;
+    --shadow-sm: 0 1px 2px rgba(20, 24, 33, 0.05);
+    --shadow: 0 4px 6px rgba(20, 24, 33, 0.08);
+
+    /* レイアウト */
+    --topbar-height: 56px;
+    --sidebar-width: 216px;
+    --bottomnav-height: 62px;
+    /* ヘッダー帯は従来のダークカラーを維持する */
+    --color-topbar: #343a40;
 }
 
 .m-5 {
@@ -33,8 +42,243 @@
 
 html, body {
     height: 100%;
-    background-color: var(--color-surface);
+    background-color: var(--color-bg);
     color: var(--color-text);
+}
+
+/* ==========================================================================
+   アクセントカラーの Bootstrap 上書き
+   （--color-primary を変えたらここも自動で追従する）
+   ========================================================================== */
+a {
+    color: var(--color-primary);
+}
+
+a:hover {
+    color: var(--color-primary-dark);
+}
+
+.btn-primary {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active,
+.btn-primary:not(:disabled):not(.disabled):active {
+    background-color: var(--color-primary-dark);
+    border-color: var(--color-primary-dark);
+}
+
+.btn-outline-primary {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:not(:disabled):not(.disabled):active {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+}
+
+.text-primary {
+    color: var(--color-primary) !important;
+}
+
+.bg-primary,
+.badge-primary {
+    background-color: var(--color-primary) !important;
+}
+
+/* ==========================================================================
+   アプリシェル（トップバー / サイドバー / ボトムタブ）
+   ========================================================================== */
+
+/* トップバー（帯は従来のダークカラー） */
+.app-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    height: var(--topbar-height);
+    background-color: var(--color-topbar);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+}
+
+.app-topbar .topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.app-topbar .topbar-brand:hover {
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.app-topbar .topbar-brand img {
+    width: 34px;
+    height: 34px;
+}
+
+.app-topbar .topbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+}
+
+.app-topbar .navbar-nav {
+    flex-direction: row;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* シェル本体 */
+.app-shell {
+    display: flex;
+    align-items: stretch;
+    min-height: calc(100vh - var(--topbar-height));
+}
+
+.app-main {
+    flex: 1;
+    min-width: 0;
+}
+
+/* サイドバー（デスクトップのみ） */
+.app-sidebar {
+    width: var(--sidebar-width);
+    flex: none;
+    background-color: var(--color-surface);
+    border-right: 1px solid var(--color-border);
+    padding: 14px 0;
+    position: sticky;
+    top: var(--topbar-height);
+    align-self: flex-start;
+    height: calc(100vh - var(--topbar-height));
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-sidebar .side-link {
+    display: block;
+    padding: 9px 20px;
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    border-left: 3px solid transparent;
+    text-decoration: none;
+}
+
+.app-sidebar .side-link:hover {
+    color: var(--color-text);
+    background-color: var(--color-surface-alt);
+    text-decoration: none;
+}
+
+.app-sidebar .side-link:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+}
+
+.app-sidebar .side-link.active {
+    color: var(--color-primary);
+    font-weight: 700;
+    border-left-color: var(--color-primary);
+    background-color: var(--color-primary-soft);
+}
+
+.app-sidebar .side-divider {
+    border-top: 1px solid var(--color-border);
+    margin: 10px 20px;
+}
+
+@media (max-width: 767.98px) {
+    .app-sidebar {
+        display: none;
+    }
+}
+
+/* ボトムタブ（モバイルのみ） */
+.app-bottomnav {
+    display: none;
+}
+
+@media (max-width: 767.98px) {
+    .app-bottomnav {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1030;
+        background-color: var(--color-surface);
+        border-top: 1px solid var(--color-border);
+        padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+    }
+
+    body.has-bottomnav {
+        padding-bottom: calc(var(--bottomnav-height) + 24px);
+    }
+
+    /* ボトムタブとフッターは同居できないためモバイルでは隠す */
+    body.has-bottomnav .site-footer {
+        display: none;
+    }
+}
+
+.app-bottomnav .bottomnav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 10px;
+    color: var(--color-text-muted);
+    padding: 4px 0 2px;
+    text-decoration: none;
+    background: transparent;
+    border: 0;
+    width: 100%;
+}
+
+.app-bottomnav .bottomnav-item:hover {
+    text-decoration: none;
+    color: var(--color-text);
+}
+
+.app-bottomnav .bottomnav-item:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+}
+
+.app-bottomnav .bottomnav-item.active {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+.app-bottomnav .bottomnav-item svg {
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* その他メニュー（ドロップアップ） */
+.app-bottomnav .dropup .dropdown-menu {
+    margin-bottom: 8px;
 }
 
 /* ==========================================================================

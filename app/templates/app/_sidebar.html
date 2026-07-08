@@ -1,0 +1,28 @@
+{# サイドバーナビゲーション（デスクトップのみ表示。モバイルは _bottomnav.html） #}
+{% with url_name=request.resolver_match.url_name %}
+<aside class="app-sidebar" aria-label="サイドバー">
+  <nav aria-label="メイン">
+    {% if is_demo %}
+      <a class="side-link {% if url_name == 'demo_home' %}active{% endif %}" href="{% url 'demo_home' %}">ホーム</a>
+      <a class="side-link {% if url_name == 'demo_expenses' %}active{% endif %}" href="{% url 'demo_expenses' %}">家計簿</a>
+      <a class="side-link {% if url_name == 'demo_tasks' %}active{% endif %}" href="{% url 'demo_tasks' %}">スケジュール</a>
+      <a class="side-link {% if url_name == 'demo_board' %}active{% endif %}" href="{% url 'demo_board' %}">一時タスク</a>
+      <a class="side-link {% if url_name == 'demo_habits' %}active{% endif %}" href="{% url 'demo_habits' %}">習慣</a>
+      <a class="side-link {% if url_name == 'demo_memos' %}active{% endif %}" href="{% url 'demo_memos' %}">メモ</a>
+      <a class="side-link {% if url_name == 'demo_shopping' %}active{% endif %}" href="{% url 'demo_shopping' %}">買いものリスト</a>
+    {% else %}
+      <a class="side-link {% if url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">ホーム</a>
+      <a class="side-link {% if url_name == 'expense_list' %}active{% endif %}" href="{% url 'expense_list' %}">家計簿</a>
+      <a class="side-link {% if url_name == 'task_list' %}active{% endif %}" href="{% url 'task_list' %}">スケジュール</a>
+      <a class="side-link {% if url_name == 'temp_task_board' %}active{% endif %}" href="{% url 'temp_task_board' %}">一時タスク</a>
+      <a class="side-link {% if url_name == 'habit_dashboard' %}active{% endif %}" href="{% url 'habit_dashboard' %}">習慣</a>
+      <a class="side-link {% if url_name == 'memo_list' %}active{% endif %}" href="{% url 'memo_list' %}">メモ</a>
+      <a class="side-link {% if url_name == 'shopping_list' %}active{% endif %}" href="{% url 'shopping_list' %}">買いものリスト</a>
+      {% if user.is_superuser %}
+        <div class="side-divider"></div>
+        <a class="side-link {% if url_name == 'manage_dashboard' %}active{% endif %}" href="{% url 'manage_dashboard' %}">管理</a>
+      {% endif %}
+    {% endif %}
+  </nav>
+</aside>
+{% endwith %}

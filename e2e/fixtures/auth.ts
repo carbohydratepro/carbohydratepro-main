@@ -53,7 +53,7 @@ export async function login(page: Page, credentials: Credentials): Promise<void>
   await page.getByLabel(/パスワード|Password/).fill(credentials.password);
   await page.getByRole("button", { name: "ログイン" }).click();
   await expect(page).toHaveURL(/\/carbohydratepro\/home\/?$/);
-  await expect(page.getByText(/こんにちは！ .* さん/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "ホーム" })).toBeVisible();
 }
 
 export async function dismissMessageDialog(page: Page): Promise<void> {

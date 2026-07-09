@@ -236,12 +236,18 @@ function startRenameSet(tab, setId, currentName) {
         }
     });
 }
-async function confirmDeleteSet(setId, name) {
-    var _a, _b;
+function confirmDeleteSet(setId, name) {
     if (sets.length <= 1)
         return;
-    if (!confirm(`「${name}」を削除しますか？\nこのセットのタスクもすべて削除されます。`))
-        return;
+    showConfirm({
+        message: `「${name}」を削除しますか？\nこのセットのタスクもすべて削除されます。`,
+        confirmLabel: '削除',
+        danger: true,
+        onConfirm: () => { void deleteSet(setId); },
+    });
+}
+async function deleteSet(setId) {
+    var _a, _b;
     try {
         await apiDeleteSet(setId);
         sets = sets.filter(s => s.id !== setId);
@@ -257,7 +263,7 @@ async function confirmDeleteSet(setId, name) {
             await loadFromServer();
     }
     catch (err) {
-        alert(err instanceof Error ? err.message : 'セット削除に失敗しました');
+        showToast(err instanceof Error ? err.message : 'セット削除に失敗しました', 'error');
     }
 }
 async function switchSet(setId) {
@@ -417,9 +423,17 @@ async function moveTask(localId, newStatus) {
         }
     }
 }
-async function clearAllTasks() {
-    if (!confirm('すべてのタスクを削除してもよろしいですか？'))
+function clearAllTasks() {
+    if (tasks.length === 0)
         return;
+    showConfirm({
+        message: 'このセットのタスクをすべて削除しますか？',
+        confirmLabel: 'すべて削除',
+        danger: true,
+        onConfirm: () => { void runClearAllTasks(); },
+    });
+}
+async function runClearAllTasks() {
     const hasServerTasks = tasks.some(t => t.serverId !== null);
     tasks = [];
     renderAll();
@@ -541,9 +555,9 @@ function createTaskCard(task) {
     card.innerHTML = `
         <span class="kanban-task-text">${escapeHtml(task.title)}</span>
         ${unsavedIndicator}
-        <div class="kanban-task-delete-overlay" title="削除">
-            <i class="fas fa-trash-alt"></i>
-        </div>
+        <button type="button" class="kanban-task-delete-overlay" aria-label="「${escapeHtml(task.title)}」を削除" title="削除">
+            <i class="fas fa-trash-alt" aria-hidden="true"></i> 削除
+        </button>
     `;
     // 削除オーバーレイ（長押し後に表示）のクリックで削除
     const deleteOverlay = card.querySelector('.kanban-task-delete-overlay');

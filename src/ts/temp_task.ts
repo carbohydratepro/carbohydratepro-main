@@ -291,10 +291,17 @@ function startRenameSet(tab: HTMLButtonElement, setId: number, currentName: stri
     });
 }
 
-async function confirmDeleteSet(setId: number, name: string): Promise<void> {
+function confirmDeleteSet(setId: number, name: string): void {
     if (sets.length <= 1) return;
-    if (!confirm(`「${name}」を削除しますか？\nこのセットのタスクもすべて削除されます。`)) return;
+    showConfirm({
+        message: `「${name}」を削除しますか？\nこのセットのタスクもすべて削除されます。`,
+        confirmLabel: '削除',
+        danger: true,
+        onConfirm: () => { void deleteSet(setId); },
+    });
+}
 
+async function deleteSet(setId: number): Promise<void> {
     try {
         await apiDeleteSet(setId);
         sets = sets.filter(s => s.id !== setId);
@@ -307,7 +314,7 @@ async function confirmDeleteSet(setId: number, name: string): Promise<void> {
         renderAll();
         if (currentSetId !== null) await loadFromServer();
     } catch (err) {
-        alert(err instanceof Error ? err.message : 'セット削除に失敗しました');
+        showToast(err instanceof Error ? err.message : 'セット削除に失敗しました', 'error');
     }
 }
 
@@ -480,9 +487,17 @@ async function moveTask(localId: string, newStatus: string): Promise<void> {
     }
 }
 
-async function clearAllTasks(): Promise<void> {
-    if (!confirm('すべてのタスクを削除してもよろしいですか？')) return;
+function clearAllTasks(): void {
+    if (tasks.length === 0) return;
+    showConfirm({
+        message: 'このセットのタスクをすべて削除しますか？',
+        confirmLabel: 'すべて削除',
+        danger: true,
+        onConfirm: () => { void runClearAllTasks(); },
+    });
+}
 
+async function runClearAllTasks(): Promise<void> {
     const hasServerTasks = tasks.some(t => t.serverId !== null);
     tasks = [];
     renderAll();
@@ -609,9 +624,9 @@ function createTaskCard(task: TempTask): HTMLElement {
     card.innerHTML = `
         <span class="kanban-task-text">${escapeHtml(task.title)}</span>
         ${unsavedIndicator}
-        <div class="kanban-task-delete-overlay" title="削除">
-            <i class="fas fa-trash-alt"></i>
-        </div>
+        <button type="button" class="kanban-task-delete-overlay" aria-label="「${escapeHtml(task.title)}」を削除" title="削除">
+            <i class="fas fa-trash-alt" aria-hidden="true"></i> 削除
+        </button>
     `;
 
     // 削除オーバーレイ（長押し後に表示）のクリックで削除

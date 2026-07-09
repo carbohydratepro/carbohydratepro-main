@@ -76,6 +76,10 @@ async function openEditModal(transactionId) {
         }
     }
     catch (error) {
+        // デモモードは fetch を意図的に reject する。サインアップモーダルは既に
+        // 表示済みなので、エラー通知は出さない。
+        if (error instanceof Error && error.message === 'demo')
+            return;
         const message = error instanceof Error ? error.message : String(error);
         console.error('Edit modal error:', error);
         alert(`データの読み込みに失敗しました。(${message})`);
@@ -103,6 +107,10 @@ async function openCreateModal(createUrl = '/carbohydratepro/expenses/create/') 
         }
     }
     catch (error) {
+        // デモモードは fetch を意図的に reject する。サインアップモーダルは既に
+        // 表示済みなので、エラー通知は出さない。
+        if (error instanceof Error && error.message === 'demo')
+            return;
         const message = error instanceof Error ? error.message : String(error);
         console.error('Create modal error:', error);
         alert(`データの読み込みに失敗しました。(${message})`);

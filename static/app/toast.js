@@ -5,6 +5,59 @@
 // タイムアウトで本削除を確定する。ページ離脱時は保留中の削除を確定する。
 // 保留中の確定処理（ページ離脱時にまとめて実行する）
 const pendingCommits = new Set();
+// アプリ内の確認ダイアログ（window.confirm の代替）。
+// window.confirm はブラウザ操作をブロックし固着することがあるため、これに置き換える。
+function showConfirm(options) {
+    var _a, _b;
+    const overlay = document.createElement('div');
+    overlay.className = 'app-confirm-overlay';
+    const dialog = document.createElement('div');
+    dialog.className = 'app-confirm-dialog';
+    dialog.setAttribute('role', 'alertdialog');
+    dialog.setAttribute('aria-modal', 'true');
+    const text = document.createElement('p');
+    text.className = 'app-confirm-message';
+    text.textContent = options.message;
+    const actions = document.createElement('div');
+    actions.className = 'app-confirm-actions';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn btn-secondary app-confirm-cancel';
+    cancelBtn.textContent = (_a = options.cancelLabel) !== null && _a !== void 0 ? _a : 'キャンセル';
+    const confirmBtn = document.createElement('button');
+    confirmBtn.type = 'button';
+    confirmBtn.className = 'btn ' + (options.danger ? 'btn-danger' : 'btn-primary') + ' app-confirm-ok';
+    confirmBtn.textContent = (_b = options.confirmLabel) !== null && _b !== void 0 ? _b : 'OK';
+    actions.append(cancelBtn, confirmBtn);
+    dialog.append(text, actions);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('show'));
+    let settled = false;
+    const close = (confirmed) => {
+        var _a;
+        if (settled)
+            return;
+        settled = true;
+        document.removeEventListener('keydown', onKey);
+        overlay.classList.remove('show');
+        setTimeout(() => overlay.remove(), 200);
+        if (confirmed)
+            options.onConfirm();
+        else
+            (_a = options.onCancel) === null || _a === void 0 ? void 0 : _a.call(options);
+    };
+    function onKey(e) {
+        if (e.key === 'Escape')
+            close(false);
+    }
+    cancelBtn.addEventListener('click', () => close(false));
+    confirmBtn.addEventListener('click', () => close(true));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay)
+        close(false); });
+    document.addEventListener('keydown', onKey);
+    cancelBtn.focus();
+}
 function ensureToastContainer() {
     let container = document.getElementById('toastContainer');
     if (!container) {

@@ -258,14 +258,24 @@
     display: none;
     position: absolute;
     inset: 0;
+    width: 100%;
     background: rgba(220, 53, 69, 0.88);
+    border: 0;
     border-radius: 7px;
     align-items: center;
     justify-content: center;
+    gap: 6px;
     cursor: pointer;
     color: white;
     font-size: 1.1rem;
+    font-weight: 600;
+    font-family: inherit;
     z-index: 10;
+}
+
+.kanban-task-delete-overlay:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -3px;
 }
 
 .kanban-task-card.delete-pending .kanban-task-delete-overlay {

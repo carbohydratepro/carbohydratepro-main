@@ -840,3 +840,52 @@ h1 {
     display: flex;
     gap: 8px;
 }
+
+/* ==========================================================================
+   アプリ内確認ダイアログ（toast.js の showConfirm。window.confirm の代替）
+   ========================================================================== */
+.app-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    background: rgba(20, 24, 33, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.app-confirm-overlay.show {
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-confirm-overlay {
+        transition: none;
+    }
+}
+
+.app-confirm-dialog {
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 30px rgba(20, 24, 33, 0.25);
+    max-width: 380px;
+    width: 100%;
+    padding: 20px;
+}
+
+.app-confirm-message {
+    margin: 0 0 18px;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    white-space: pre-line;
+}
+
+.app-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}

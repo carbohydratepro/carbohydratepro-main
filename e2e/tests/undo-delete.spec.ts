@@ -56,6 +56,42 @@ test.describe("削除のUndoトースト", () => {
     await expect(boardCard(page, title)).toHaveCount(1);
   });
 
+  test("E2E-UNDO-003 全削除はアプリ内確認ダイアログで行う（window.confirmを使わない）", async ({ page }) => {
+    // Spec: docs/e2e/release-test-spec.md#e2e-undo-003
+    let nativeDialogFired = false;
+    page.on("dialog", (d) => { nativeDialogFired = true; void d.dismiss(); });
+
+    await addCard(page, uniqueName("clear-card"));
+    await expect(page.locator("#kanbanBoard .kanban-task-card")).not.toHaveCount(0);
+
+    await page.getByRole("button", { name: /全削除/ }).click();
+    // ネイティブconfirmではなくアプリ内ダイアログが出る
+    const dialog = page.locator(".app-confirm-dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "すべて削除" })).toBeVisible();
+    expect(nativeDialogFired).toBe(false);
+
+    // キャンセルで閉じられる
+    await dialog.getByRole("button", { name: "キャンセル" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page.locator("#kanbanBoard .kanban-task-card")).not.toHaveCount(0);
+
+    // 確定するとすべて消える
+    await page.getByRole("button", { name: /全削除/ }).click();
+    await page.locator(".app-confirm-dialog").getByRole("button", { name: "すべて削除" }).click();
+    await expect(page.locator("#kanbanBoard .kanban-task-card")).toHaveCount(0);
+  });
+
+  test("E2E-UNDO-004 一時タスクの削除操作はaria-label付きボタンである", async ({ page }) => {
+    // Spec: docs/e2e/release-test-spec.md#e2e-undo-004
+    const title = uniqueName("a11y-card");
+    await addCard(page, title);
+    // 削除要素は <button> でアクセシブル名を持つ
+    const deleteBtn = boardCard(page, title).locator("button.kanban-task-delete-overlay");
+    await expect(deleteBtn).toHaveCount(1);
+    await expect(deleteBtn).toHaveAttribute("aria-label", /削除/);
+  });
+
   test("E2E-UNDO-002 取り消さなければ削除が確定する", async ({ page }) => {
     // Spec: docs/e2e/release-test-spec.md#e2e-undo-002
     const title = uniqueName("commit-card");

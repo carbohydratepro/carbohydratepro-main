@@ -142,6 +142,7 @@ class Signup(generic.CreateView):
         context = super().get_context_data(**kwargs)
         context["process_name"] = "サインアップ"
         context["button_text"] = "サインアップ"
+        context["page_title"] = "サインアップ"
         return context
 
 
@@ -164,6 +165,7 @@ class Edit(OnlyYouMixin, generic.UpdateView):
         context = super().get_context_data(**kwargs)
         context["process_name"] = "名前変更フォーム"
         context["button_text"] = "変更"
+        context["page_title"] = "プロフィール変更"
         return context
 
 '''パスワード変更'''
@@ -177,6 +179,7 @@ class PasswordChange(PasswordChangeView):
         context = super().get_context_data(**kwargs)
         context["process_name"] = "パスワード変更フォーム"
         context["button_text"] = "変更"
+        context["page_title"] = "パスワード変更"
         return context
 
 

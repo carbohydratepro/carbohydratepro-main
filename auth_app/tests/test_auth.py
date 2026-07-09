@@ -209,6 +209,11 @@ class SignupViewTest(TestCase):
         response = self.client.get(reverse('signup'))
         self.assertEqual(response.status_code, 200)
 
+    def test_signup_page_title(self) -> None:
+        """サインアップのページタイトルが正しい"""
+        response = self.client.get(reverse('signup'))
+        self.assertContains(response, '<title>サインアップ | Life management</title>', html=False)
+
     @patch('auth_app.views.send_html_email', return_value=True)
     def test_signup_success(self, mock_send_email) -> None:
         """サインアップ成功テスト"""
@@ -258,6 +263,30 @@ class SignupViewTest(TestCase):
         }
         response = self.client.post(reverse('signup'), signup_data)
         self.assertEqual(response.status_code, 200)
+
+
+class UserFormPageTitleTest(TestCase):
+    """共用テンプレート user_form.html のページタイトルが画面ごとに正しいことのテスト"""
+
+    def setUp(self) -> None:
+        self.client = Client()
+        self.user = UserFactory()
+
+    def test_profile_edit_title(self) -> None:
+        """プロフィール編集のタイトルは「プロフィール変更」（旧: サインアップ）"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('edit', kwargs={'pk': self.user.pk}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<title>プロフィール変更 | Life management</title>', html=False)
+        self.assertNotContains(response, '<title>サインアップ | Life management</title>', html=False)
+
+    def test_password_change_title(self) -> None:
+        """パスワード変更のタイトルは「パスワード変更」（旧: サインアップ）"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('password_change'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<title>パスワード変更 | Life management</title>', html=False)
+        self.assertNotContains(response, '<title>サインアップ | Life management</title>', html=False)
 
 
 @override_settings(

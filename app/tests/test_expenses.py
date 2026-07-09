@@ -1,6 +1,7 @@
 """
 支出管理機能のテスト
 """
+import json
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -186,6 +187,105 @@ class CategoryFormTest(TestCase):
         """空の名前が無効であることをテスト"""
         form = CategoryForm(data={'name': ''})
         self.assertFalse(form.is_valid())
+
+
+class CategoryChartColorTest(TestCase):
+    """カテゴリのグラフ色（既定色・実効色）のテスト"""
+
+    def setUp(self) -> None:
+        self.user = UserFactory()
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def test_default_color_follows_palette_by_id(self) -> None:
+        """色未設定カテゴリの既定色はIDに応じたパレット巡回色になる"""
+        from app.expenses import selectors
+        from project.utils import CHART_COLORS
+
+        palette = CHART_COLORS['category']
+        for category_id in [1, 2, 15, 16, 0]:
+            self.assertEqual(
+                selectors.get_category_default_color(category_id),
+                palette[(category_id or 0) % len(palette)],
+            )
+
+    def test_effective_color_prefers_explicit(self) -> None:
+        """設定色があればそれを、なければ既定色を実効色として返す"""
+        from app.expenses import selectors
+
+        colored = CategoryFactory(user=self.user, chart_color='#123456')
+        uncolored = CategoryFactory(user=self.user, chart_color='')
+        self.assertEqual(selectors.get_effective_category_color(colored), '#123456')
+        self.assertEqual(
+            selectors.get_effective_category_color(uncolored),
+            selectors.get_category_default_color(uncolored.id),
+        )
+
+    def test_settings_page_reflects_effective_color(self) -> None:
+        """設定画面のスウォッチ・ピッカーに実効色（既定色）が反映される（旧固定色ではない）"""
+        from app.expenses import selectors
+
+        uncolored = CategoryFactory(user=self.user, chart_color='')
+        expected = selectors.get_effective_category_color(uncolored)
+
+        response = self.client.get('/carbohydratepro/expenses/settings/')
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode('utf-8')
+        # 実効色（パレット由来）が出力され、旧デフォルトのグレー/固定ティールは既定として出さない
+        self.assertIn(expected, content)
+        self.assertIn('自動', content)  # 未設定カテゴリには「自動」表示
+
+    def test_uncolored_category_edit_defaults_to_auto(self) -> None:
+        """色未設定カテゴリの編集は自動チェックON・ピッカー無効で表示される"""
+        CategoryFactory(user=self.user, chart_color='')
+        content = self.client.get('/carbohydratepro/expenses/settings/').content.decode('utf-8')
+        self.assertIn('name="purpose-auto_color" checked', content)
+        # 色ピッカーは無効化されている（自動時は送信されず未設定のまま保存される）
+        self.assertRegex(content, r'name="purpose-chart_color"[^>]*disabled')
+
+    def test_colored_category_edit_enables_picker(self) -> None:
+        """色設定済みカテゴリの編集は自動チェックOFF・ピッカー有効で表示される"""
+        CategoryFactory(user=self.user, chart_color='#abcdef')
+        content = self.client.get('/carbohydratepro/expenses/settings/').content.decode('utf-8')
+        self.assertNotIn('name="purpose-auto_color" checked', content)
+
+    def test_edit_can_switch_to_auto(self) -> None:
+        """編集で自動に切り替える（色ピッカー未送信）と色が未設定に戻る"""
+        category = CategoryFactory(user=self.user, chart_color='#abcdef')
+        # 自動チェックON = 色ピッカーはdisabledで未送信 → chart_color は空になる
+        self.client.post('/carbohydratepro/expenses/settings/', {
+            'purpose_id': category.id,
+            'edit_purpose': 'true',
+            'purpose-name': category.name,
+            'purpose-auto_color': 'on',
+        })
+        category.refresh_from_db()
+        self.assertEqual(category.chart_color, '')
+
+    def test_edit_can_set_explicit_color(self) -> None:
+        """編集で明示的な色を設定できる"""
+        category = CategoryFactory(user=self.user, chart_color='')
+        self.client.post('/carbohydratepro/expenses/settings/', {
+            'purpose_id': category.id,
+            'edit_purpose': 'true',
+            'purpose-name': category.name,
+            'purpose-chart_color': '#112233',
+        })
+        category.refresh_from_db()
+        self.assertEqual(category.chart_color, '#112233')
+
+    def test_chart_uses_same_default_as_settings(self) -> None:
+        """円グラフの色決定が設定画面と同じ既定色関数を使う"""
+        from app.expenses import selectors
+        from app.expenses.models import Transaction
+
+        category = CategoryFactory(user=self.user, chart_color='')
+        TransactionFactory(user=self.user, category=category, transaction_type='expense')
+        data = json.loads(selectors.build_category_chart_data(
+            Transaction.objects.filter(user=self.user)
+        ))
+        colors = data['datasets'][0]['backgroundColor']
+        self.assertIn(selectors.get_category_default_color(category.id), colors)
 
 
 class ExpensesViewTest(TestCase):

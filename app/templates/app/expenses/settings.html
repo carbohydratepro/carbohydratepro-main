@@ -141,7 +141,8 @@
                 data-item-id="{{ purpose.id }}">
                 <td>{{ purpose.name }}</td>
                 <td>
-                    <span style="display:inline-block; width:20px; height:20px; border-radius:3px; background:{{ purpose.chart_color|default:'#BDC3C7' }}; border:1px solid #ccc; vertical-align:middle;"></span>
+                    <span style="display:inline-block; width:20px; height:20px; border-radius:3px; background:{{ purpose.effective_chart_color }}; border:1px solid #ccc; vertical-align:middle;"></span>
+                    {% if not purpose.chart_color %}<span class="text-muted small ml-1">自動</span>{% endif %}
                 </td>
                 <td class="lp-actions-cell">
                     <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
@@ -172,17 +173,25 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="purpose-chart_color-{{ purpose.id }}">グラフ色</label>
+                                    <div class="custom-control custom-checkbox mb-2">
+                                        <input type="checkbox" class="custom-control-input" id="purpose-auto-{{ purpose.id }}"
+                                               name="purpose-auto_color" {% if not purpose.chart_color %}checked{% endif %}
+                                               onchange="document.getElementById('purpose-chart_color-{{ purpose.id }}').disabled = this.checked;">
+                                        <label class="custom-control-label" for="purpose-auto-{{ purpose.id }}">自動で色分けする（IDに応じた既定色）</label>
+                                    </div>
                                     <div class="d-flex align-items-center">
                                         <input type="color" name="purpose-chart_color"
                                                class="form-control form-control-color mr-2"
                                                id="purpose-chart_color-{{ purpose.id }}"
-                                               value="{{ purpose.chart_color|default:'#4ECDC4' }}"
+                                               value="{{ purpose.effective_chart_color }}"
+                                               {% if not purpose.chart_color %}disabled{% endif %}
                                                style="width:60px; padding:2px; height:38px;">
                                         <button type="button" class="btn btn-sm btn-outline-secondary"
-                                                onclick="document.getElementById('purpose-chart_color-{{ purpose.id }}').value='#4ECDC4';">
-                                            リセット
+                                                onclick="var i=document.getElementById('purpose-chart_color-{{ purpose.id }}'); document.getElementById('purpose-auto-{{ purpose.id }}').checked=false; i.disabled=false; i.value='{{ purpose.effective_chart_color }}';">
+                                            既定色を使う
                                         </button>
                                     </div>
+                                    <small class="text-muted d-block mt-1">自動のチェックを外すと、選んだ色で固定します。</small>
                                 </div>
                                 <input type="hidden" name="purpose_id" value="{{ purpose.id }}">
                                 <input type="hidden" name="edit_purpose" value="true">

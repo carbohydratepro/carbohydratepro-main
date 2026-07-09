@@ -104,7 +104,6 @@ def build_category_chart_data(transactions_qs: QuerySet) -> str:
     expense_qs = transactions_qs.filter(transaction_type='expense')
     category_data = expense_qs.values('category__id', 'category__name', 'category__chart_color').annotate(total=Sum('amount')).order_by('-total')
 
-    palette: list[str] = CHART_COLORS['category']
     if category_data.exists():
         top_categories = list(category_data[:5])
         other_total = sum(float(entry['total']) for entry in category_data[5:])
@@ -115,7 +114,7 @@ def build_category_chart_data(transactions_qs: QuerySet) -> str:
         amounts = [float(entry['total']) for entry in top_categories]
         colors: list[str] = [
             entry['category__chart_color'] if entry['category__chart_color']
-            else palette[(entry['category__id'] or 0) % len(palette)]
+            else get_category_default_color(entry['category__id'])
             for entry in top_categories
         ]
         if other_total > 0:
@@ -220,6 +219,20 @@ def get_payment_methods(user: AbstractBaseUser) -> QuerySet:
 def get_categories(user: AbstractBaseUser) -> QuerySet:
     """ユーザーのカテゴリ一覧を返す。"""
     return Category.objects.filter(user=user)
+
+
+def get_category_default_color(category_id: int | None) -> str:
+    """色未設定カテゴリの既定色（カテゴリIDに基づくパレット巡回色）を返す。
+
+    円グラフ（build_category_chart_data）と設定画面で同じ既定色を使うための共通関数。
+    """
+    palette: list[str] = CHART_COLORS['category']
+    return palette[(category_id or 0) % len(palette)]
+
+
+def get_effective_category_color(category: Category) -> str:
+    """カテゴリの実効グラフ色を返す（設定色があればそれ、なければ既定色）。"""
+    return category.chart_color or get_category_default_color(category.id)
 
 
 def get_recurring_payments(user: AbstractBaseUser) -> QuerySet:

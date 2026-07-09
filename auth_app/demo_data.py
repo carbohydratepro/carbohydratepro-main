@@ -104,6 +104,8 @@ class FakeCategory:
         self.id = id
         self.name = name
         self.chart_color = chart_color
+        # 設定画面はカテゴリの実効グラフ色を参照する（デモは全て色設定済み）
+        self.effective_chart_color = chart_color
 
 
 class FakePaymentMethod:

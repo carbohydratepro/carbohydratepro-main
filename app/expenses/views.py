@@ -139,7 +139,10 @@ def create_expenses(request: HttpRequest) -> HttpResponse:
 @login_required
 def expenses_settings(request: HttpRequest) -> HttpResponse:
     payments = selectors.get_payment_methods(request.user)
-    purposes = selectors.get_categories(request.user)
+    # 各カテゴリに実効グラフ色（設定色 or ID由来の既定色）を付与してテンプレートへ渡す
+    purposes = list(selectors.get_categories(request.user))
+    for purpose in purposes:
+        purpose.effective_chart_color = selectors.get_effective_category_color(purpose)
 
     payment_form = PaymentMethodForm(prefix='payment')
     purpose_form = CategoryForm(prefix='purpose')
@@ -165,7 +168,11 @@ def expenses_settings(request: HttpRequest) -> HttpResponse:
             if 'edit_purpose' in request.POST:
                 purpose_form = CategoryForm(request.POST, instance=purpose, prefix='purpose')
                 if purpose_form.is_valid():
-                    purpose_form.save()
+                    updated = purpose_form.save(commit=False)
+                    # 「自動で色分け」チェック時は色を未設定に戻す（IDに応じた既定色を使う）
+                    if request.POST.get('purpose-auto_color'):
+                        updated.chart_color = ''
+                    updated.save()
                     return redirect('expenses_settings')
                 edit_purpose_instance = purpose
             elif 'delete_purpose' in request.POST:

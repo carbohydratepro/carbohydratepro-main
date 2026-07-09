@@ -47,6 +47,14 @@
 - スケルトンスクリーン: `src/ts/skeleton.ts` が遷移を伴うクリック/フォーム送信で `.skeleton-overlay` を表示。preventDefault済み・外部リンク・アンカーは対象外、bfcache復元で自動解除。
 - 注意: PWAのService Workerが有効なブラウザでは Playwright の `page.route` がナビゲーションを捕捉できない。E2Eで遷移を遅延させたい場合は `serviceWorkers: "block"` を使うこと。
 
+## 削除の安全性・一括削除（2026-07-09）
+
+- 共通トースト `src/ts/toast.ts`（全画面で読込、base.html）。`showUndoToast({message,onUndo,onCommit,durationMs})` はタイムアウト/pagehideで onCommit を確定。
+- 一時タスク削除は「即削除＋Undoで再作成」（`restoreDeletedTask`）。離脱時の確定は `apiDeleteTask` の `keepalive` に依存。遅延削除方式は離脱レースが残るため不採用。
+- 一括削除は共通モジュール `src/ts/bulk_delete.ts` ＋ DOM契約（`data-bulk-container`/`data-bulk-url`、行に `bulk-item`/`data-bulk-id` と `.bulk-check`、`[data-bulk-toggle]`）。メモ・買い物・家計簿に導入。バックエンドは `app/bulk_delete.py` の `bulk_delete_response(request, Model)`。
+- デモは `window.DEMO_MODE` を見て実削除せずPOSTだけ投げ、既存インターセプターにブロックさせる。
+- task.md「トースト通知の統一」はトースト基盤が入ったので着手しやすい状態（フラッシュメッセージの置換自体は未実施）。
+
 ## 外部カレンダー取り込み（2026-07-09）
 
 - ICS購読: `ExternalCalendar`（URL登録）→ cron（30分ごと、`sync_external_calendars`）で `ExternalEvent` に洗い替え。RRULEは recurring-ical-events で展開。依存に icalendar / recurring-ical-events を追加（イメージ再ビルド必要、migration 0033）。

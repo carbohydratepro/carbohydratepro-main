@@ -749,3 +749,94 @@ h1 {
 .app-toast-close:hover {
     color: #fff;
 }
+
+/* ==========================================================================
+   選択モード＋一括削除（bulk_delete.js が制御する）
+   ========================================================================== */
+/* 選択用チェックボックスは選択モード中のみ表示 */
+.bulk-check {
+    display: none;
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.bulk-mode .bulk-item .bulk-check {
+    display: inline-block;
+}
+
+.bulk-mode .bulk-item {
+    cursor: pointer;
+}
+
+.bulk-item.bulk-selected {
+    background-color: var(--color-primary-soft) !important;
+}
+
+.bulk-item.bulk-hidden {
+    display: none !important;
+}
+
+/* 選択モード中は行内の長押し削除オーバーレイを出さない */
+.bulk-mode .lp-delete-overlay {
+    display: none !important;
+}
+
+.bulk-toggle-btn[aria-pressed="true"] {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+}
+
+/* 下部の一括操作バー */
+.bulk-action-bar {
+    position: fixed;
+    left: 50%;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    transform: translate(-50%, 140%);
+    z-index: 1075;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    box-shadow: 0 6px 20px rgba(20, 24, 33, 0.18);
+    padding: 8px 10px 8px 18px;
+    opacity: 0;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    pointer-events: none;
+    max-width: calc(100vw - 24px);
+}
+
+.bulk-action-bar.show {
+    transform: translate(-50%, 0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bulk-action-bar {
+        transition: none;
+    }
+}
+
+/* モバイルでボトムタブに被らないよう持ち上げる */
+@media (max-width: 767.98px) {
+    body.has-bottomnav .bulk-action-bar {
+        bottom: calc(var(--bottomnav-height) + 16px + env(safe-area-inset-bottom));
+    }
+}
+
+.bulk-action-count {
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.bulk-action-buttons {
+    display: flex;
+    gap: 8px;
+}

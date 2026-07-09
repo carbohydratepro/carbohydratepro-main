@@ -92,6 +92,13 @@ def delete_memo(request: HttpRequest, memo_id: int) -> HttpResponse:
 
 
 @login_required
+def bulk_delete_memos(request: HttpRequest) -> JsonResponse:
+    """メモの一括削除（選択モード用）"""
+    from ..bulk_delete import bulk_delete_response
+    return bulk_delete_response(request, Memo)
+
+
+@login_required
 def toggle_memo_favorite(request: HttpRequest, memo_id: int) -> JsonResponse:
     """メモのお気に入り状態を切り替え（Ajax用）"""
     if request.method == 'POST':

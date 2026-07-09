@@ -231,6 +231,13 @@ def delete_expenses(request: HttpRequest, transaction_id: int) -> HttpResponse:
 
 
 @login_required
+def bulk_delete_expenses(request: HttpRequest) -> JsonResponse:
+    """取引の一括削除（選択モード用）"""
+    from ..bulk_delete import bulk_delete_response
+    return bulk_delete_response(request, Transaction)
+
+
+@login_required
 def recurring_payment_list(request: HttpRequest) -> HttpResponse:
     return render(request, 'app/expenses/recurring_list.html', {
         'recurring_payments': selectors.get_recurring_payments(request.user),

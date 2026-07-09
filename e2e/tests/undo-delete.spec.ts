@@ -1,6 +1,6 @@
 import { expect, test } from "../fixtures/base";
 import { getCredentialsOrSkip, login } from "../fixtures/auth";
-import { uniqueName } from "../fixtures/http";
+import { firstSelectValue, submitAndWaitForNavigation, uniqueName } from "../fixtures/http";
 
 // 一時タスクの削除は誤操作に備えて「元に戻す（Undo）」トーストを出す。
 // 削除の発火経路（長押し／ドラッグ）は既存のジェスチャーで、いずれも window.deleteTask を呼ぶ。
@@ -73,5 +73,66 @@ test.describe("削除のUndoトースト", () => {
     // Undoせずリロード → サーバー側でも削除されている
     await page.reload({ waitUntil: "networkidle" });
     await expect(boardCard(page, title)).toHaveCount(0);
+  });
+});
+
+test.describe("選択モードの一括削除", () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page, getCredentialsOrSkip());
+  });
+
+  async function createMemo(page: import("@playwright/test").Page, title: string): Promise<void> {
+    const memoType = await firstSelectValue(page, "/carbohydratepro/memos/create/", "memo_type");
+    await page.goto("/carbohydratepro/memos/");
+    await page.getByRole("button", { name: /新規メモ作成/ }).click();
+    const modal = page.locator("#createMemoModal");
+    await expect(modal.getByRole("heading", { name: "メモ新規作成" })).toBeVisible();
+    await modal.locator('[name="title"]').fill(title);
+    await modal.locator('[name="memo_type"]').selectOption(memoType);
+    await modal.locator('[name="content"]').fill("bulk delete test");
+    await submitAndWaitForNavigation(page, modal.getByRole("button", { name: /^登録$/ }));
+  }
+
+  test("E2E-BULK-001 メモを選択モードでまとめて削除・取り消しできる", async ({ page }) => {
+    // Spec: docs/e2e/release-test-spec.md#e2e-bulk-001
+    const titleA = uniqueName("bulk-memo-a");
+    const titleB = uniqueName("bulk-memo-b");
+    await createMemo(page, titleA);
+    await createMemo(page, titleB);
+
+    await page.goto("/carbohydratepro/memos/?per_page=100");
+    const rowA = page.locator(".bulk-item", { hasText: titleA });
+    const rowB = page.locator(".bulk-item", { hasText: titleB });
+
+    // 選択モードに入り、2件を選択
+    await page.locator("[data-bulk-toggle]").click();
+    await expect(page.locator(".bulk-action-bar.show")).toBeVisible();
+    await rowA.click();
+    await rowB.click();
+    await expect(page.locator(".bulk-action-count")).toHaveText("2件を選択中");
+
+    // 削除 → 2件が消えてUndoトーストが出る
+    await page.locator(".bulk-action-delete").click();
+    await expect(rowA).toBeHidden();
+    await expect(rowB).toBeHidden();
+    await expect(page.locator(".app-toast")).toContainText("2件を削除しました");
+
+    // 元に戻す → 復活
+    await page.getByRole("button", { name: "元に戻す" }).click();
+    await expect(rowA).toBeVisible();
+    await expect(rowB).toBeVisible();
+
+    // 再度選択して削除し、サーバー反映を待ってからリロード → 消えている
+    await page.locator("[data-bulk-toggle]").click();
+    await rowA.click();
+    await rowB.click();
+    const done = page.waitForResponse(
+      (r) => r.url().includes("/memos/bulk-delete/") && r.request().method() === "POST",
+    );
+    await page.locator(".bulk-action-delete").click();
+    await done;
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(page.locator(".bulk-item", { hasText: titleA })).toHaveCount(0);
+    await expect(page.locator(".bulk-item", { hasText: titleB })).toHaveCount(0);
   });
 });

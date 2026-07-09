@@ -113,3 +113,10 @@ def clear_checked_shopping_items(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         ShoppingItem.objects.filter(user=request.user, frequency='one_time', is_checked=True).delete()
     return redirect('shopping_list')
+
+
+@login_required
+def bulk_delete_shopping_items(request: HttpRequest) -> JsonResponse:
+    """買い物アイテムの一括削除（選択モード用）"""
+    from ..bulk_delete import bulk_delete_response
+    return bulk_delete_response(request, ShoppingItem)

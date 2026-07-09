@@ -13,6 +13,7 @@ urlpatterns = [
     path('expenses/settings/', views.expenses_settings, name='expenses_settings'),
     path('expenses/edit/<int:transaction_id>/', views.edit_expenses, name='edit_expenses'),
     path('expenses/delete/<int:transaction_id>/', views.delete_expenses, name='delete_expenses'),
+    path('expenses/bulk-delete/', views.bulk_delete_expenses, name='bulk_delete_expenses'),
     # 定期支払い
     path('expenses/recurring/', views.recurring_payment_list, name='recurring_payment_list'),
     path('expenses/recurring/create/', views.create_recurring_payment, name='create_recurring_payment'),
@@ -37,6 +38,7 @@ urlpatterns = [
     path('memos/create/', views.create_memo, name='create_memo'),
     path('memos/edit/<int:memo_id>/', views.edit_memo, name='edit_memo'),
     path('memos/delete/<int:memo_id>/', views.delete_memo, name='delete_memo'),
+    path('memos/bulk-delete/', views.bulk_delete_memos, name='bulk_delete_memos'),
     path('memos/toggle-favorite/<int:memo_id>/', views.toggle_memo_favorite, name='toggle_memo_favorite'),
     path('memos/settings/', views.memo_settings, name='memo_settings'),
     # 買うものリスト
@@ -44,6 +46,7 @@ urlpatterns = [
     path('shopping/create/', views.create_shopping_item, name='create_shopping_item'),
     path('shopping/edit/<int:item_id>/', views.edit_shopping_item, name='edit_shopping_item'),
     path('shopping/delete/<int:item_id>/', views.delete_shopping_item, name='delete_shopping_item'),
+    path('shopping/bulk-delete/', views.bulk_delete_shopping_items, name='bulk_delete_shopping_items'),
     path('shopping/update-count/<int:item_id>/', views.update_shopping_count, name='update_shopping_count'),
     path('shopping/toggle-check/<int:item_id>/', views.toggle_check_shopping_item, name='toggle_check_shopping'),
     path('shopping/clear-checked/', views.clear_checked_shopping_items, name='clear_checked_shopping'),

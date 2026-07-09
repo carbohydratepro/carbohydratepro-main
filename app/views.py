@@ -12,11 +12,12 @@ logger = logging.getLogger(__name__)
 
 from .expenses.views import (
     expenses_list, create_expenses, expenses_settings, edit_expenses, delete_expenses,
+    bulk_delete_expenses,
     recurring_payment_list, create_recurring_payment, edit_recurring_payment,
     delete_recurring_payment, toggle_recurring_payment,
 )
-from .memo.views import memo_list, create_memo, edit_memo, delete_memo, toggle_memo_favorite, memo_settings
-from .shopping.views import shopping_list, create_shopping_item, edit_shopping_item, delete_shopping_item, update_shopping_count, toggle_check_shopping_item, clear_checked_shopping_items
+from .memo.views import memo_list, create_memo, edit_memo, delete_memo, bulk_delete_memos, toggle_memo_favorite, memo_settings
+from .shopping.views import shopping_list, create_shopping_item, edit_shopping_item, delete_shopping_item, bulk_delete_shopping_items, update_shopping_count, toggle_check_shopping_item, clear_checked_shopping_items
 from .task.views import (
     task_list, create_task, edit_task, delete_task, get_day_tasks, task_settings,
     temp_task_board, temp_task_api, temp_task_detail_api, temp_task_clear_api,

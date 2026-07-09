@@ -8,9 +8,12 @@
 {% block og_title %}{% if is_demo %}家計簿デモ | Life management{% else %}家計簿 | Life management{% endif %}{% endblock %}
 {% block og_description %}{% if is_demo %}家計簿機能のデモ。収入・支出の記録、月別グラフ、カテゴリ別集計を体験できます。{% endif %}{% endblock %}
 {% block content %}
-<div class="container mt-2">
+<div class="container mt-2" data-bulk-container data-bulk-url="{% url 'bulk_delete_expenses' %}">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
         <h2 class="mb-0">家計簿 <button type="button" class="btn btn-link btn-sm p-0" aria-label="説明を表示" data-toggle="collapse" data-target="#expensesDescription" aria-expanded="false"><i class="fas fa-info-circle text-info"></i></button></h2>
+        <button type="button" class="btn btn-outline-secondary btn-sm bulk-toggle-btn" data-bulk-toggle aria-pressed="false">
+            <i class="fas fa-check-square"></i> 選択
+        </button>
     </div>
     <div class="collapse mb-2" id="expensesDescription">
         <div class="alert alert-info py-1 mb-1 small">収入・支出を記録し、月次・年次のサマリーやグラフで家計を管理します。長押し（0.5秒）で削除、ダブルタップで編集できます。</div>
@@ -243,14 +246,16 @@
 
     <ul class="list-group list-group-flush">
         {% for transaction in transactions_page %}
-        <li class="list-group-item px-2 py-2 lp-delete-item"
+        <li class="list-group-item px-2 py-2 lp-delete-item bulk-item"
             data-delete-url="{% url 'delete_expenses' transaction.id %}"
             data-item-id="{{ transaction.id }}"
+            data-bulk-id="{{ transaction.id }}"
             onclick="openEditModal({{ transaction.id }})"
             style="cursor:pointer;">
             <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center" style="min-width:0;">
+                    <input type="checkbox" class="bulk-check" aria-label="この取引を選択">
                     <small class="text-muted mr-2" style="white-space:nowrap;">{{ transaction.date|date:"m/d" }}</small>
                     <span class="text-truncate" title="{{ transaction.purpose }}" style="font-size:0.9rem;">{{ transaction.purpose|truncatechars:25 }}</span>
                     {% if transaction.purpose_description %}

@@ -416,7 +416,16 @@
 }
 
 .drag-zone.delete-zone {
-    background: rgba(220, 53, 69, 0.8);
+    /* 誤タップを減らすため削除ゾーンは小さめにし、ハザード縞で破壊的操作と明示する */
+    flex: 0 0 38%;
+    background-color: rgba(220, 53, 69, 0.85);
+    background-image: repeating-linear-gradient(
+        45deg,
+        rgba(0, 0, 0, 0.14) 0,
+        rgba(0, 0, 0, 0.14) 10px,
+        transparent 10px,
+        transparent 20px
+    );
     border-color: #dc3545;
 }
 

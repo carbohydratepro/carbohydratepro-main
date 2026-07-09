@@ -100,8 +100,10 @@ async function apiUpdateTask(serverId, updates) {
     return res.json();
 }
 async function apiDeleteTask(serverId) {
+    // keepalive: 削除直後にページを離脱してもリクエストを送り切る
     const res = await apiFetch(`${getApiBaseUrl()}${serverId}/`, {
         method: 'DELETE',
+        keepalive: true,
     });
     if (!res.ok)
         throw new Error('タスク削除失敗');
@@ -321,19 +323,45 @@ async function addTask(status) {
         }
     }
 }
-async function deleteTask(localId) {
-    const task = getTaskByLocalId(localId);
-    if (!task)
+function deleteTask(localId) {
+    const index = tasks.findIndex(t => t.localId === localId);
+    if (index === -1)
         return;
-    const serverId = task.serverId;
-    tasks = tasks.filter(t => t.localId !== localId);
+    const task = tasks[index];
+    // UIから消し、サーバーからも即削除する。誤削除に備え、Undoでは再作成して復元する。
+    tasks.splice(index, 1);
     renderAll();
-    if (serverId !== null) {
-        try {
-            await apiDeleteTask(serverId);
+    if (task.serverId !== null) {
+        void apiDeleteTask(task.serverId).catch(() => { });
+    }
+    const shortTitle = task.title.length > 20 ? task.title.slice(0, 20) + '…' : task.title;
+    showUndoToast({
+        message: `「${shortTitle}」を削除しました`,
+        onUndo: () => { void restoreDeletedTask(task, index); },
+        onCommit: () => { },
+    });
+}
+// 削除したタスクを再作成して復元する（Undo用）
+async function restoreDeletedTask(original, index) {
+    // 同一 localId で再挿入し、サーバーには新規作成する
+    const restored = Object.assign(Object.assign({}, original), { serverId: null, savedState: 'saving' });
+    const insertAt = Math.min(index, tasks.length);
+    tasks.splice(insertAt, 0, restored);
+    renderAll();
+    try {
+        const saved = await apiCreateTask(restored.title, restored.status);
+        const t = getTaskByLocalId(restored.localId);
+        if (t) {
+            t.serverId = saved.id;
+            t.savedState = 'saved';
+            updateCardSavedState(t.localId);
         }
-        catch (_a) {
-            // 削除失敗は無視（UIからは消えている）
+    }
+    catch (_a) {
+        const t = getTaskByLocalId(restored.localId);
+        if (t) {
+            t.savedState = 'error';
+            updateCardSavedState(t.localId);
         }
     }
 }

@@ -158,8 +158,10 @@ async function apiUpdateTask(serverId: number, updates: { title?: string; status
 }
 
 async function apiDeleteTask(serverId: number): Promise<void> {
+    // keepalive: 削除直後にページを離脱してもリクエストを送り切る
     const res = await apiFetch(`${getApiBaseUrl()}${serverId}/`, {
         method: 'DELETE',
+        keepalive: true,
     });
     if (!res.ok) throw new Error('タスク削除失敗');
 }
@@ -374,19 +376,51 @@ async function addTask(status: string): Promise<void> {
     }
 }
 
-async function deleteTask(localId: string): Promise<void> {
-    const task = getTaskByLocalId(localId);
-    if (!task) return;
+function deleteTask(localId: string): void {
+    const index = tasks.findIndex(t => t.localId === localId);
+    if (index === -1) return;
+    const task = tasks[index];
 
-    const serverId = task.serverId;
-    tasks = tasks.filter(t => t.localId !== localId);
+    // UIから消し、サーバーからも即削除する。誤削除に備え、Undoでは再作成して復元する。
+    tasks.splice(index, 1);
+    renderAll();
+    if (task.serverId !== null) {
+        void apiDeleteTask(task.serverId).catch(() => { /* 削除失敗は無視 */ });
+    }
+
+    const shortTitle = task.title.length > 20 ? task.title.slice(0, 20) + '…' : task.title;
+    showUndoToast({
+        message: `「${shortTitle}」を削除しました`,
+        onUndo: () => { void restoreDeletedTask(task, index); },
+        onCommit: () => { /* 既に削除済み。確定時は何もしない */ },
+    });
+}
+
+// 削除したタスクを再作成して復元する（Undo用）
+async function restoreDeletedTask(original: TempTask, index: number): Promise<void> {
+    // 同一 localId で再挿入し、サーバーには新規作成する
+    const restored: TempTask = {
+        ...original,
+        serverId: null,
+        savedState: 'saving',
+    };
+    const insertAt = Math.min(index, tasks.length);
+    tasks.splice(insertAt, 0, restored);
     renderAll();
 
-    if (serverId !== null) {
-        try {
-            await apiDeleteTask(serverId);
-        } catch {
-            // 削除失敗は無視（UIからは消えている）
+    try {
+        const saved = await apiCreateTask(restored.title, restored.status);
+        const t = getTaskByLocalId(restored.localId);
+        if (t) {
+            t.serverId = saved.id;
+            t.savedState = 'saved';
+            updateCardSavedState(t.localId);
+        }
+    } catch {
+        const t = getTaskByLocalId(restored.localId);
+        if (t) {
+            t.savedState = 'error';
+            updateCardSavedState(t.localId);
         }
     }
 }

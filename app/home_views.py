@@ -60,6 +60,10 @@ def build_dashboard_context(user: Any) -> dict[str, Any]:
         .aggregate(total=Sum('amount'))['total'] or Decimal('0')
     )
 
+    # 今月の予算消化（全体予算が設定されている場合のみカード表示）
+    from .expenses import selectors as expense_selectors
+    budget_overview = expense_selectors.build_budget_overview(user, today.year, today.month)
+
     # 買い物リスト（未購入）
     shopping_qs = ShoppingItem.objects.filter(user=user, is_checked=False)
     shopping_count = shopping_qs.count()
@@ -84,6 +88,8 @@ def build_dashboard_context(user: Any) -> dict[str, Any]:
         'expense_total': expense_total,
         'balance_total': income_total - expense_total,
         'target_month': today.strftime('%Y年%m月'),
+        'budget_overall': budget_overview['overall'],
+        'budget_over_count': budget_overview['over_count'],
         'shopping_items': shopping_items,
         'shopping_count': shopping_count,
         'shopping_insufficient_count': shopping_insufficient_count,

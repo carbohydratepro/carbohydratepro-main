@@ -1,0 +1,127 @@
+{% extends "app/base.html" %}
+{% load humanize %}
+{% block title %}予算 | Life management{% endblock %}
+
+{% block content %}
+<div class="container mt-2">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+        <h2 class="mb-0"><i class="fas fa-piggy-bank mr-1"></i>予算</h2>
+        <span class="text-muted small">{{ target_month }}</span>
+    </div>
+
+    <div class="d-flex flex-row-reverse mb-2">
+        <a href="{% url 'expense_list' %}" class="btn btn-outline-secondary btn-sm mb-1">
+            <i class="fas fa-angle-left"></i> 家計簿へ
+        </a>
+    </div>
+
+    {% if over_count %}
+    <div class="alert alert-danger py-2">
+        <i class="fas fa-exclamation-triangle"></i> {{ over_count }}件のカテゴリが予算を超過しています。
+    </div>
+    {% endif %}
+
+    <!-- 全体予算 -->
+    <div class="card mb-3">
+        <div class="card-header py-2"><i class="fas fa-wallet mr-1"></i>今月の全体予算</div>
+        <div class="card-body py-3">
+            {% if overall.has_budget %}
+            <div class="d-flex justify-content-between align-items-baseline mb-1">
+                <span class="{% if overall.status == 'over' %}text-danger{% elif overall.status == 'warning' %}text-warning{% endif %}">
+                    <span class="h5 mb-0">{{ overall.used|floatformat:0|intcomma }}</span>
+                    <span class="text-muted small"> / {{ overall.limit|floatformat:0|intcomma }}円</span>
+                </span>
+                <span class="small {% if overall.remaining < 0 %}text-danger{% else %}text-muted{% endif %}">
+                    {% if overall.remaining < 0 %}超過 {{ overall.remaining|floatformat:0|intcomma|cut:"-" }}円{% else %}残り {{ overall.remaining|floatformat:0|intcomma }}円{% endif %}
+                </span>
+            </div>
+            <div class="progress mb-3" style="height: 10px;">
+                <div class="progress-bar {% if overall.status == 'over' %}bg-danger{% elif overall.status == 'warning' %}bg-warning{% else %}bg-success{% endif %}"
+                     role="progressbar" style="width: {{ overall.percent_bar }}%;"
+                     aria-valuenow="{{ overall.percent }}" aria-valuemin="0" aria-valuemax="100">
+                    {{ overall.percent }}%
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted small mb-2">全体の月予算を設定すると、今月の支出（{{ overall.used|floatformat:0|intcomma }}円）に対する消化状況を表示します。</p>
+            {% endif %}
+
+            <form method="post" class="form-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="set_overall">
+                <div class="input-group input-group-sm mr-2 mb-1">
+                    <input type="number" name="amount" class="form-control" min="1" step="1"
+                           style="max-width: 160px;" placeholder="全体予算（円）"
+                           value="{% if overall.has_budget %}{{ overall.limit|floatformat:0 }}{% endif %}"
+                           aria-label="全体予算（円）">
+                    <div class="input-group-append">
+                        <button type="submit" class="btn btn-primary">{% if overall.has_budget %}更新{% else %}設定{% endif %}</button>
+                    </div>
+                </div>
+                {% if overall.has_budget %}
+                <button type="submit" form="delete-overall-form" class="btn btn-outline-danger btn-sm mb-1">解除</button>
+                {% endif %}
+            </form>
+            {% if overall.has_budget %}
+            <form method="post" id="delete-overall-form" onsubmit="return confirm('全体予算を解除しますか？');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_overall">
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- カテゴリ別予算 -->
+    <div class="card mb-3">
+        <div class="card-header py-2"><i class="fas fa-tags mr-1"></i>カテゴリ別予算</div>
+        <div class="card-body py-2">
+            {% if category_rows %}
+            <div class="list-group list-group-flush">
+                {% for row in category_rows %}
+                <div class="list-group-item px-2 py-2">
+                    <div class="d-flex justify-content-between align-items-baseline mb-1">
+                        <span class="font-weight-bold">{{ row.category.name }}</span>
+                        <span class="small">
+                            <span class="{% if row.status == 'over' %}text-danger{% elif row.status == 'warning' %}text-warning{% endif %}">{{ row.used|floatformat:0|intcomma }}円</span>
+                            {% if row.has_budget %}<span class="text-muted"> / {{ row.limit|floatformat:0|intcomma }}円</span>{% endif %}
+                        </span>
+                    </div>
+                    {% if row.has_budget %}
+                    <div class="progress mb-2" style="height: 8px;">
+                        <div class="progress-bar {% if row.status == 'over' %}bg-danger{% elif row.status == 'warning' %}bg-warning{% else %}bg-success{% endif %}"
+                             role="progressbar" style="width: {{ row.percent_bar }}%;"
+                             aria-valuenow="{{ row.percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    {% endif %}
+                    <form method="post" class="form-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="set_category">
+                        <input type="hidden" name="category_id" value="{{ row.category.id }}">
+                        <div class="input-group input-group-sm mr-2">
+                            <input type="number" name="amount" class="form-control" min="1" step="1"
+                                   style="max-width: 130px;" placeholder="予算（円）"
+                                   value="{% if row.has_budget %}{{ row.limit|floatformat:0 }}{% endif %}"
+                                   aria-label="{{ row.category.name }}の予算（円）">
+                            <div class="input-group-append">
+                                <button type="submit" class="btn btn-outline-primary">{% if row.has_budget %}更新{% else %}設定{% endif %}</button>
+                            </div>
+                        </div>
+                        {% if row.has_budget %}
+                        <button type="submit" formaction="" class="btn btn-link btn-sm text-danger p-0"
+                                onclick="this.form.querySelector('[name=action]').value='delete_category';">解除</button>
+                        {% endif %}
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted text-center py-3 mb-0">
+                カテゴリがありません。<a href="{% url 'expenses_settings' %}">家計簿設定</a>で使用用途を追加してください。
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <p class="text-muted small text-center">予算は毎月同じ金額が適用され、当月の支出と比較します。</p>
+</div>
+{% endblock %}

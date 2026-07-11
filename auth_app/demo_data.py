@@ -703,6 +703,40 @@ def get_recurring_payments_context() -> dict:
 # ホーム（統合ダッシュボード）デモデータ
 # ---------------------------------------------------------------------------
 
+def _demo_budget_row(category, limit: int, used: int, has_budget: bool = True) -> dict:
+    """予算画面/ダッシュボード用のフェイク予算行（build_budget_overview と同形）を返す。"""
+    percent = round(used / limit * 100, 1) if limit > 0 else 0.0
+    status = 'over' if percent > 100 else ('warning' if percent >= 80 else 'ok')
+    return {
+        'category': category,
+        'has_budget': has_budget,
+        'limit': limit,
+        'used': used,
+        'remaining': limit - used,
+        'percent': percent,
+        'percent_bar': min(percent, 100.0),
+        'status': status,
+    }
+
+
+def _demo_budget_overview() -> dict:
+    """デモ用の予算消化サマリー。"""
+    rows = [
+        _demo_budget_row(FakeCategory(1, '食費', '#4e79a7'), 40000, 33000),
+        _demo_budget_row(FakeCategory(2, '外食', '#f28e2b'), 15000, 18200),
+        _demo_budget_row(FakeCategory(3, '光熱費', '#e15759'), 20000, 12800),
+        _demo_budget_row(FakeCategory(8, '日用品', '#ff9da7'), 10000, 4200),
+        _demo_budget_row(FakeCategory(7, '娯楽', '#b07aa1'), 0, 6500, has_budget=False),
+    ]
+    overall = _demo_budget_row(FakeCategory(0, '全体', ''), 150000, 132450)
+    over_count = sum(1 for r in rows if r['has_budget'] and r['status'] == 'over')
+    return {'overall': overall, 'category_rows': rows, 'over_count': over_count, 'has_any_budget': True}
+
+
+def get_budget_context() -> dict:
+    return {'target_month': '2026年03月', 'is_demo': True, **_demo_budget_overview()}
+
+
 def get_home_context() -> dict:
     today = date(2026, 3, 27)
 
@@ -749,6 +783,8 @@ def get_home_context() -> dict:
         'expense_total': expense_total,
         'balance_total': income_total - expense_total,
         'target_month': today.strftime('%Y年%m月'),
+        'budget_overall': _demo_budget_overview()['overall'],
+        'budget_over_count': _demo_budget_overview()['over_count'],
         'shopping_items': shopping_items,
         'shopping_count': len(shopping_items),
         'shopping_insufficient_count': sum(1 for item in shopping_items if item.status == 'insufficient'),

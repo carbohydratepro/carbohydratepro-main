@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 from .expenses.views import (
     expenses_list, create_expenses, expenses_settings, edit_expenses, delete_expenses,
-    bulk_delete_expenses,
+    bulk_delete_expenses, budget_view,
     recurring_payment_list, create_recurring_payment, edit_recurring_payment,
     delete_recurring_payment, toggle_recurring_payment,
 )

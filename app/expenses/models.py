@@ -138,3 +138,46 @@ class RecurringPayment(models.Model):
 
         return False
 
+
+
+class Budget(models.Model):
+    """月予算。カテゴリ別、または全体（category=None）の月あたり予算額を保持する。
+
+    当月の支出（Transaction の expense）と突き合わせて消化状況を表示する。
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='budgets',
+    )
+    # None のときは全体予算（カテゴリ横断の月予算）
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='budgets',
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'category'],
+                name='unique_budget_per_category',
+            ),
+            # 全体予算（category=None）はユーザーごとに1件だけ
+            models.UniqueConstraint(
+                fields=['user'],
+                condition=models.Q(category__isnull=True),
+                name='unique_overall_budget_per_user',
+            ),
+        ]
+        verbose_name = '予算'
+        verbose_name_plural = '予算'
+
+    def __str__(self) -> str:
+        target = self.category.name if self.category else '全体'
+        return f'{self.user} の予算（{target}）: {self.amount}'

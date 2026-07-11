@@ -13,7 +13,10 @@ from django.utils.timezone import make_aware
 
 from project.utils import CHART_COLORS, MAJOR_CATEGORY_LABELS
 
-from .models import Category, PaymentMethod, RecurringPayment, Transaction
+from .models import Budget, Category, PaymentMethod, RecurringPayment, Transaction
+
+# 予算消化の警告しきい値（%）
+BUDGET_WARNING_PERCENT = 80
 
 if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
@@ -242,3 +245,90 @@ def get_recurring_payments(user: AbstractBaseUser) -> QuerySet:
         .select_related('category', 'payment_method')
         .order_by('-is_active', '-created_at')
     )
+
+
+# ==========================================================================
+# 予算
+# ==========================================================================
+
+def _month_range(year: int, month: int) -> tuple[datetime, datetime]:
+    """指定年月の開始（含む）と翌月開始（含まない）のawareなdatetimeを返す。"""
+    start = make_aware(datetime(year, month, 1))
+    end = make_aware(datetime(year + (month // 12), (month % 12) + 1, 1))
+    return start, end
+
+
+def get_month_expense_by_category(user: 'AbstractBaseUser', year: int, month: int) -> dict[int, Decimal]:
+    """当月のカテゴリ別支出合計（category_id -> 合計）を返す。"""
+    start, end = _month_range(year, month)
+    rows = (
+        Transaction.objects
+        .filter(user=user, transaction_type='expense', date__gte=start, date__lt=end)
+        .values('category_id')
+        .annotate(total=Sum('amount'))
+    )
+    return {row['category_id']: row['total'] or Decimal('0') for row in rows}
+
+
+def _budget_status(used: Decimal, limit: Decimal) -> str:
+    """予算消化状況を 'over' / 'warning' / 'ok' で返す。"""
+    if limit <= 0:
+        return 'ok'
+    percent = used / limit * 100
+    if percent > 100:
+        return 'over'
+    if percent >= BUDGET_WARNING_PERCENT:
+        return 'warning'
+    return 'ok'
+
+
+def build_budget_overview(user: 'AbstractBaseUser', year: int, month: int) -> dict[str, object]:
+    """予算画面・ダッシュボード用の予算消化サマリーを構築する。"""
+    budgets = {b.category_id: b for b in Budget.objects.filter(user=user)}
+    spending = get_month_expense_by_category(user, year, month)
+    categories = list(Category.objects.filter(user=user).order_by('name'))
+
+    def make_row(limit: Decimal, used: Decimal) -> dict[str, object]:
+        remaining = limit - used
+        percent = float(used / limit * 100) if limit > 0 else 0.0
+        return {
+            'limit': limit,
+            'used': used,
+            'remaining': remaining,
+            'percent': round(percent, 1),
+            'percent_bar': min(round(percent, 1), 100.0),
+            'status': _budget_status(used, limit),
+        }
+
+    # カテゴリ別
+    category_rows: list[dict[str, object]] = []
+    total_budgeted = Decimal('0')
+    for category in categories:
+        budget = budgets.get(category.id)
+        used = spending.get(category.id, Decimal('0'))
+        limit = budget.amount if budget else Decimal('0')
+        if budget:
+            total_budgeted += limit
+        row = {
+            'category': category,
+            'has_budget': budget is not None,
+            **make_row(limit, used),
+        }
+        category_rows.append(row)
+
+    # 全体予算（category=None のBudget、無ければカテゴリ予算の合計を参考値に）
+    overall_budget = budgets.get(None)
+    total_used = sum(spending.values(), Decimal('0'))
+    if overall_budget is not None:
+        overall = {'has_budget': True, **make_row(overall_budget.amount, total_used)}
+    else:
+        overall = {'has_budget': False, **make_row(total_budgeted, total_used)}
+
+    over_count = sum(1 for row in category_rows if row['has_budget'] and row['status'] == 'over')
+
+    return {
+        'overall': overall,
+        'category_rows': category_rows,
+        'over_count': over_count,
+        'has_any_budget': bool(budgets),
+    }

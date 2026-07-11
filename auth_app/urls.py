@@ -15,6 +15,7 @@ urlpatterns = [
     path('demo/', demo_views.demo_redirect, name='demo'),
     path('demo/home/', demo_views.demo_home, name='demo_home'),
     path('demo/expenses/', demo_views.demo_expenses, name='demo_expenses'),
+    path('demo/budget/', demo_views.demo_budget, name='demo_budget'),
     path('demo/tasks/', demo_views.demo_tasks, name='demo_tasks'),
     path('demo/habits/', demo_views.demo_habits, name='demo_habits'),
     path('demo/memos/', demo_views.demo_memos, name='demo_memos'),

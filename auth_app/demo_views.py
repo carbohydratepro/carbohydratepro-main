@@ -21,6 +21,12 @@ def demo_expenses(request: HttpRequest) -> HttpResponse:
     return render(request, 'app/expenses/list.html', context)
 
 
+def demo_budget(request: HttpRequest) -> HttpResponse:
+    context = demo_data.get_budget_context()
+    context['is_demo'] = True
+    return render(request, 'app/expenses/budget.html', context)
+
+
 def demo_tasks(request: HttpRequest) -> HttpResponse:
     context = demo_data.get_tasks_context()
     context['is_demo'] = True

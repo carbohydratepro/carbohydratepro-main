@@ -1124,3 +1124,152 @@ class RecurringPaymentViewTest(TestCase):
         )
         recurring.refresh_from_db()
         self.assertTrue(recurring.is_active)
+
+
+class BudgetModelAndSelectorTest(TestCase):
+    """予算モデルと予算サマリー算出のテスト"""
+
+    def setUp(self) -> None:
+        self.user = UserFactory()
+        self.payment = PaymentMethodFactory(user=self.user)
+        self.cat_food = CategoryFactory(user=self.user, name='食費')
+        self.cat_fun = CategoryFactory(user=self.user, name='娯楽')
+
+    def _expense(self, category, amount) -> None:
+        Transaction.objects.create(
+            user=self.user, amount=Decimal(amount), date=timezone.now(),
+            transaction_type='expense', payment_method=self.payment,
+            purpose='テスト', major_category='variable', category=category,
+            purpose_description='',
+        )
+
+    def test_budget_status_thresholds(self) -> None:
+        """消化率に応じて ok / warning / over が返る"""
+        from app.expenses.models import Budget
+        from app.expenses import selectors
+
+        Budget.objects.create(user=self.user, category=self.cat_food, amount=Decimal('10000'))
+        self._expense(self.cat_food, '5000')  # 50% → ok
+        today = timezone.localdate()
+        overview = selectors.build_budget_overview(self.user, today.year, today.month)
+        food_row = next(r for r in overview['category_rows'] if r['category'].id == self.cat_food.id)
+        self.assertEqual(food_row['status'], 'ok')
+        self.assertEqual(food_row['used'], Decimal('5000'))
+        self.assertEqual(food_row['remaining'], Decimal('5000'))
+
+        self._expense(self.cat_food, '3500')  # 合計8500 = 85% → warning
+        overview = selectors.build_budget_overview(self.user, today.year, today.month)
+        food_row = next(r for r in overview['category_rows'] if r['category'].id == self.cat_food.id)
+        self.assertEqual(food_row['status'], 'warning')
+
+        self._expense(self.cat_food, '3000')  # 合計11500 = 115% → over
+        overview = selectors.build_budget_overview(self.user, today.year, today.month)
+        food_row = next(r for r in overview['category_rows'] if r['category'].id == self.cat_food.id)
+        self.assertEqual(food_row['status'], 'over')
+        self.assertEqual(overview['over_count'], 1)
+
+    def test_overall_falls_back_to_category_sum(self) -> None:
+        """全体予算が未設定ならカテゴリ予算の合計を全体の目安に使う"""
+        from app.expenses.models import Budget
+        from app.expenses import selectors
+
+        Budget.objects.create(user=self.user, category=self.cat_food, amount=Decimal('10000'))
+        Budget.objects.create(user=self.user, category=self.cat_fun, amount=Decimal('5000'))
+        today = timezone.localdate()
+        overview = selectors.build_budget_overview(self.user, today.year, today.month)
+        self.assertFalse(overview['overall']['has_budget'])
+        self.assertEqual(overview['overall']['limit'], Decimal('15000'))
+
+    def test_explicit_overall_budget(self) -> None:
+        """全体予算を設定すると当月支出合計と比較する"""
+        from app.expenses.models import Budget
+        from app.expenses import selectors
+
+        Budget.objects.create(user=self.user, category=None, amount=Decimal('20000'))
+        self._expense(self.cat_food, '8000')
+        self._expense(self.cat_fun, '4000')
+        today = timezone.localdate()
+        overview = selectors.build_budget_overview(self.user, today.year, today.month)
+        self.assertTrue(overview['overall']['has_budget'])
+        self.assertEqual(overview['overall']['limit'], Decimal('20000'))
+        self.assertEqual(overview['overall']['used'], Decimal('12000'))
+
+    def test_last_month_expense_excluded(self) -> None:
+        """先月の支出は当月予算の消化に含めない"""
+        from app.expenses.models import Budget
+        from app.expenses import selectors
+
+        Budget.objects.create(user=self.user, category=self.cat_food, amount=Decimal('10000'))
+        last_month = timezone.now() - timedelta(days=40)
+        Transaction.objects.create(
+            user=self.user, amount=Decimal('9000'), date=last_month,
+            transaction_type='expense', payment_method=self.payment,
+            purpose='先月', major_category='variable', category=self.cat_food,
+            purpose_description='',
+        )
+        today = timezone.localdate()
+        overview = selectors.build_budget_overview(self.user, today.year, today.month)
+        food_row = next(r for r in overview['category_rows'] if r['category'].id == self.cat_food.id)
+        self.assertEqual(food_row['used'], Decimal('0'))
+
+
+class BudgetViewTest(TestCase):
+    """予算画面のテスト"""
+
+    def setUp(self) -> None:
+        self.user = UserFactory()
+        self.client = Client()
+        self.client.force_login(self.user)
+        self.category = CategoryFactory(user=self.user, name='食費')
+
+    def test_budget_page_loads(self) -> None:
+        response = self.client.get(reverse('budget'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '全体予算')
+        self.assertContains(response, 'カテゴリ別予算')
+
+    def test_set_and_update_overall_budget(self) -> None:
+        from app.expenses.models import Budget
+
+        self.client.post(reverse('budget'), {'action': 'set_overall', 'amount': '50000'})
+        budget = Budget.objects.get(user=self.user, category=None)
+        self.assertEqual(budget.amount, Decimal('50000'))
+        # 上書き（重複作成しない）
+        self.client.post(reverse('budget'), {'action': 'set_overall', 'amount': '60000'})
+        self.assertEqual(Budget.objects.filter(user=self.user, category=None).count(), 1)
+        budget.refresh_from_db()
+        self.assertEqual(budget.amount, Decimal('60000'))
+
+    def test_set_category_budget(self) -> None:
+        from app.expenses.models import Budget
+
+        self.client.post(reverse('budget'), {
+            'action': 'set_category', 'category_id': self.category.id, 'amount': '30000',
+        })
+        self.assertTrue(Budget.objects.filter(user=self.user, category=self.category, amount=Decimal('30000')).exists())
+
+    def test_invalid_amount_rejected(self) -> None:
+        from app.expenses.models import Budget
+
+        for bad in ['0', '-100', 'abc', '']:
+            self.client.post(reverse('budget'), {'action': 'set_overall', 'amount': bad})
+        self.assertFalse(Budget.objects.filter(user=self.user, category=None).exists())
+
+    def test_delete_budget(self) -> None:
+        from app.expenses.models import Budget
+
+        Budget.objects.create(user=self.user, category=self.category, amount=Decimal('30000'))
+        self.client.post(reverse('budget'), {'action': 'delete_category', 'category_id': self.category.id})
+        self.assertFalse(Budget.objects.filter(user=self.user, category=self.category).exists())
+
+    def test_cannot_set_other_users_category(self) -> None:
+        other_cat = CategoryFactory(user=UserFactory(), name='他人カテゴリ')
+        response = self.client.post(reverse('budget'), {
+            'action': 'set_category', 'category_id': other_cat.id, 'amount': '30000',
+        })
+        self.assertEqual(response.status_code, 404)
+
+    def test_budget_requires_login(self) -> None:
+        anon = Client()
+        response = anon.get(reverse('budget'))
+        self.assertIn(response.status_code, (302, 403))

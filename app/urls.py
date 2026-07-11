@@ -14,6 +14,7 @@ urlpatterns = [
     path('expenses/edit/<int:transaction_id>/', views.edit_expenses, name='edit_expenses'),
     path('expenses/delete/<int:transaction_id>/', views.delete_expenses, name='delete_expenses'),
     path('expenses/bulk-delete/', views.bulk_delete_expenses, name='bulk_delete_expenses'),
+    path('budget/', views.budget_view, name='budget'),
     # 定期支払い
     path('expenses/recurring/', views.recurring_payment_list, name='recurring_payment_list'),
     path('expenses/recurring/create/', views.create_recurring_payment, name='create_recurring_payment'),

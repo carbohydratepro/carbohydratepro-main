@@ -55,6 +55,14 @@
 - デモは `window.DEMO_MODE` を見て実削除せずPOSTだけ投げ、既存インターセプターにブロックさせる。
 - task.md「トースト通知の統一」はトースト基盤が入ったので着手しやすい状態（フラッシュメッセージの置換自体は未実施）。
 
+## 予算管理（2026-07-11）
+
+- 新画面 `/carbohydratepro/budget/`（`budget_view`）。`Budget(user, category(null=全体), amount)` モデル、migration 0034。全体予算はユーザー1件（部分ユニーク制約）、カテゴリ別は (user,category) 一意。
+- 消化状況は `selectors.build_budget_overview(user, year, month)` が算出（当月Transactionのexpense集計・状況 ok/warning(≥80%)/over(>100%)）。全体予算未設定時はカテゴリ予算合計を目安表示。
+- ダッシュボードの収支カードに予算バーを統合（`home_views` が budget_overall/budget_over_count を渡す）。家計簿ページに「予算」ボタン。
+- デモは `get_budget_context`/`demo_budget`/`/demo/budget/`、settingsRedirectMap に `/carbohydratepro/budget/`→`/demo/budget/`。フォームPOSTは既存インターセプターがブロック。
+- 次の新機能候補（未着手）: 統合カレンダー、週次レビュー＋通知、気分・ジャーナル、目標トラッカー、サブスク管理、クイック入力。
+
 ## 外部カレンダー取り込み（2026-07-09）
 
 - ICS購読: `ExternalCalendar`（URL登録）→ cron（30分ごと、`sync_external_calendars`）で `ExternalEvent` に洗い替え。RRULEは recurring-ical-events で展開。依存に icalendar / recurring-ical-events を追加（イメージ再ビルド必要、migration 0033）。

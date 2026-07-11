@@ -3,9 +3,74 @@ from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from decimal import Decimal, InvalidOperation
+
+from django.contrib import messages
+from django.utils import timezone
+
 from .forms import CategoryForm, PaymentMethodForm, RecurringPaymentForm, TransactionForm
-from .models import Category, PaymentMethod, RecurringPayment, Transaction
+from .models import Budget, Category, PaymentMethod, RecurringPayment, Transaction
 from . import selectors, services
+
+
+def _parse_budget_amount(raw: str) -> Decimal | None:
+    """予算額の文字列を検証して Decimal を返す。不正なら None。"""
+    try:
+        amount = Decimal(str(raw))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    if amount <= 0 or amount > Decimal('99999999'):
+        return None
+    return amount
+
+
+@login_required
+def budget_view(request: HttpRequest) -> HttpResponse:
+    """予算画面。全体・カテゴリ別の月予算を設定し、当月の消化状況を表示する。"""
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'set_overall':
+            amount = _parse_budget_amount(request.POST.get('amount', ''))
+            if amount is None:
+                messages.error(request, '予算額は1以上の数値で入力してください。')
+            else:
+                Budget.objects.update_or_create(
+                    user=request.user, category=None, defaults={'amount': amount},
+                )
+                messages.success(request, '全体予算を設定しました。')
+            return redirect('budget')
+
+        if action == 'set_category':
+            category = get_object_or_404(Category, id=request.POST.get('category_id'), user=request.user)
+            amount = _parse_budget_amount(request.POST.get('amount', ''))
+            if amount is None:
+                messages.error(request, '予算額は1以上の数値で入力してください。')
+            else:
+                Budget.objects.update_or_create(
+                    user=request.user, category=category, defaults={'amount': amount},
+                )
+                messages.success(request, f'「{category.name}」の予算を設定しました。')
+            return redirect('budget')
+
+        if action == 'delete_overall':
+            Budget.objects.filter(user=request.user, category=None).delete()
+            messages.success(request, '全体予算を解除しました。')
+            return redirect('budget')
+
+        if action == 'delete_category':
+            category = get_object_or_404(Category, id=request.POST.get('category_id'), user=request.user)
+            Budget.objects.filter(user=request.user, category=category).delete()
+            messages.success(request, f'「{category.name}」の予算を解除しました。')
+            return redirect('budget')
+
+    today = timezone.localdate()
+    overview = selectors.build_budget_overview(request.user, today.year, today.month)
+    context = {
+        'target_month': today.strftime('%Y年%m月'),
+        **overview,
+    }
+    return render(request, 'app/expenses/budget.html', context)
 
 
 @login_required

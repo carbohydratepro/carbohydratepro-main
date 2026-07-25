@@ -25,6 +25,10 @@ interface ServerTask {
     order: number;
 }
 
+interface DeleteReceipt {
+    restore_url: string;
+}
+
 // セット
 interface TempTaskSet {
     id: number;
@@ -98,6 +102,7 @@ function tempTaskApiHeaders(): HeadersInit {
     return {
         'Content-Type': 'application/json',
         'X-CSRFToken': getCookie('csrftoken') || '',
+        'X-Requested-With': 'XMLHttpRequest',
     };
 }
 
@@ -157,13 +162,14 @@ async function apiUpdateTask(serverId: number, updates: { title?: string; status
     return res.json() as Promise<ServerTask>;
 }
 
-async function apiDeleteTask(serverId: number): Promise<void> {
+async function apiDeleteTask(serverId: number): Promise<DeleteReceipt> {
     // keepalive: 削除直後にページを離脱してもリクエストを送り切る
     const res = await apiFetch(`${getApiBaseUrl()}${serverId}/`, {
         method: 'DELETE',
         keepalive: true,
     });
     if (!res.ok) throw new Error('タスク削除失敗');
+    return res.json() as Promise<DeleteReceipt>;
 }
 
 async function apiClearTasks(): Promise<void> {
@@ -313,6 +319,7 @@ async function deleteSet(setId: number): Promise<void> {
         renderSetTabs();
         renderAll();
         if (currentSetId !== null) await loadFromServer();
+        showToast('セットを削除しました。ごみ箱から元に戻せます。', 'success');
     } catch (err) {
         showToast(err instanceof Error ? err.message : 'セット削除に失敗しました', 'error');
     }
@@ -388,35 +395,43 @@ function deleteTask(localId: string): void {
     if (index === -1) return;
     const task = tasks[index];
 
-    // UIから消し、サーバーからも即削除する。誤削除に備え、Undoでは再作成して復元する。
+    // UIから消し、サーバー側では削除履歴へ保存する。Undoでは同じデータを復元する。
     tasks.splice(index, 1);
     renderAll();
-    if (task.serverId !== null) {
-        void apiDeleteTask(task.serverId).catch(() => { /* 削除失敗は無視 */ });
-    }
+    const deletion = task.serverId !== null ? apiDeleteTask(task.serverId) : null;
+    void deletion?.catch(() => {
+        showToast('削除に失敗しました。再読み込みすると元の状態を確認できます。', 'error');
+    });
 
     const shortTitle = task.title.length > 20 ? task.title.slice(0, 20) + '…' : task.title;
     showUndoToast({
         message: `「${shortTitle}」を削除しました`,
-        onUndo: () => { void restoreDeletedTask(task, index); },
+        onUndo: () => { void restoreDeletedTask(task, index, deletion); },
         onCommit: () => { /* 既に削除済み。確定時は何もしない */ },
     });
 }
 
-// 削除したタスクを再作成して復元する（Undo用）
-async function restoreDeletedTask(original: TempTask, index: number): Promise<void> {
-    // 同一 localId で再挿入し、サーバーには新規作成する
+// 削除履歴から同じIDのタスクを復元する（Undo用）
+async function restoreDeletedTask(
+    original: TempTask,
+    index: number,
+    deletion: Promise<DeleteReceipt> | null,
+): Promise<void> {
     const restored: TempTask = {
         ...original,
-        serverId: null,
-        savedState: 'saving',
+        savedState: deletion === null ? original.savedState : 'saving',
     };
     const insertAt = Math.min(index, tasks.length);
     tasks.splice(insertAt, 0, restored);
     renderAll();
 
+    if (deletion === null) return;
+
     try {
-        const saved = await apiCreateTask(restored.title, restored.status);
+        const receipt = await deletion;
+        const response = await apiFetch(receipt.restore_url, { method: 'POST' });
+        if (!response.ok) throw new Error('タスク復元失敗');
+        const saved = await response.json() as { id: number };
         const t = getTaskByLocalId(restored.localId);
         if (t) {
             t.serverId = saved.id;

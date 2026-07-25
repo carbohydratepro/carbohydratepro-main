@@ -92,8 +92,13 @@ def edit_habit(request: HttpRequest, habit_id: int) -> HttpResponse:
 @login_required
 @require_POST
 def delete_habit(request: HttpRequest, habit_id: int) -> HttpResponse:
+    from django.contrib import messages
+
+    from ..deletion import archive_and_delete
+
     habit = get_object_or_404(Habit, id=habit_id, user=request.user)
-    habit.delete()
+    archive_and_delete(habit, request.user)
+    messages.success(request, '習慣を削除しました。ごみ箱から元に戻せます。')
     return redirect('habit_dashboard')
 
 

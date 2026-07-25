@@ -12,6 +12,8 @@ from typing import Type
 from django.db.models import Model
 from django.http import HttpRequest, JsonResponse
 
+from .deletion import archive_and_delete_queryset
+
 
 def bulk_delete_response(request: HttpRequest, model: Type[Model]) -> JsonResponse:
     """指定モデルの複数レコードを、所有者チェック付きで一括削除する。"""
@@ -32,6 +34,5 @@ def bulk_delete_response(request: HttpRequest, model: Type[Model]) -> JsonRespon
         return JsonResponse({'success': True, 'deleted': 0})
 
     queryset = model.objects.filter(user=request.user, id__in=ids)
-    deleted_count = queryset.count()
-    queryset.delete()
+    deleted_count = archive_and_delete_queryset(queryset, request.user)
     return JsonResponse({'success': True, 'deleted': deleted_count})

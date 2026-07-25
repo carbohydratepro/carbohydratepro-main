@@ -1,0 +1,44 @@
+{% extends 'app/base.html' %}
+
+{% block title %}ごみ箱 - Life management{% endblock %}
+
+{% block content %}
+<div class="container py-3 py-md-4">
+  <div class="d-flex align-items-start justify-content-between mb-3">
+    <div>
+      <h1 class="h3 mb-1"><i class="fas fa-trash-restore mr-2" aria-hidden="true"></i>ごみ箱</h1>
+      <p class="text-muted mb-0">家計簿、定期支払い、予定、一時タスク、メモ、買いもの、習慣の削除を、新しい順に10件まで元に戻せます。</p>
+    </div>
+  </div>
+
+  {% if deleted_items %}
+    <div class="list-group shadow-sm" aria-label="削除したデータ">
+      {% for item in deleted_items %}
+        <div class="list-group-item d-flex flex-column flex-sm-row align-items-sm-center justify-content-between">
+          <div class="mr-sm-3 mb-2 mb-sm-0">
+            <div class="d-flex align-items-center flex-wrap">
+              <span class="badge badge-secondary mr-2">{{ item.object_label }}</span>
+              <strong>{{ item.object_name }}</strong>
+            </div>
+            <small class="text-muted">{{ item.deleted_at|date:'Y/m/d H:i' }} に削除</small>
+          </div>
+          <form method="post" action="{% url 'restore_deleted_item' item.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-primary btn-sm">
+              <i class="fas fa-undo mr-1" aria-hidden="true"></i>元に戻す
+            </button>
+          </form>
+        </div>
+      {% endfor %}
+    </div>
+    <p class="text-muted small mt-3 mb-0">11件目以降の古い履歴は自動的に消去されます。</p>
+  {% else %}
+    <div class="card shadow-sm">
+      <div class="card-body text-center py-5">
+        <i class="fas fa-trash-alt fa-2x text-muted mb-3" aria-hidden="true"></i>
+        <p class="mb-0 text-muted">元に戻せるデータはありません。</p>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

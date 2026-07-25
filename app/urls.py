@@ -7,6 +7,8 @@ urlpatterns = [
     path('', RedirectView.as_view(url='home/', permanent=False), name='app_root'),
     # ホーム（統合ダッシュボード）
     path('home/', views.dashboard, name='dashboard'),
+    path('trash/', views.trash, name='trash'),
+    path('trash/<int:deleted_item_id>/restore/', views.restore_deleted_item, name='restore_deleted_item'),
     # 支出管理
     path('expenses/', views.expenses_list, name='expense_list'),
     path('expenses/create/', views.create_expenses, name='create_expenses'),

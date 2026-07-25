@@ -82,10 +82,13 @@ def edit_memo(request: HttpRequest, memo_id: int) -> HttpResponse:
 @login_required
 def delete_memo(request: HttpRequest, memo_id: int) -> HttpResponse:
     """メモ削除"""
+    from ..deletion import archive_and_delete
+
     memo = get_object_or_404(Memo, id=memo_id, user=request.user)
 
     if request.method == 'POST':
-        memo.delete()
+        archive_and_delete(memo, request.user)
+        messages.success(request, 'メモを削除しました。ごみ箱から元に戻せます。')
         return redirect('memo_list')
 
     return redirect('memo_list')

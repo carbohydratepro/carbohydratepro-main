@@ -1,6 +1,6 @@
 import { expect, test } from "../fixtures/base";
 import { getCredentialsOrSkip, login } from "../fixtures/auth";
-import { firstSelectValue, submitAndWaitForNavigation, uniqueName } from "../fixtures/http";
+import { firstSelectValue, postForm, submitAndWaitForNavigation, uniqueName } from "../fixtures/http";
 
 // 一時タスクの削除は誤操作に備えて「元に戻す（Undo）」トーストを出す。
 // 削除の発火経路（長押し／ドラッグ）は既存のジェスチャーで、いずれも window.deleteTask を呼ぶ。
@@ -170,5 +170,35 @@ test.describe("選択モードの一括削除", () => {
     await page.reload({ waitUntil: "networkidle" });
     await expect(page.locator(".bulk-item", { hasText: titleA })).toHaveCount(0);
     await expect(page.locator(".bulk-item", { hasText: titleB })).toHaveCount(0);
+  });
+
+  test("E2E-TRASH-001 削除したメモをごみ箱から復元できる", async ({ page }) => {
+    // Spec: docs/e2e/release-test-spec.md#e2e-trash-001
+    const title = uniqueName("trash-memo");
+    await createMemo(page, title);
+
+    await page.goto(`/carbohydratepro/memos/?search=${encodeURIComponent(title)}`);
+    const memo = page.locator(".lp-delete-item", { hasText: title }).first();
+    const deleteUrl = await memo.getAttribute("data-delete-url");
+    expect(deleteUrl).toBeTruthy();
+    await postForm(page, deleteUrl ?? "", {});
+
+    await page.goto("/carbohydratepro/trash/");
+    await expect(page.getByRole("heading", { name: "ごみ箱" })).toBeVisible();
+    const deletedItem = page.locator(".list-group-item", { hasText: title });
+    await expect(deletedItem).toBeVisible();
+    await submitAndWaitForNavigation(
+      page,
+      deletedItem.getByRole("button", { name: "元に戻す" }),
+    );
+    await expect(deletedItem).toHaveCount(0);
+
+    await page.goto(`/carbohydratepro/memos/?search=${encodeURIComponent(title)}`);
+    await expect(page.getByText(title, { exact: true })).toBeVisible();
+
+    const restoredMemo = page.locator(".lp-delete-item", { hasText: title }).first();
+    const cleanupUrl = await restoredMemo.getAttribute("data-delete-url");
+    expect(cleanupUrl).toBeTruthy();
+    await postForm(page, cleanupUrl ?? "", {});
   });
 });

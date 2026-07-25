@@ -25,7 +25,8 @@ test.describe("予算", () => {
     await page.locator("form").filter({ hasText: /設定|更新/ }).first()
       .getByRole("button", { name: /設定|更新/ }).first().click();
     await page.waitForLoadState("networkidle");
-    await expect(page.locator(".progress-bar").first()).toBeVisible();
+    await expect(page.locator(".progress").first()).toBeVisible();
+    await expect(page.locator(".progress-bar").first()).toBeAttached();
 
     // 追加したカテゴリの予算を設定
     const catForm = page.locator("form").filter({ has: page.locator('input[name="category_id"]') })

@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -68,10 +69,13 @@ def edit_shopping_item(request: HttpRequest, item_id: int) -> HttpResponse:
 @login_required
 def delete_shopping_item(request: HttpRequest, item_id: int) -> HttpResponse:
     """買うものリスト削除"""
+    from ..deletion import archive_and_delete
+
     shopping_item = get_object_or_404(ShoppingItem, id=item_id, user=request.user)
 
     if request.method == 'POST':
-        shopping_item.delete()
+        archive_and_delete(shopping_item, request.user)
+        messages.success(request, '買いものを削除しました。ごみ箱から元に戻せます。')
         return redirect('shopping_list')
 
     return redirect('shopping_list')
@@ -110,8 +114,17 @@ def toggle_check_shopping_item(request: HttpRequest, item_id: int) -> JsonRespon
 @login_required
 def clear_checked_shopping_items(request: HttpRequest) -> HttpResponse:
     """購入済みの一時アイテムを一括削除"""
+    from ..deletion import archive_and_delete_queryset
+
     if request.method == 'POST':
-        ShoppingItem.objects.filter(user=request.user, frequency='one_time', is_checked=True).delete()
+        queryset = ShoppingItem.objects.filter(
+            user=request.user,
+            frequency='one_time',
+            is_checked=True,
+        )
+        deleted_count = archive_and_delete_queryset(queryset, request.user)
+        if deleted_count:
+            messages.success(request, f'{deleted_count}件を削除しました。ごみ箱から元に戻せます。')
     return redirect('shopping_list')
 
 

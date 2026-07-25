@@ -18,6 +18,8 @@
       <a class="side-link {% if url_name == 'habit_dashboard' %}active{% endif %}" href="{% url 'habit_dashboard' %}">習慣</a>
       <a class="side-link {% if url_name == 'memo_list' %}active{% endif %}" href="{% url 'memo_list' %}">メモ</a>
       <a class="side-link {% if url_name == 'shopping_list' %}active{% endif %}" href="{% url 'shopping_list' %}">買いものリスト</a>
+      <div class="side-divider"></div>
+      <a class="side-link {% if url_name == 'trash' %}active{% endif %}" href="{% url 'trash' %}">ごみ箱</a>
       {% if user.is_superuser %}
         <div class="side-divider"></div>
         <a class="side-link {% if url_name == 'manage_dashboard' %}active{% endif %}" href="{% url 'manage_dashboard' %}">管理</a>

@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
 
 from .expenses.models import PaymentMethod, Category, Transaction
 from .memo.models import Memo
@@ -84,3 +85,29 @@ class ContactMessage(models.Model):
     def __str__(self) -> str:
         return f"{self.get_inquiry_type_display()} - {self.subject} ({self.user.email})"
 
+
+class DeletedItem(models.Model):
+    """ユーザーが削除したデータを復元するための最新履歴。"""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="deleted_items",
+        verbose_name="ユーザー",
+    )
+    object_type = models.CharField(max_length=40, verbose_name="データ種別")
+    object_label = models.CharField(max_length=40, verbose_name="表示種別")
+    object_name = models.CharField(max_length=200, verbose_name="表示名")
+    payload = models.JSONField(encoder=DjangoJSONEncoder, verbose_name="復元データ")
+    deleted_at = models.DateTimeField(auto_now_add=True, verbose_name="削除日時")
+
+    class Meta:
+        ordering = ["-deleted_at", "-id"]
+        verbose_name = "削除済みデータ"
+        verbose_name_plural = "削除済みデータ"
+        indexes = [
+            models.Index(fields=["user", "deleted_at"], name="app_del_user_date_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.object_label}: {self.object_name}"

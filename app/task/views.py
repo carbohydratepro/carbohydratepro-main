@@ -132,10 +132,13 @@ def edit_task(request: HttpRequest, task_id: int) -> HttpResponse:
 @login_required
 def delete_task(request: HttpRequest, task_id: int) -> HttpResponse:
     """タスク削除"""
+    from ..deletion import archive_and_delete
+
     task = get_object_or_404(Task, id=task_id, user=request.user)
 
     if request.method == 'POST':
-        task.delete()
+        archive_and_delete(task, request.user)
+        messages.success(request, '予定を削除しました。ごみ箱から元に戻せます。')
         return redirect('task_list')
 
     return redirect('task_list')
@@ -206,6 +209,9 @@ def temp_task_sets_api(request: HttpRequest) -> JsonResponse:
 @login_required
 def temp_task_set_detail_api(request: HttpRequest, set_id: int) -> JsonResponse:
     """一時タスクセット更新・削除 API"""
+    from ..deletion import archive_and_delete
+    from ..trash_views import restore_url
+
     task_set = get_object_or_404(TempTaskSet, id=set_id, user=request.user)
 
     if request.method == 'PUT':
@@ -228,8 +234,11 @@ def temp_task_set_detail_api(request: HttpRequest, set_id: int) -> JsonResponse:
         # 最後の1セットは削除不可
         if TempTaskSet.objects.filter(user=request.user).count() <= 1:
             return JsonResponse({'error': '最後のセットは削除できません'}, status=400)
-        task_set.delete()
-        return JsonResponse({'success': True})
+        deleted_item = archive_and_delete(task_set, request.user)
+        return JsonResponse({
+            'success': True,
+            'restore_url': restore_url(deleted_item),
+        })
 
     return JsonResponse({'error': 'メソッドが許可されていません'}, status=405)
 
@@ -274,6 +283,9 @@ def temp_task_api(request: HttpRequest) -> JsonResponse:
 @login_required
 def temp_task_detail_api(request: HttpRequest, task_id: int) -> JsonResponse:
     """一時タスク更新・削除 API"""
+    from ..deletion import archive_and_delete
+    from ..trash_views import restore_url
+
     task = get_object_or_404(TempTaskItem, id=task_id, user=request.user)
 
     if request.method == 'PUT':
@@ -298,8 +310,11 @@ def temp_task_detail_api(request: HttpRequest, task_id: int) -> JsonResponse:
         return JsonResponse({'id': task.id, 'title': task.title, 'status': task.status, 'order': task.order})
 
     if request.method == 'DELETE':
-        task.delete()
-        return JsonResponse({'success': True})
+        deleted_item = archive_and_delete(task, request.user)
+        return JsonResponse({
+            'success': True,
+            'restore_url': restore_url(deleted_item),
+        })
 
     return JsonResponse({'error': 'メソッドが許可されていません'}, status=405)
 
@@ -307,6 +322,8 @@ def temp_task_detail_api(request: HttpRequest, task_id: int) -> JsonResponse:
 @login_required
 def temp_task_clear_api(request: HttpRequest) -> JsonResponse:
     """一時タスク全削除 API（現在のセットのみ）"""
+    from ..deletion import archive_and_delete_queryset
+
     if request.method == 'DELETE':
         try:
             body = json.loads(request.body)
@@ -317,8 +334,8 @@ def temp_task_clear_api(request: HttpRequest) -> JsonResponse:
         qs = TempTaskItem.objects.filter(user=request.user)
         if set_id:
             qs = qs.filter(task_set_id=set_id)
-        qs.delete()
-        return JsonResponse({'success': True})
+        deleted_count = archive_and_delete_queryset(qs, request.user)
+        return JsonResponse({'success': True, 'deleted': deleted_count})
     return JsonResponse({'error': 'メソッドが許可されていません'}, status=405)
 
 

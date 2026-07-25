@@ -296,9 +296,12 @@ def edit_expenses(request: HttpRequest, transaction_id: int) -> HttpResponse:
 
 @login_required
 def delete_expenses(request: HttpRequest, transaction_id: int) -> HttpResponse:
+    from ..deletion import archive_and_delete
+
     transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
     if request.method == 'POST':
-        transaction.delete()
+        archive_and_delete(transaction, request.user)
+        messages.success(request, '取引を削除しました。ごみ箱から元に戻せます。')
     return redirect('expense_list')
 
 
@@ -354,9 +357,12 @@ def edit_recurring_payment(request: HttpRequest, recurring_id: int) -> HttpRespo
 
 @login_required
 def delete_recurring_payment(request: HttpRequest, recurring_id: int) -> HttpResponse:
+    from ..deletion import archive_and_delete
+
     recurring = get_object_or_404(RecurringPayment, id=recurring_id, user=request.user)
     if request.method == 'POST':
-        recurring.delete()
+        archive_and_delete(recurring, request.user)
+        messages.success(request, '定期支払いを削除しました。ごみ箱から元に戻せます。')
     return redirect('recurring_payment_list')
 
 

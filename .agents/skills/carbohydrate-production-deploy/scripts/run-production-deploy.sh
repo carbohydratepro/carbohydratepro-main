@@ -100,7 +100,7 @@ docker-compose -f "${COMPOSE_FILE}" up -d
 
 for attempt in $(seq 1 30); do
     if docker-compose -f "${COMPOSE_FILE}" exec -T gunicorn python -c \
-        "import django; django.setup(); print('ready')" 2>/dev/null | grep -q "ready"; then
+        "import django; django.setup(); print('ready')" </dev/null 2>/dev/null | grep -q "ready"; then
         echo "gunicorn準備完了（${attempt}秒）"
         break
     fi
@@ -111,8 +111,8 @@ for attempt in $(seq 1 30); do
     sleep 1
 done
 
-docker-compose -f "${COMPOSE_FILE}" exec -T gunicorn python manage.py migrate --noinput
-docker-compose -f "${COMPOSE_FILE}" exec -T gunicorn python manage.py collectstatic --noinput
+docker-compose -f "${COMPOSE_FILE}" exec -T gunicorn python manage.py migrate --noinput </dev/null
+docker-compose -f "${COMPOSE_FILE}" exec -T gunicorn python manage.py collectstatic --noinput </dev/null
 REMOTE_UPDATE
 
 if ! compgen -G "static/app/*.js" >/dev/null; then

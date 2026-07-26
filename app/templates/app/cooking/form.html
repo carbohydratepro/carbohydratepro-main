@@ -1,0 +1,190 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block title %}{% if is_create %}料理を登録{% else %}料理を編集{% endif %} | Life management{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'app/cooking.css' %}">{% endblock %}
+
+{% block content %}
+<div class="container py-3 cooking-form-page" data-cooking-form data-max-steps="10">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 class="h3 mb-1">{% if is_create %}料理を登録{% else %}料理を編集{% endif %}</h1>
+      <p class="text-muted mb-0">料理名だけでも保存できます。レシピは後から追加できます。</p>
+    </div>
+    <a href="{% if is_create %}{% url 'cooking_list' %}{% else %}{% url 'cooking_detail' dish.id %}{% endif %}" class="btn btn-outline-secondary btn-sm">戻る</a>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors or step_formset.non_form_errors %}
+      <div class="alert alert-danger" role="alert">
+        {{ form.non_field_errors }}
+        {{ step_formset.non_form_errors }}
+      </div>
+    {% endif %}
+
+    <section class="card mb-4">
+      <div class="card-header"><i class="fas fa-utensils mr-1" aria-hidden="true"></i>基本情報</div>
+      <div class="card-body">
+        <div class="form-group">
+          <label for="{{ form.title.id_for_label }}">{{ form.title.label }} <span class="text-danger">*</span></label>
+          {{ form.title }}
+          {% for error in form.title.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="form-group">
+          <label for="{{ form.ingredients.id_for_label }}">{{ form.ingredients.label }}</label>
+          <p class="small text-muted mb-1">1行に1つずつ書くと、調理中にも見やすくなります。</p>
+          {{ form.ingredients }}
+          {% for error in form.ingredients.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="form-row">
+          <div class="form-group col-sm-6">
+            <label for="{{ form.servings.id_for_label }}">{{ form.servings.label }}</label>
+            {{ form.servings }}
+            {% for error in form.servings.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="form-group col-sm-6">
+            <label for="{{ form.cooking_time_minutes.id_for_label }}">{{ form.cooking_time_minutes.label }}</label>
+            {{ form.cooking_time_minutes }}
+            {% for error in form.cooking_time_minutes.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+        <div class="form-check">
+          {{ form.is_favorite }}
+          <label class="form-check-label" for="{{ form.is_favorite.id_for_label }}"><i class="fas fa-star text-warning mr-1" aria-hidden="true"></i>{{ form.is_favorite.label }}</label>
+        </div>
+      </div>
+    </section>
+
+    <section class="card mb-4">
+      <div class="card-header"><i class="fas fa-camera mr-1" aria-hidden="true"></i>料理写真（最大5枚）</div>
+      <div class="card-body">
+        <p class="small text-muted">JPEG・PNG・WebP、1枚5MB以下。最初の写真が一覧の代表写真になります。</p>
+        <div class="row">
+          {% for field in form %}
+            {% if field.name|slice:':6' == 'photo_' %}
+              <div class="col-sm-6 col-lg-4 mb-3 cooking-file-field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                <div class="cooking-file-preview mt-2" aria-live="polite"></div>
+                {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="card mb-4">
+      <div class="card-header"><i class="fas fa-book-open mr-1" aria-hidden="true"></i>レシピ</div>
+      <div class="card-body">
+        <fieldset class="form-group">
+          <legend class="col-form-label pt-0">{{ form.recipe_mode.label }}</legend>
+          <div class="cooking-recipe-modes">{{ form.recipe_mode }}</div>
+          {% for error in form.recipe_mode.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </fieldset>
+
+        <div data-single-recipe-section>
+          <label for="{{ form.recipe_text.id_for_label }}">一括レシピ</label>
+          {{ form.recipe_text }}
+          {% for error in form.recipe_text.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+
+        <div data-step-recipe-section>
+          {{ step_formset.management_form }}
+          <div data-step-list>
+            {% for step_form in step_formset.forms %}
+              <article class="cooking-step-form card mb-3 {% if not step_form.instance.pk and not step_form.instruction.value and not step_form.errors %}d-none{% endif %}" data-step-form>
+                {{ step_form.id }}
+                {{ step_form.position }}
+                <span class="d-none">{{ step_form.DELETE }}</span>
+                <div class="card-header py-2 d-flex align-items-center">
+                  <strong>手順 <span data-step-number>{{ forloop.counter }}</span></strong>
+                  <div class="ml-auto btn-group btn-group-sm" role="group" aria-label="手順の並び替えと削除">
+                    <button type="button" class="btn btn-outline-secondary" data-step-up aria-label="手順を上へ"><i class="fas fa-arrow-up" aria-hidden="true"></i></button>
+                    <button type="button" class="btn btn-outline-secondary" data-step-down aria-label="手順を下へ"><i class="fas fa-arrow-down" aria-hidden="true"></i></button>
+                    <button type="button" class="btn btn-outline-danger" data-step-remove aria-label="手順を削除"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="form-group">
+                    <label for="{{ step_form.instruction.id_for_label }}">手順内容</label>
+                    {{ step_form.instruction }}
+                    {% for error in step_form.instruction.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                  </div>
+                  <div class="row">
+                    {% for field in step_form %}
+                      {% if field.name|slice:':6' == 'photo_' %}
+                        <div class="col-sm-6 cooking-file-field">
+                          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                          {{ field }}
+                          <div class="cooking-file-preview mt-2" aria-live="polite"></div>
+                          {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                        </div>
+                      {% endif %}
+                    {% endfor %}
+                  </div>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+
+          <template data-empty-step-template>
+            <article class="cooking-step-form card mb-3" data-step-form>
+              {{ step_formset.empty_form.id }}
+              {{ step_formset.empty_form.position }}
+              <span class="d-none">{{ step_formset.empty_form.DELETE }}</span>
+              <div class="card-header py-2 d-flex align-items-center">
+                <strong>手順 <span data-step-number></span></strong>
+                <div class="ml-auto btn-group btn-group-sm" role="group" aria-label="手順の並び替えと削除">
+                  <button type="button" class="btn btn-outline-secondary" data-step-up aria-label="手順を上へ"><i class="fas fa-arrow-up" aria-hidden="true"></i></button>
+                  <button type="button" class="btn btn-outline-secondary" data-step-down aria-label="手順を下へ"><i class="fas fa-arrow-down" aria-hidden="true"></i></button>
+                  <button type="button" class="btn btn-outline-danger" data-step-remove aria-label="手順を削除"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label for="{{ step_formset.empty_form.instruction.id_for_label }}">手順内容</label>
+                  {{ step_formset.empty_form.instruction }}
+                </div>
+                <div class="row">
+                  <div class="col-sm-6 cooking-file-field">
+                    <label for="{{ step_formset.empty_form.photo_1.id_for_label }}">{{ step_formset.empty_form.photo_1.label }}</label>
+                    {{ step_formset.empty_form.photo_1 }}
+                    <div class="cooking-file-preview mt-2" aria-live="polite"></div>
+                  </div>
+                  <div class="col-sm-6 cooking-file-field">
+                    <label for="{{ step_formset.empty_form.photo_2.id_for_label }}">{{ step_formset.empty_form.photo_2.label }}</label>
+                    {{ step_formset.empty_form.photo_2 }}
+                    <div class="cooking-file-preview mt-2" aria-live="polite"></div>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </template>
+
+          <button type="button" class="btn btn-outline-primary" data-step-add>
+            <i class="fas fa-plus mr-1" aria-hidden="true"></i>手順を追加
+          </button>
+          <small class="text-muted ml-2"><span data-step-count>0</span>/10</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="card mb-4">
+      <div class="card-header"><i class="fas fa-sticky-note mr-1" aria-hidden="true"></i>{{ form.notes.label }}</div>
+      <div class="card-body">
+        {{ form.notes }}
+        {% for error in form.notes.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+      </div>
+    </section>
+
+    <div class="d-flex justify-content-end mb-4">
+      <a href="{% if is_create %}{% url 'cooking_list' %}{% else %}{% url 'cooking_detail' dish.id %}{% endif %}" class="btn btn-outline-secondary mr-2">キャンセル</a>
+      <button type="submit" class="btn btn-primary px-4">{% if is_create %}登録する{% else %}更新する{% endif %}</button>
+    </div>
+  </form>
+</div>
+<script src="{% static 'app/cooking.js' %}" defer></script>
+{% endblock %}

@@ -4,6 +4,7 @@ from .expenses.models import Transaction, PaymentMethod, Category, RecurringPaym
 from .memo.models import Memo
 from .shopping.models import ShoppingItem
 from .task.models import TaskLabel, Task
+from .cooking.models import CookingDish, CookingHistory, CookingStep
 
 
 @admin.register(ContactMessage)
@@ -70,3 +71,21 @@ class TaskAdmin(admin.ModelAdmin):
     list_display = ('title', 'user', 'label', 'status', 'priority', 'start_date', 'end_date')
     search_fields = ('title', 'description', 'user__username')
     list_filter = ('status', 'priority', 'label', 'user', 'frequency')
+
+
+class CookingStepInline(admin.TabularInline):
+    model = CookingStep
+    extra = 0
+
+
+class CookingHistoryInline(admin.TabularInline):
+    model = CookingHistory
+    extra = 0
+
+
+@admin.register(CookingDish)
+class CookingDishAdmin(admin.ModelAdmin):
+    list_display = ('title', 'user', 'recipe_mode', 'is_favorite', 'updated_at')
+    search_fields = ('title', 'ingredients', 'user__username', 'user__email')
+    list_filter = ('recipe_mode', 'is_favorite', 'updated_at')
+    inlines = (CookingStepInline, CookingHistoryInline)

@@ -1,0 +1,193 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block title %}{{ dish.title }} | 料理記録 | Life management{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'app/cooking.css' %}">{% endblock %}
+
+{% block content %}
+<div class="container py-3 cooking-detail" data-testid="cooking-detail">
+  <div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
+    <div class="mr-3">
+      <a href="{% url 'cooking_list' %}" class="small"><i class="fas fa-angle-left mr-1" aria-hidden="true"></i>料理一覧へ</a>
+      <h1 class="h2 mt-2 mb-1">
+        {{ dish.title }}
+        {% if dish.is_favorite %}<i class="fas fa-star text-warning small" aria-label="お気に入り"></i>{% endif %}
+      </h1>
+      <div class="text-muted small">
+        {% if dish.servings %}<span class="mr-3"><i class="fas fa-user-friends mr-1" aria-hidden="true"></i>{{ dish.servings }}人分</span>{% endif %}
+        {% if dish.cooking_time_minutes %}<span><i class="far fa-clock mr-1" aria-hidden="true"></i>約{{ dish.cooking_time_minutes }}分</span>{% endif %}
+      </div>
+    </div>
+    <div class="d-flex mt-2">
+      <a href="{% url 'cooking_edit' dish.id %}" class="btn btn-outline-primary btn-sm mr-2"><i class="fas fa-edit mr-1" aria-hidden="true"></i>編集</a>
+      <button type="button" class="btn btn-outline-danger btn-sm" data-toggle="modal" data-target="#deleteCookingModal"><i class="fas fa-trash mr-1" aria-hidden="true"></i>削除</button>
+    </div>
+  </div>
+
+  {% if dish.photos %}
+    <div class="cooking-gallery mb-4" aria-label="料理写真">
+      {% for photo in dish.photos %}
+        <a href="{{ photo.url }}" target="_blank" rel="noopener" class="cooking-gallery-item">
+          <img src="{{ photo.url }}" alt="{{ dish.title }}の写真 {{ forloop.counter }}">
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="row mb-4">
+    <div class="col-sm-6 mb-3 mb-sm-0">
+      <div class="card h-100 cooking-stat-card">
+        <div class="card-body d-flex align-items-center">
+          <div class="cooking-stat-number mr-3">{{ total_count }}</div>
+          <div><strong>累計作成回数</strong><div class="small text-muted">{% if last_cooked_on %}最終 {{ last_cooked_on|date:'Y年m月d日' }}{% else %}まだ作っていません{% endif %}</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <form method="post" action="{% url 'cooking_record_today' dish.id %}" class="h-100">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success btn-lg btn-block h-100 cooking-today-button">
+          <i class="fas fa-check-circle mr-2" aria-hidden="true"></i>今日作った
+          <span class="d-block small font-weight-normal mt-1">今日の回数を1増やします</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-4 mb-4">
+      <section class="card h-100">
+        <div class="card-header"><i class="fas fa-list mr-1" aria-hidden="true"></i>材料{% if dish.servings %}（{{ dish.servings }}人分）{% endif %}</div>
+        <div class="card-body cooking-preline">{% if dish.ingredients %}{{ dish.ingredients }}{% else %}<span class="text-muted">材料はまだ登録されていません。</span>{% endif %}</div>
+      </section>
+    </div>
+    <div class="col-lg-8 mb-4">
+      <section class="cooking-notebook" data-recipe-book>
+        <div class="cooking-notebook-binding" aria-hidden="true"></div>
+        <div class="cooking-notebook-body">
+          {% if dish.recipe_mode == 'steps' and steps %}
+            {% for step in steps %}
+              <article class="cooking-recipe-page {% if not forloop.first %}d-none{% endif %}" data-recipe-page>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h2 class="h4 mb-0">手順 {{ step.position }}</h2>
+                  <span class="badge badge-light">{{ forloop.counter }} / {{ steps|length }}</span>
+                </div>
+                <div class="cooking-preline cooking-step-text">{{ step.instruction }}</div>
+                {% if step.photos %}
+                  <div class="row mt-3">
+                    {% for photo in step.photos %}
+                      <div class="col-6"><img src="{{ photo.url }}" alt="手順{{ step.position }}の写真{{ forloop.counter }}" class="img-fluid rounded"></div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </article>
+            {% endfor %}
+          {% else %}
+            <article class="cooking-recipe-page" data-recipe-page>
+              <h2 class="h4 mb-3">作り方</h2>
+              <div class="cooking-preline cooking-step-text">{% if dish.recipe_text %}{{ dish.recipe_text }}{% else %}<span class="text-muted">レシピはまだ登録されていません。</span>{% endif %}</div>
+            </article>
+          {% endif %}
+        </div>
+        {% if dish.recipe_mode == 'steps' and steps|length > 1 %}
+          <div class="cooking-page-controls">
+            <button type="button" class="btn btn-outline-primary" data-recipe-prev><i class="fas fa-angle-left mr-1" aria-hidden="true"></i>前へ</button>
+            <span class="small text-muted" data-recipe-indicator aria-live="polite">1 / {{ steps|length }}</span>
+            <button type="button" class="btn btn-outline-primary" data-recipe-next>次へ<i class="fas fa-angle-right ml-1" aria-hidden="true"></i></button>
+          </div>
+          <p class="small text-muted text-center mb-0 mt-2">左右にスワイプしてもページをめくれます。</p>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+
+  {% if dish.notes %}
+    <section class="card mb-4">
+      <div class="card-header"><i class="fas fa-sticky-note mr-1" aria-hidden="true"></i>メモ</div>
+      <div class="card-body cooking-preline">{{ dish.notes }}</div>
+    </section>
+  {% endif %}
+
+  <section class="card mb-4" id="cooking-history">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span><i class="fas fa-history mr-1" aria-hidden="true"></i>作成履歴</span>
+      <span class="badge badge-primary badge-pill">累計 {{ total_count }}回</span>
+    </div>
+    <div class="card-body">
+      <form method="post" action="{% url 'cooking_history_add' dish.id %}" class="border rounded p-3 mb-4">
+        {% csrf_token %}
+        <h2 class="h6">日付を指定して追加</h2>
+        {% if history_form.non_field_errors %}<div class="alert alert-danger py-2">{{ history_form.non_field_errors }}</div>{% endif %}
+        <div class="form-row align-items-start">
+          <div class="col-sm-4 mb-2">
+            <label for="{{ history_form.cooked_on.id_for_label }}" class="small">{{ history_form.cooked_on.label }}</label>
+            {{ history_form.cooked_on }}
+            {% for error in history_form.cooked_on.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-sm-2 mb-2">
+            <label for="{{ history_form.count.id_for_label }}" class="small">{{ history_form.count.label }}</label>
+            {{ history_form.count }}
+            {% for error in history_form.count.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-sm-4 mb-2">
+            <label for="{{ history_form.note.id_for_label }}" class="small">{{ history_form.note.label }}</label>
+            {{ history_form.note }}
+            {% for error in history_form.note.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-sm-2 mb-2 align-self-end">
+            <button type="submit" class="btn btn-primary btn-block">追加</button>
+          </div>
+        </div>
+      </form>
+
+      {% if histories %}
+        <div class="cooking-history-list">
+          {% for history in histories %}
+            <div class="border rounded p-3 mb-2">
+              <form id="history-update-{{ history.id }}" method="post" action="{% url 'cooking_history_update' dish.id history.id %}">
+                {% csrf_token %}
+                <div class="form-row align-items-end">
+                  <div class="col-sm-3 mb-2">
+                    <label class="small" for="history-date-{{ history.id }}">作った日</label>
+                    <input id="history-date-{{ history.id }}" type="date" name="cooked_on" class="form-control" value="{{ history.cooked_on|date:'Y-m-d' }}" required>
+                  </div>
+                  <div class="col-sm-2 mb-2">
+                    <label class="small" for="history-count-{{ history.id }}">回数</label>
+                    <input id="history-count-{{ history.id }}" type="number" name="count" class="form-control" min="1" max="999" value="{{ history.count }}" required>
+                  </div>
+                  <div class="col-sm-4 mb-2">
+                    <label class="small" for="history-note-{{ history.id }}">メモ</label>
+                    <input id="history-note-{{ history.id }}" type="text" name="note" class="form-control" maxlength="200" value="{{ history.note }}">
+                  </div>
+                  <div class="col-sm-3 mb-2 d-flex">
+                    <button type="submit" class="btn btn-outline-primary flex-fill mr-2">保存</button>
+                    <button type="submit" form="history-delete-{{ history.id }}" class="btn btn-outline-danger" aria-label="{{ history.cooked_on|date:'Y年m月d日' }}の履歴を削除"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                  </div>
+                </div>
+              </form>
+              <form id="history-delete-{{ history.id }}" method="post" action="{% url 'cooking_history_delete' dish.id history.id %}">{% csrf_token %}</form>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-muted text-center mb-0 py-3">作成履歴はありません。「今日作った」から最初の記録を追加できます。</p>
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+<div class="modal fade" id="deleteCookingModal" tabindex="-1" role="dialog" aria-labelledby="deleteCookingModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header"><h2 class="modal-title h5" id="deleteCookingModalLabel">料理を削除しますか？</h2><button type="button" class="close" data-dismiss="modal" aria-label="閉じる"><span aria-hidden="true">&times;</span></button></div>
+      <div class="modal-body">「{{ dish.title }}」と手順・作成履歴を削除します。直近10件まではごみ箱から元に戻せます。</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">キャンセル</button>
+        <form method="post" action="{% url 'cooking_delete' dish.id %}">{% csrf_token %}<button type="submit" class="btn btn-danger">削除する</button></form>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="{% static 'app/cooking.js' %}" defer></script>
+{% endblock %}

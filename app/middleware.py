@@ -41,6 +41,16 @@ TRACKING_CONFIG: dict[str, tuple[str, str, list[str]]] = {
     "edit_habit":                ("habits", "edit",   ["POST"]),
     "delete_habit":              ("habits", "delete", ["POST"]),
     "toggle_habit":              ("habits", "toggle", ["POST"]),
+    # 料理記録
+    "cooking_list":              ("cooking", "view",   ["GET"]),
+    "cooking_detail":            ("cooking", "view",   ["GET"]),
+    "cooking_create":            ("cooking", "create", ["POST"]),
+    "cooking_edit":              ("cooking", "edit",   ["POST"]),
+    "cooking_delete":            ("cooking", "delete", ["POST"]),
+    "cooking_record_today":      ("cooking", "create", ["POST"]),
+    "cooking_history_add":       ("cooking", "create", ["POST"]),
+    "cooking_history_update":    ("cooking", "edit",   ["POST"]),
+    "cooking_history_delete":    ("cooking", "delete", ["POST"]),
 }
 
 # デモページ（未認証ユーザーのGETアクセスのみ記録）

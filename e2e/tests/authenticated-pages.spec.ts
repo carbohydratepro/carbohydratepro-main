@@ -15,6 +15,8 @@ const authenticatedPages = [
   { id: "E2E-MEMO-001", path: "/carbohydratepro/memos/", text: "メモ" },
   { id: "E2E-MEMO-SET-001", path: "/carbohydratepro/memos/settings/", text: "種別" },
   { id: "E2E-SHOPPING-001", path: "/carbohydratepro/shopping/", text: "買い物" },
+  { id: "E2E-COOKING-PAGE-001", path: "/carbohydratepro/cooking/", text: "料理記録" },
+  { id: "E2E-COOKING-PAGE-002", path: "/carbohydratepro/cooking/new/", text: "料理を登録" },
   { id: "E2E-CONTACT-001", path: "/carbohydratepro/contact/", text: "お問い合わせ" },
 ];
 

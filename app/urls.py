@@ -9,6 +9,24 @@ urlpatterns = [
     path('home/', views.dashboard, name='dashboard'),
     path('trash/', views.trash, name='trash'),
     path('trash/<int:deleted_item_id>/restore/', views.restore_deleted_item, name='restore_deleted_item'),
+    # 料理記録
+    path('cooking/', views.cooking_list, name='cooking_list'),
+    path('cooking/new/', views.cooking_create, name='cooking_create'),
+    path('cooking/<int:dish_id>/', views.cooking_detail, name='cooking_detail'),
+    path('cooking/<int:dish_id>/edit/', views.cooking_edit, name='cooking_edit'),
+    path('cooking/<int:dish_id>/delete/', views.cooking_delete, name='cooking_delete'),
+    path('cooking/<int:dish_id>/today/', views.cooking_record_today, name='cooking_record_today'),
+    path('cooking/<int:dish_id>/history/add/', views.cooking_history_add, name='cooking_history_add'),
+    path(
+        'cooking/<int:dish_id>/history/<int:history_id>/update/',
+        views.cooking_history_update,
+        name='cooking_history_update',
+    ),
+    path(
+        'cooking/<int:dish_id>/history/<int:history_id>/delete/',
+        views.cooking_history_delete,
+        name='cooking_history_delete',
+    ),
     # 支出管理
     path('expenses/', views.expenses_list, name='expense_list'),
     path('expenses/create/', views.create_expenses, name='create_expenses'),

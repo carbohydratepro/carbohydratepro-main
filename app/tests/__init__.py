@@ -20,3 +20,4 @@ from .test_calendar_feed import *
 from .test_external_calendar import *
 from .test_bulk_delete import *
 from .test_trash import *
+from .test_cooking import *

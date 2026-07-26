@@ -7,8 +7,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from django.contrib.auth import get_user_model
+from django.core.files.storage import default_storage
 from django.db import IntegrityError, models, transaction
 
+from .cooking.models import CookingDish, CookingHistory, CookingStep
 from .expenses.models import RecurringPayment, Transaction
 from .habit.models import Habit, HabitRecord
 from .memo.models import Memo
@@ -65,6 +67,7 @@ DELETION_SPECS = (
     DeletionSpec("memo", "メモ", Memo, _title_name),
     DeletionSpec("shopping_item", "買いもの", ShoppingItem, _title_name),
     DeletionSpec("habit", "習慣", Habit, _title_name),
+    DeletionSpec("cooking_dish", "料理記録", CookingDish, _title_name),
 )
 
 _SPECS_BY_MODEL = {spec.model: spec for spec in DELETION_SPECS}
@@ -81,7 +84,10 @@ def _snapshot_instance(
     for field in instance._meta.concrete_fields:
         if field.primary_key or field.name == "user" or field.name in excluded:
             continue
-        fields[field.attname] = getattr(instance, field.attname)
+        value = getattr(instance, field.attname)
+        if isinstance(field, models.FileField):
+            value = value.name if value else ""
+        fields[field.attname] = value
     return {"pk": instance.pk, "fields": fields}
 
 
@@ -107,18 +113,57 @@ def _build_payload(instance: models.Model) -> dict[str, Any]:
             _snapshot_instance(item, excluded_fields={"task_set"})
             for item in instance.items.order_by("pk")
         ]
+    elif isinstance(instance, CookingDish):
+        payload["relations"]["steps"] = [
+            _snapshot_instance(step, excluded_fields={"dish"})
+            for step in instance.steps.order_by("position", "pk")
+        ]
+        payload["relations"]["histories"] = [
+            _snapshot_instance(history, excluded_fields={"dish"})
+            for history in instance.histories.order_by("pk")
+        ]
 
     return payload
 
 
 def _trim_history(user: AbstractBaseUser) -> None:
-    stale_ids = list(
+    stale_items = list(
         DeletedItem.objects.filter(user=user)
         .order_by("-deleted_at", "-pk")
-        .values_list("pk", flat=True)[TRASH_LIMIT:]
+        [TRASH_LIMIT:]
     )
-    if stale_ids:
-        DeletedItem.objects.filter(pk__in=stale_ids, user=user).delete()
+    if stale_items:
+        stale_files: set[str] = set()
+        for item in stale_items:
+            if item.object_type == "cooking_dish":
+                stale_files.update(_cooking_file_names(item.payload))
+        DeletedItem.objects.filter(pk__in=[item.pk for item in stale_items], user=user).delete()
+        if stale_files:
+            transaction.on_commit(lambda: _delete_cooking_files(stale_files))
+
+
+def _cooking_file_names(payload: Any) -> set[str]:
+    """料理の削除スナップショットから保持中の画像名を取り出す。"""
+    if not isinstance(payload, dict):
+        return set()
+    snapshots = [payload.get("object")]
+    relations = payload.get("relations", {})
+    if isinstance(relations, dict):
+        snapshots.extend(relations.get("steps", []))
+
+    file_names: set[str] = set()
+    for snapshot in snapshots:
+        if not isinstance(snapshot, dict) or not isinstance(snapshot.get("fields"), dict):
+            continue
+        for key, value in snapshot["fields"].items():
+            if key.startswith("photo_") and isinstance(value, str) and value.startswith("cooking/"):
+                file_names.add(value)
+    return file_names
+
+
+def _delete_cooking_files(file_names: set[str]) -> None:
+    for file_name in file_names:
+        default_storage.delete(file_name)
 
 
 def _create_history(instance: models.Model, user: AbstractBaseUser) -> DeletedItem:
@@ -266,6 +311,11 @@ def restore_deleted_item(deleted_item: DeletedItem, user: AbstractBaseUser) -> m
         elif isinstance(restored, TempTaskSet):
             for item in relations.get("items", []):
                 _restore_snapshot(TempTaskItem, item, user, overrides={"task_set_id": restored.pk})
+        elif isinstance(restored, CookingDish):
+            for step in relations.get("steps", []):
+                _restore_snapshot(CookingStep, step, user, overrides={"dish_id": restored.pk})
+            for history in relations.get("histories", []):
+                _restore_snapshot(CookingHistory, history, user, overrides={"dish_id": restored.pk})
 
         locked_item.delete()
 

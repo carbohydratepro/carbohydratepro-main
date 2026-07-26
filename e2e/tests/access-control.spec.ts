@@ -12,6 +12,8 @@ const protectedPages = [
   "/carbohydratepro/memos/",
   "/carbohydratepro/memos/settings/",
   "/carbohydratepro/shopping/",
+  "/carbohydratepro/cooking/",
+  "/carbohydratepro/cooking/new/",
   "/carbohydratepro/contact/",
   "/my_page/1/",
   "/edit/1",

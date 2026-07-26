@@ -1,0 +1,109 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block title %}料理記録 | Life management{% endblock %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'app/cooking.css' %}">{% endblock %}
+
+{% block content %}
+<div class="container py-3" data-testid="cooking-list">
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h3 mb-1"><i class="fas fa-utensils mr-2" aria-hidden="true"></i>料理記録</h1>
+      <p class="text-muted mb-0">料理、材料、レシピと作った日をまとめて記録します。</p>
+    </div>
+    <a href="{% url 'cooking_create' %}" class="btn btn-primary mt-2 mt-sm-0">
+      <i class="fas fa-plus mr-1" aria-hidden="true"></i>料理を登録
+    </a>
+  </div>
+
+  <form method="get" class="card card-body py-3 mb-3" role="search">
+    <div class="form-row align-items-end">
+      <div class="col-md-7 mb-2 mb-md-0">
+        <label for="cooking-search" class="small">料理名・材料を検索</label>
+        <input id="cooking-search" type="search" name="search" class="form-control"
+               value="{{ search_query }}" placeholder="例: カレー、鶏肉">
+      </div>
+      <div class="col-md-3 mb-2 mb-md-0">
+        <label for="cooking-sort" class="small">並び順</label>
+        <select id="cooking-sort" name="sort" class="form-control">
+          <option value="recent" {% if sort == 'recent' %}selected{% endif %}>更新が新しい順</option>
+          <option value="last_cooked" {% if sort == 'last_cooked' %}selected{% endif %}>最近作った順</option>
+          <option value="count" {% if sort == 'count' %}selected{% endif %}>作った回数順</option>
+          <option value="name" {% if sort == 'name' %}selected{% endif %}>料理名順</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-flex">
+        <button type="submit" class="btn btn-primary flex-fill">検索</button>
+        {% if search_query or sort != 'recent' %}
+          <a href="{% url 'cooking_list' %}" class="btn btn-outline-secondary ml-2" aria-label="検索条件をクリア">
+            <i class="fas fa-times" aria-hidden="true"></i>
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+
+  {% if search_query %}
+    <p class="small text-muted">「{{ search_query }}」の検索結果: {{ page_obj.paginator.count }}件</p>
+  {% endif %}
+
+  <div class="row">
+    {% for dish in page_obj %}
+      <div class="col-sm-6 col-lg-4 mb-4">
+        <a href="{% url 'cooking_detail' dish.id %}" class="card cooking-card h-100 text-decoration-none text-body">
+          <div class="cooking-card-photo">
+            {% if dish.cover_photo %}
+              <img src="{{ dish.cover_photo.url }}" alt="{{ dish.title }}の写真" loading="lazy">
+            {% else %}
+              <div class="cooking-photo-placeholder"><i class="fas fa-utensils" aria-hidden="true"></i></div>
+            {% endif %}
+            {% if dish.is_favorite %}
+              <span class="cooking-favorite" aria-label="お気に入り"><i class="fas fa-star" aria-hidden="true"></i></span>
+            {% endif %}
+          </div>
+          <div class="card-body">
+            <h2 class="h5 card-title mb-2">{{ dish.title }}</h2>
+            <p class="small text-muted cooking-ingredients-preview mb-3">
+              {% if dish.ingredients %}{{ dish.ingredients|truncatechars:90 }}{% else %}材料はまだ登録されていません。{% endif %}
+            </p>
+            <div class="d-flex justify-content-between align-items-center small">
+              <span class="badge badge-primary badge-pill">{{ dish.cooked_count }}回</span>
+              <span class="text-muted">
+                {% if dish.last_cooked_on %}最終 {{ dish.last_cooked_on|date:'Y/m/d' }}{% else %}まだ作っていません{% endif %}
+              </span>
+            </div>
+          </div>
+        </a>
+      </div>
+    {% empty %}
+      <div class="col-12">
+        <div class="card card-body text-center py-5">
+          <i class="fas fa-book-open fa-2x text-muted mb-3" aria-hidden="true"></i>
+          {% if search_query %}
+            <p class="mb-2">条件に一致する料理がありません。</p>
+            <a href="{% url 'cooking_list' %}">すべての料理を見る</a>
+          {% else %}
+            <p class="mb-2">料理はまだ登録されていません。</p>
+            <a href="{% url 'cooking_create' %}">最初の料理を登録する</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  {% if page_obj.has_other_pages %}
+    <nav aria-label="料理一覧ページ">
+      <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search_query|urlencode }}&sort={{ sort }}">前へ</a></li>
+        {% endif %}
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search_query|urlencode }}&sort={{ sort }}">次へ</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  {% endif %}
+</div>
+{% endblock %}

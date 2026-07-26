@@ -9,6 +9,7 @@ const authenticatedPages = [
   { name: "習慣", expectedPath: "/carbohydratepro/habits/", text: "習慣" },
   { name: "メモ", expectedPath: "/carbohydratepro/memos/", text: "メモ" },
   { name: "買いものリスト", expectedPath: "/carbohydratepro/shopping/", text: "買い物" },
+  { name: "料理記録", expectedPath: "/carbohydratepro/cooking/", text: "料理記録" },
   // マイページはヘッダーのアカウントメニュー内へ移動した
   { name: "マイページ", expectedPath: /\/my_page\/\d+\/?$/, text: "マイページ", inAccountMenu: true },
 ];

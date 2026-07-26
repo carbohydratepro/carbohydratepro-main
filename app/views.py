@@ -26,6 +26,17 @@ from .task.views import (
 from .habit.views import habit_dashboard, create_habit, edit_habit, delete_habit, toggle_habit, habit_status_json, habit_heatmap_json, habit_list
 from .home_views import dashboard
 from .trash_views import restore_deleted_item, trash
+from .cooking.views import (
+    cooking_create,
+    cooking_delete,
+    cooking_detail,
+    cooking_edit,
+    cooking_history_add,
+    cooking_history_delete,
+    cooking_history_update,
+    cooking_list,
+    cooking_record_today,
+)
 from .manage_views import manage_dashboard, manage_contacts, manage_contact_update, manage_users, manage_users_stats_api, manage_analytics, manage_analytics_api
 
 @login_required

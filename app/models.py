@@ -7,6 +7,7 @@ from .memo.models import Memo
 from .shopping.models import ShoppingItem
 from .task.models import TaskLabel, Task
 from .habit.models import Habit, HabitRecord
+from .cooking.models import CookingDish, CookingHistory, CookingStep
 
 
 class ActivityLog(models.Model):
@@ -18,6 +19,7 @@ class ActivityLog(models.Model):
         ("memos", "メモ"),
         ("shopping", "買うものリスト"),
         ("habits", "習慣トラッカー"),
+        ("cooking", "料理記録"),
         ("demo", "デモ"),
     ]
 

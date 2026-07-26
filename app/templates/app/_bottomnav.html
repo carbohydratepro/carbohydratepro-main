@@ -38,6 +38,7 @@
         <a class="dropdown-item" href="{% url 'temp_task_board' %}">一時タスク</a>
         <a class="dropdown-item" href="{% url 'memo_list' %}">メモ</a>
         <a class="dropdown-item" href="{% url 'shopping_list' %}">買いものリスト</a>
+        <a class="dropdown-item" href="{% url 'cooking_list' %}">料理記録</a>
         <a class="dropdown-item" href="{% url 'trash' %}">ごみ箱</a>
         {% if user.is_superuser %}
           <a class="dropdown-item" href="{% url 'manage_dashboard' %}">管理</a>

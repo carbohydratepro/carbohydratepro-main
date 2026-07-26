@@ -131,13 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeColorPicker(this.id);
     });
     initLongPressDelete();
-    // 週の開始曜日: ラジオボタン変更時に自動送信
-    const weekStartForm = document.getElementById('weekStartForm');
-    if (weekStartForm) {
-        weekStartForm.querySelectorAll('input[type="radio"]').forEach(radio => {
-            radio.addEventListener('change', () => weekStartForm.submit());
-        });
-    }
 });
 // カレンダー配信URLをクリップボードへコピーする（タスク設定画面）
 function copyCalendarFeedUrl() {

@@ -1,6 +1,7 @@
 """統合ダッシュボード（ログイン後のホーム画面）"""
 from __future__ import annotations
 
+from calendar import monthrange
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
@@ -21,6 +22,19 @@ from .task import selectors as task_selectors
 DASHBOARD_TASK_LIMIT = 6
 DASHBOARD_SHOPPING_LIMIT = 5
 DASHBOARD_MEMO_LIMIT = 3
+
+TODAY_NOTES = {
+    (1, 1): '元日',
+    (2, 11): '建国記念の日',
+    (3, 3): 'ひな祭り',
+    (4, 29): '昭和の日',
+    (5, 5): 'こどもの日',
+    (7, 7): '七夕',
+    (8, 11): '山の日',
+    (9, 1): '防災の日',
+    (11, 3): '文化の日',
+    (12, 31): '大晦日',
+}
 
 
 def build_dashboard_context(user: Any) -> dict[str, Any]:
@@ -77,6 +91,12 @@ def build_dashboard_context(user: Any) -> dict[str, Any]:
         .order_by('-updated_date')[:DASHBOARD_MEMO_LIMIT]
     )
 
+    days_remaining_in_month = monthrange(today.year, today.month)[1] - today.day
+    today_note = TODAY_NOTES.get(
+        (today.month, today.day),
+        f'今年の{today.timetuple().tm_yday}日目です',
+    )
+
     return {
         'today': today,
         'today_tasks': today_tasks,
@@ -94,6 +114,9 @@ def build_dashboard_context(user: Any) -> dict[str, Any]:
         'shopping_count': shopping_count,
         'shopping_insufficient_count': shopping_insufficient_count,
         'recent_memos': recent_memos,
+        'today_note': today_note,
+        'days_remaining_in_month': days_remaining_in_month,
+        'today_reference_url': f'https://ja.wikipedia.org/wiki/{today.month}月{today.day}日',
     }
 
 

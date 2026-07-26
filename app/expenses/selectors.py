@@ -66,6 +66,11 @@ def get_transactions(
     major_category: str = '',
     category_id: str = '',
     payment_method_id: str = '',
+    category_ids: list[int | str] | None = None,
+    excluded_category_ids: list[int | str] | None = None,
+    payment_method_ids: list[int | str] | None = None,
+    excluded_payment_method_ids: list[int | str] | None = None,
+    exact_date: str = '',
     sort_by: str = 'date_desc',
 ) -> QuerySet:
     """フィルタリング済みの取引クエリセットを返す。"""
@@ -90,6 +95,16 @@ def get_transactions(
         qs = qs.filter(category__id=category_id)
     if payment_method_id:
         qs = qs.filter(payment_method__id=payment_method_id)
+    if category_ids:
+        qs = qs.filter(category_id__in=category_ids)
+    if excluded_category_ids:
+        qs = qs.exclude(category_id__in=excluded_category_ids)
+    if payment_method_ids:
+        qs = qs.filter(payment_method_id__in=payment_method_ids)
+    if excluded_payment_method_ids:
+        qs = qs.exclude(payment_method_id__in=excluded_payment_method_ids)
+    if exact_date:
+        qs = qs.filter(date__date=exact_date)
     return qs
 
 
@@ -114,6 +129,7 @@ def build_category_chart_data(transactions_qs: QuerySet) -> str:
     expense_qs = transactions_qs.filter(transaction_type='expense')
     category_data = expense_qs.values('category__id', 'category__name', 'category__chart_color').annotate(total=Sum('amount')).order_by('-total')
 
+    filter_values: list[str] = []
     if category_data.exists():
         top_categories = list(category_data[:5])
         other_total = sum(float(entry['total']) for entry in category_data[5:])
@@ -131,12 +147,21 @@ def build_category_chart_data(transactions_qs: QuerySet) -> str:
             labels.append('その他')
             amounts.append(other_total)
             colors.append(CHART_COLORS['no_data'])
+        filter_values = [str(entry['category__id']) for entry in top_categories]
+        if other_total > 0:
+            top_ids = ','.join(str(entry['category__id']) for entry in top_categories)
+            filter_values.append(f'exclude:{top_ids}')
     else:
         labels = ['データなし']
         amounts = [1]
         colors = [CHART_COLORS['no_data']]
+        filter_values = ['']
 
-    return json.dumps({'labels': labels, 'datasets': [{'data': amounts, 'backgroundColor': colors}]})
+    return json.dumps({
+        'labels': labels,
+        'filterValues': filter_values,
+        'datasets': [{'data': amounts, 'backgroundColor': colors}],
+    })
 
 
 def build_major_category_chart_data(transactions_qs: QuerySet) -> str:
@@ -148,10 +173,12 @@ def build_major_category_chart_data(transactions_qs: QuerySet) -> str:
         colors = [CHART_COLORS['major_category'][entry['major_category']] for entry in major_data]
         return json.dumps({
             'labels': [MAJOR_CATEGORY_LABELS[entry['major_category']] for entry in major_data],
+            'filterValues': [entry['major_category'] for entry in major_data],
             'datasets': [{'data': [float(entry['total']) for entry in major_data], 'backgroundColor': colors}],
         })
     return json.dumps({
         'labels': ['データなし'],
+        'filterValues': [''],
         'datasets': [{'data': [1], 'backgroundColor': [CHART_COLORS['no_data']]}],
     })
 
@@ -179,7 +206,7 @@ def build_daily_chart_data(transactions_qs: QuerySet, date_range: list[str]) -> 
     })
     balance_json = json.dumps({
         'labels': date_range,
-        'datasets': [{'label': '所持金', 'data': balance_data, 'fill': False, 'borderColor': CHART_COLORS['balance_line']}],
+        'datasets': [{'label': '収支', 'data': balance_data, 'fill': False, 'borderColor': CHART_COLORS['balance_line']}],
     })
     return expense_json, balance_json
 
@@ -223,12 +250,12 @@ def build_monthly_chart_data(transactions_qs: QuerySet, year: int) -> str:
 
 def get_payment_methods(user: AbstractBaseUser) -> QuerySet:
     """ユーザーの支払方法一覧を返す。"""
-    return PaymentMethod.objects.filter(user=user)
+    return PaymentMethod.objects.filter(user=user).order_by('sort_order', 'pk')
 
 
 def get_categories(user: AbstractBaseUser) -> QuerySet:
     """ユーザーのカテゴリ一覧を返す。"""
-    return Category.objects.filter(user=user)
+    return Category.objects.filter(user=user).order_by('sort_order', 'pk')
 
 
 def get_category_default_color(category_id: int | None) -> str:
@@ -293,7 +320,7 @@ def build_budget_overview(user: 'AbstractBaseUser', year: int, month: int) -> di
     """予算画面・ダッシュボード用の予算消化サマリーを構築する。"""
     budgets = {b.category_id: b for b in Budget.objects.filter(user=user)}
     spending = get_month_expense_by_category(user, year, month)
-    categories = list(Category.objects.filter(user=user).order_by('name'))
+    categories = list(Category.objects.filter(user=user).order_by('sort_order', 'pk'))
 
     def make_row(limit: Decimal, used: Decimal) -> dict[str, object]:
         remaining = limit - used

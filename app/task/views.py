@@ -11,6 +11,8 @@ from django.utils.timezone import make_aware
 
 from django.db import IntegrityError, transaction
 
+from app.ordering import move_owned_item, next_sort_order
+
 from .forms import ExternalCalendarForm, TaskForm, TaskLabelForm
 from .models import CalendarToken, ExternalCalendar, Task, TaskLabel, TempTaskItem, TempTaskSet
 from . import selectors, services
@@ -358,6 +360,7 @@ def task_settings(request: HttpRequest) -> HttpResponse:
             if form.is_valid():
                 label = form.save(commit=False)
                 label.user = request.user
+                label.sort_order = next_sort_order(TaskLabel, request.user)
                 label.save()
                 messages.success(request, 'ラベルを作成しました。')
                 return redirect('task_settings')
@@ -376,6 +379,35 @@ def task_settings(request: HttpRequest) -> HttpResponse:
             label = get_object_or_404(TaskLabel, id=label_id, user=request.user)
             label.delete()
             messages.success(request, 'ラベルを削除しました。')
+            return redirect('task_settings')
+
+        elif 'move_label' in request.POST:
+            label = get_object_or_404(
+                TaskLabel,
+                id=request.POST.get('label_id'),
+                user=request.user,
+            )
+            move_owned_item(
+                TaskLabel,
+                request.user,
+                label.pk,
+                request.POST.get('direction', ''),
+            )
+            return redirect('task_settings')
+
+        elif 'set_default_label' in request.POST:
+            label = get_object_or_404(
+                TaskLabel,
+                id=request.POST.get('label_id'),
+                user=request.user,
+            )
+            with transaction.atomic():
+                TaskLabel.objects.select_for_update().filter(user=request.user).update(
+                    is_default=False
+                )
+                label.is_default = True
+                label.save(update_fields=['is_default'])
+            messages.success(request, f'「{label.name}」を既定のラベルにしました。')
             return redirect('task_settings')
 
         elif 'update_week_start' in request.POST:

@@ -11,6 +11,35 @@ interface NiceScale {
   step: number;
 }
 
+function navigateWithExpenseFilter(name: string, value: string): void {
+    if (!value || value === 'データなし') return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('page');
+    if (name === 'category' && value.startsWith('exclude:')) {
+        url.searchParams.delete('category');
+        url.searchParams.delete('exclude_category');
+        value.slice('exclude:'.length).split(',').filter(Boolean).forEach(categoryId => {
+            url.searchParams.append('exclude_category', categoryId);
+        });
+        window.location.assign(url.toString());
+        return;
+    }
+    if (name === 'category') url.searchParams.delete('exclude_category');
+    if (name === 'payment_method') url.searchParams.delete('exclude_payment_method');
+    url.searchParams.delete(name);
+    url.searchParams.append(name, value);
+    window.location.assign(url.toString());
+}
+
+function chartFilterHandler(name: string, data: ChartData): (event: unknown, elements: ChartElement[]) => void {
+    return (_event: unknown, elements: ChartElement[]): void => {
+        const index = elements[0]?.index;
+        if (index === undefined) return;
+        const value = data.filterValues?.[index] ?? data.labels[index] ?? '';
+        navigateWithExpenseFilter(name, value);
+    };
+}
+
 // エラーメッセージを表示する関数
 function displayFormErrors(errors: Record<string, string | string[]>): void {
     // 既存のエラーメッセージをクリア
@@ -231,6 +260,7 @@ function createLineChartConfig(
                 mode: 'index',
                 intersect: false,
             },
+            onClick: chartFilterHandler('date', balanceData),
             plugins: {
                 title: { display: true, text: '日別収支推移' },
                 legend: { display: true, position: 'bottom' },
@@ -357,6 +387,7 @@ function initializeExpenseCharts(): void {
                         title: { display: true, text: 'カテゴリ別割合' },
                         legend: { display: false },
                     },
+                    onClick: chartFilterHandler('category', categoryData),
                 },
             });
         }
@@ -380,6 +411,7 @@ function initializeExpenseCharts(): void {
             responsive: true,
             maintainAspectRatio: false,
             plugins: { title: { display: true, text: '日別支出' } },
+            onClick: chartFilterHandler('date', data),
             scales: {
                 x: { type: 'category', ticks: { autoSkip: true, maxTicksLimit: maxTicksX } },
                 y: {
@@ -426,6 +458,7 @@ function initializeExpenseCharts(): void {
                 title: { display: true, text: '費用タイプ別割合' },
                 legend: { display: false },
             },
+            onClick: chartFilterHandler('major_category', majorCategoryData),
         },
     };
 
@@ -459,6 +492,7 @@ function initializeYearlyCharts(): void {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const year = canvas.dataset['year'] ?? '';
     new Chart(ctx, {
         type: 'bar',
         data: monthlyData,
@@ -478,6 +512,16 @@ function initializeYearlyCharts(): void {
                     },
                 },
             },
+            onClick: (_event: unknown, elements: ChartElement[]): void => {
+                const index = elements[0]?.index;
+                if (index === undefined || !year) return;
+                const month = String(index + 1).padStart(2, '0');
+                const url = new URL(window.location.href);
+                url.searchParams.set('view_mode', 'month');
+                url.searchParams.set('target_date', `${year}-${month}`);
+                url.searchParams.delete('page');
+                window.location.assign(url.toString());
+            },
             scales: {
                 x: { type: 'category' },
                 y: {
@@ -491,7 +535,14 @@ function initializeYearlyCharts(): void {
 
 // フィルター変更時の処理（filterFormはonchange="this.form.submit()"で処理するため不要）
 function initializeExpenseFilters(): void {
-    // filterForm は HTML 側の onchange で直接サブミットするため処理なし
+    document.querySelectorAll<HTMLInputElement>('input[data-filter-key]').forEach(input => {
+        input.addEventListener('change', () => {
+            if (!input.checked) return;
+            document.querySelectorAll<HTMLInputElement>(`input[data-filter-key="${input.dataset['filterKey'] ?? ''}"]`).forEach(peer => {
+                if (peer !== input) peer.checked = false;
+            });
+        });
+    });
 }
 
 function initTransactionDoubleClick(): void {

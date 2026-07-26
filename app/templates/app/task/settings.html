@@ -48,6 +48,7 @@
                         <input type="radio" name="week_start" value="monday" aria-label="月曜開始" autocomplete="off" {% if current_week_start == 'monday' %}checked{% endif %}> 月曜開始
                     </label>
                 </div>
+                <button type="submit" class="btn btn-primary btn-sm ml-2">保存</button>
             </form>
             <small class="text-muted d-block mt-2">月表示カレンダーの並び順に適用されます。</small>
         </div>
@@ -173,9 +174,10 @@
             <table class="table table-hover">
                 <thead>
                     <tr>
+                        <th style="width: 92px;">順序</th>
                         <th style="width: 100px;">色</th>
                         <th>ラベル名</th>
-                        <th style="width: 150px;"></th>
+                        <th style="width: 210px;"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -185,13 +187,28 @@
                         data-edit-modal-id="editLabelModal{{ label.id }}"
                         data-item-id="{{ label.id }}">
                         <td>
+                            <form method="post" class="btn-group btn-group-sm" onclick="event.stopPropagation();">
+                                {% csrf_token %}
+                                <input type="hidden" name="label_id" value="{{ label.id }}">
+                                <input type="hidden" name="move_label" value="1">
+                                <button type="submit" name="direction" value="up" class="btn btn-outline-secondary" aria-label="{{ label.name }}を上へ" {% if forloop.first %}disabled{% endif %}><i class="fas fa-arrow-up"></i></button>
+                                <button type="submit" name="direction" value="down" class="btn btn-outline-secondary" aria-label="{{ label.name }}を下へ" {% if forloop.last %}disabled{% endif %}><i class="fas fa-arrow-down"></i></button>
+                            </form>
+                        </td>
+                        <td>
                             <span class="badge badge-lg p-2" style="background-color: {{ label.color }}; color: white; min-width: 80px;">
                                 {{ label.color }}
                             </span>
                         </td>
-                        <td>{{ label.name|truncatechars:30 }}</td>
+                        <td>{{ label.name|truncatechars:30 }}{% if label.is_default %}<span class="badge badge-primary ml-2">既定</span>{% endif %}</td>
                         <td class="lp-actions-cell">
                             <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
+                            <form method="post" class="d-inline" onclick="event.stopPropagation();">
+                                {% csrf_token %}
+                                <input type="hidden" name="label_id" value="{{ label.id }}">
+                                <button type="submit" name="set_default_label" class="btn btn-sm {% if label.is_default %}btn-primary{% else %}btn-outline-primary{% endif %}" aria-label="{{ label.name }}を既定にする" {% if label.is_default %}disabled{% endif %}><i class="fas fa-star"></i></button>
+                            </form>
+                            <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="{{ label.name }}を編集" data-toggle="modal" data-target="#editLabelModal{{ label.id }}" onclick="event.stopPropagation();"><i class="fas fa-pencil-alt"></i></button>
                         </td>
                     </tr>
 
@@ -280,7 +297,7 @@
             {% endif %}
         </div>
     </div>
-    <p class="text-muted small text-center"><i class="fas fa-info-circle"></i> 長押し（0.5秒）で削除、ダブルタップで編集</p>
+    <p class="text-muted small text-center"><i class="fas fa-info-circle"></i> 矢印で表示順を変更し、星で新規タスクの既定ラベルを選べます。鉛筆ボタンまたは行のダブルクリックで編集できます。</p>
 </div>
 
 <!-- 新規作成モーダル -->

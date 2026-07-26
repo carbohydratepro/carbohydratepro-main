@@ -8,6 +8,10 @@ from django.core.validators import MaxLengthValidator
 class PaymentMethod(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payment_methods')
     name = models.CharField(max_length=20)
+    sort_order = models.PositiveIntegerField(default=0, verbose_name='表示順')
+
+    class Meta:
+        ordering = ['sort_order', 'pk']
 
     def __str__(self) -> str:
         return self.name
@@ -17,6 +21,10 @@ class Category(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='categories')
     name = models.CharField(max_length=20)
     chart_color = models.CharField(max_length=7, blank=True, default='', help_text='グラフ表示色（例: #FF6B6B）')
+    sort_order = models.PositiveIntegerField(default=0, verbose_name='表示順')
+
+    class Meta:
+        ordering = ['sort_order', 'pk']
 
     def __str__(self) -> str:
         return self.name

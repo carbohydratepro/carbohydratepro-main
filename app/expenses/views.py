@@ -3,10 +3,13 @@ from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.utils import timezone
+
+from app.ordering import move_owned_item, next_sort_order
 
 from .forms import CategoryForm, PaymentMethodForm, RecurringPaymentForm, TransactionForm
 from .models import Budget, Category, PaymentMethod, RecurringPayment, Transaction
@@ -22,6 +25,27 @@ def _parse_budget_amount(raw: str) -> Decimal | None:
     if amount <= 0 or amount > Decimal('99999999'):
         return None
     return amount
+
+
+def _selected_ids(request: HttpRequest, name: str) -> list[int]:
+    """重複と不正値を除いた複数選択IDを取得する。"""
+    selected: list[int] = []
+    for raw_value in request.GET.getlist(name):
+        try:
+            value = int(raw_value)
+        except (TypeError, ValueError):
+            continue
+        if value > 0 and value not in selected:
+            selected.append(value)
+    return selected
+
+
+def _selected_date(request: HttpRequest) -> str:
+    raw_value = request.GET.get('date', '')
+    try:
+        return date.fromisoformat(raw_value).isoformat() if raw_value else ''
+    except ValueError:
+        return ''
 
 
 @login_required
@@ -86,16 +110,52 @@ def expenses_list(request: HttpRequest) -> HttpResponse:
 
     filter_transaction_type = request.GET.get('transaction_type', '')
     filter_major_category = request.GET.get('major_category', '')
-    filter_category = request.GET.get('category', '')
-    filter_payment_method = request.GET.get('payment_method', '')
+    filter_categories = _selected_ids(request, 'category')
+    excluded_categories = _selected_ids(request, 'exclude_category')
+    filter_payment_methods = _selected_ids(request, 'payment_method')
+    excluded_payment_methods = _selected_ids(request, 'exclude_payment_method')
+    filter_date = _selected_date(request)
+    filter_category = str(filter_categories[0]) if len(filter_categories) == 1 else ''
+    filter_payment_method = str(filter_payment_methods[0]) if len(filter_payment_methods) == 1 else ''
 
     common_filter_kwargs = {
         'search': search_query,
         'transaction_type': filter_transaction_type,
         'major_category': filter_major_category,
-        'category_id': filter_category,
-        'payment_method_id': filter_payment_method,
+        'category_ids': filter_categories,
+        'excluded_category_ids': excluded_categories,
+        'payment_method_ids': filter_payment_methods,
+        'excluded_payment_method_ids': excluded_payment_methods,
+        'exact_date': filter_date,
         'sort_by': sort_by,
+    }
+    has_active_filters = bool(
+        search_query
+        or filter_transaction_type
+        or filter_major_category
+        or filter_categories
+        or excluded_categories
+        or filter_payment_methods
+        or excluded_payment_methods
+        or filter_date
+    )
+    pagination_params = request.GET.copy()
+    pagination_params.pop('page', None)
+    pagination_query = pagination_params.urlencode()
+
+    filter_context = {
+        'search_query': search_query,
+        'filter_transaction_type': filter_transaction_type,
+        'filter_major_category': filter_major_category,
+        'filter_category': filter_category,
+        'filter_payment_method': filter_payment_method,
+        'filter_categories': filter_categories,
+        'excluded_categories': excluded_categories,
+        'filter_payment_methods': filter_payment_methods,
+        'excluded_payment_methods': excluded_payment_methods,
+        'filter_date': filter_date,
+        'has_active_filters': has_active_filters,
+        'pagination_query': pagination_query,
     }
 
     if view_mode == 'year':
@@ -123,19 +183,15 @@ def expenses_list(request: HttpRequest) -> HttpResponse:
             'total_expense_formatted': '{:,.0f}'.format(float(summary['total_expense'])),
             'net_balance_formatted': '{:,.0f}'.format(float(summary['net_balance'])),
             'target_month': f'{current_year}年',
-            'search_query': search_query,
             'user_categories': selectors.get_categories(request.user),
             'user_payment_methods': selectors.get_payment_methods(request.user),
-            'filter_transaction_type': filter_transaction_type,
-            'filter_major_category': filter_major_category,
-            'filter_category': filter_category,
-            'filter_payment_method': filter_payment_method,
             'default_target_date': str(current_year),
             'per_page': per_page,
             'per_page_options': per_page_options,
             'sort_by': sort_by,
             'year_for_toggle': current_year,
             'month_for_toggle': current_month_str,
+            **filter_context,
         })
 
     # 月表示モード
@@ -165,19 +221,15 @@ def expenses_list(request: HttpRequest) -> HttpResponse:
         'total_expense_formatted': '{:,.0f}'.format(float(summary['total_expense'])),
         'net_balance_formatted': '{:,.0f}'.format(float(summary['net_balance'])),
         'target_month': start_date.strftime('%Y年%m月'),
-        'search_query': search_query,
         'user_categories': selectors.get_categories(request.user),
         'user_payment_methods': selectors.get_payment_methods(request.user),
-        'filter_transaction_type': filter_transaction_type,
-        'filter_major_category': filter_major_category,
-        'filter_category': filter_category,
-        'filter_payment_method': filter_payment_method,
         'default_target_date': start_date.strftime('%Y-%m'),
         'per_page': per_page,
         'per_page_options': per_page_options,
         'sort_by': sort_by,
         'year_for_toggle': start_date.year,
         'month_for_toggle': start_date.strftime('%Y-%m'),
+        **filter_context,
     })
 
 
@@ -218,6 +270,14 @@ def expenses_settings(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         if 'payment_id' in request.POST:
             payment = get_object_or_404(PaymentMethod, id=request.POST.get('payment_id'), user=request.user)
+            if 'move_payment' in request.POST:
+                move_owned_item(
+                    PaymentMethod,
+                    request.user,
+                    payment.pk,
+                    request.POST.get('direction', ''),
+                )
+                return redirect('expenses_settings')
             if 'edit_payment' in request.POST:
                 payment_form = PaymentMethodForm(request.POST, instance=payment, prefix='payment')
                 if payment_form.is_valid():
@@ -230,6 +290,14 @@ def expenses_settings(request: HttpRequest) -> HttpResponse:
 
         elif 'purpose_id' in request.POST:
             purpose = get_object_or_404(Category, id=request.POST.get('purpose_id'), user=request.user)
+            if 'move_purpose' in request.POST:
+                move_owned_item(
+                    Category,
+                    request.user,
+                    purpose.pk,
+                    request.POST.get('direction', ''),
+                )
+                return redirect('expenses_settings')
             if 'edit_purpose' in request.POST:
                 purpose_form = CategoryForm(request.POST, instance=purpose, prefix='purpose')
                 if purpose_form.is_valid():
@@ -252,6 +320,7 @@ def expenses_settings(request: HttpRequest) -> HttpResponse:
                 elif payment_form.is_valid():
                     new_payment = payment_form.save(commit=False)
                     new_payment.user = request.user
+                    new_payment.sort_order = next_sort_order(PaymentMethod, request.user)
                     new_payment.save()
                     return redirect('expenses_settings')
 
@@ -262,6 +331,7 @@ def expenses_settings(request: HttpRequest) -> HttpResponse:
                 elif purpose_form.is_valid():
                     new_purpose = purpose_form.save(commit=False)
                     new_purpose.user = request.user
+                    new_purpose.sort_order = next_sort_order(Category, request.user)
                     new_purpose.save()
                     return redirect('expenses_settings')
 

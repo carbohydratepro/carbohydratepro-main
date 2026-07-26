@@ -38,12 +38,17 @@ class TransactionForm(forms.ModelForm):
         
         # ユーザーに基づいてクエリセットをフィルタリング
         if user is not None:
-            self.fields['payment_method'].queryset = PaymentMethod.objects.filter(user=user)
+            self.fields['payment_method'].queryset = PaymentMethod.objects.filter(user=user).order_by('sort_order', 'pk')
             self.fields['payment_method'].empty_label = None  # 空のラベルを非表示にする
             self.fields['payment_method'].required = True  # フィールドを必須にする
-            self.fields['category'].queryset = Category.objects.filter(user=user)
+            self.fields['category'].queryset = Category.objects.filter(user=user).order_by('sort_order', 'pk')
             self.fields['category'].empty_label = None  # 空のラベルを非表示にする
             self.fields['category'].required = True  # フィールドを必須にする
+
+        for field_name in ('transaction_type', 'major_category'):
+            self.fields[field_name].choices = [
+                choice for choice in self.fields[field_name].choices if choice[0]
+            ]
 
         # すべてのフィールドに 'form-control' クラスを追加
         for field_name, field in self.fields.items():
@@ -191,12 +196,17 @@ class RecurringPaymentForm(forms.ModelForm):
         self.fields['major_category'].initial = 'fixed'
 
         if user is not None:
-            self.fields['payment_method'].queryset = PaymentMethod.objects.filter(user=user)
+            self.fields['payment_method'].queryset = PaymentMethod.objects.filter(user=user).order_by('sort_order', 'pk')
             self.fields['payment_method'].empty_label = None
             self.fields['payment_method'].required = True
-            self.fields['category'].queryset = Category.objects.filter(user=user)
+            self.fields['category'].queryset = Category.objects.filter(user=user).order_by('sort_order', 'pk')
             self.fields['category'].empty_label = None
             self.fields['category'].required = True
+
+        for field_name in ('transaction_type', 'major_category'):
+            self.fields[field_name].choices = [
+                choice for choice in self.fields[field_name].choices if choice[0]
+            ]
 
         for field_name, field in self.fields.items():
             if field_name in ['days_of_week', 'days_of_month']:

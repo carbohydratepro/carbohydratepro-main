@@ -1,5 +1,37 @@
 "use strict";
 // 取引管理用JavaScript
+function navigateWithExpenseFilter(name, value) {
+    if (!value || value === 'データなし')
+        return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('page');
+    if (name === 'category' && value.startsWith('exclude:')) {
+        url.searchParams.delete('category');
+        url.searchParams.delete('exclude_category');
+        value.slice('exclude:'.length).split(',').filter(Boolean).forEach(categoryId => {
+            url.searchParams.append('exclude_category', categoryId);
+        });
+        window.location.assign(url.toString());
+        return;
+    }
+    if (name === 'category')
+        url.searchParams.delete('exclude_category');
+    if (name === 'payment_method')
+        url.searchParams.delete('exclude_payment_method');
+    url.searchParams.delete(name);
+    url.searchParams.append(name, value);
+    window.location.assign(url.toString());
+}
+function chartFilterHandler(name, data) {
+    return (_event, elements) => {
+        var _a, _b, _c, _d;
+        const index = (_a = elements[0]) === null || _a === void 0 ? void 0 : _a.index;
+        if (index === undefined)
+            return;
+        const value = (_d = (_c = (_b = data.filterValues) === null || _b === void 0 ? void 0 : _b[index]) !== null && _c !== void 0 ? _c : data.labels[index]) !== null && _d !== void 0 ? _d : '';
+        navigateWithExpenseFilter(name, value);
+    };
+}
 // エラーメッセージを表示する関数
 function displayFormErrors(errors) {
     var _a;
@@ -210,6 +242,7 @@ function createLineChartConfig(balanceData, maxTicksLimitX, maxTicksLimitY, hove
                 mode: 'index',
                 intersect: false,
             },
+            onClick: chartFilterHandler('date', balanceData),
             plugins: {
                 title: { display: true, text: '日別収支推移' },
                 legend: { display: true, position: 'bottom' },
@@ -320,6 +353,7 @@ function initializeExpenseCharts() {
                         title: { display: true, text: 'カテゴリ別割合' },
                         legend: { display: false },
                     },
+                    onClick: chartFilterHandler('category', categoryData),
                 },
             });
         }
@@ -338,6 +372,7 @@ function initializeExpenseCharts() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: { title: { display: true, text: '日別支出' } },
+            onClick: chartFilterHandler('date', data),
             scales: {
                 x: { type: 'category', ticks: { autoSkip: true, maxTicksLimit: maxTicksX } },
                 y: {
@@ -382,6 +417,7 @@ function initializeExpenseCharts() {
                 title: { display: true, text: '費用タイプ別割合' },
                 legend: { display: false },
             },
+            onClick: chartFilterHandler('major_category', majorCategoryData),
         },
     };
     // モバイル用メインカテゴリ
@@ -405,6 +441,7 @@ function initializeExpenseCharts() {
 }
 // 年ビュー: 月別収支グラフを描画
 function initializeYearlyCharts() {
+    var _a;
     if (typeof monthlyData === 'undefined')
         return;
     const canvas = document.getElementById('monthlyBarChart');
@@ -413,6 +450,7 @@ function initializeYearlyCharts() {
     const ctx = canvas.getContext('2d');
     if (!ctx)
         return;
+    const year = (_a = canvas.dataset['year']) !== null && _a !== void 0 ? _a : '';
     new Chart(ctx, {
         type: 'bar',
         data: monthlyData,
@@ -433,6 +471,18 @@ function initializeYearlyCharts() {
                     },
                 },
             },
+            onClick: (_event, elements) => {
+                var _a;
+                const index = (_a = elements[0]) === null || _a === void 0 ? void 0 : _a.index;
+                if (index === undefined || !year)
+                    return;
+                const month = String(index + 1).padStart(2, '0');
+                const url = new URL(window.location.href);
+                url.searchParams.set('view_mode', 'month');
+                url.searchParams.set('target_date', `${year}-${month}`);
+                url.searchParams.delete('page');
+                window.location.assign(url.toString());
+            },
             scales: {
                 x: { type: 'category' },
                 y: {
@@ -445,7 +495,17 @@ function initializeYearlyCharts() {
 }
 // フィルター変更時の処理（filterFormはonchange="this.form.submit()"で処理するため不要）
 function initializeExpenseFilters() {
-    // filterForm は HTML 側の onchange で直接サブミットするため処理なし
+    document.querySelectorAll('input[data-filter-key]').forEach(input => {
+        input.addEventListener('change', () => {
+            var _a;
+            if (!input.checked)
+                return;
+            document.querySelectorAll(`input[data-filter-key="${(_a = input.dataset['filterKey']) !== null && _a !== void 0 ? _a : ''}"]`).forEach(peer => {
+                if (peer !== input)
+                    peer.checked = false;
+            });
+        });
+    });
 }
 function initTransactionDoubleClick() {
     document.querySelectorAll('.lp-delete-item[data-item-id]').forEach(card => {

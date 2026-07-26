@@ -151,13 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initLongPressDelete();
 
-    // 週の開始曜日: ラジオボタン変更時に自動送信
-    const weekStartForm = document.getElementById('weekStartForm') as HTMLFormElement | null;
-    if (weekStartForm) {
-        weekStartForm.querySelectorAll<HTMLInputElement>('input[type="radio"]').forEach(radio => {
-            radio.addEventListener('change', () => weekStartForm.submit());
-        });
-    }
 });
 
 // カレンダー配信URLをクリップボードへコピーする（タスク設定画面）

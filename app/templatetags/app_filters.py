@@ -62,6 +62,16 @@ def comma_format(value: object) -> str:
         return str(value)
 
 
+@register.filter(name='money_size_class')
+def money_size_class(value: object) -> str:
+    """金額の桁数に応じた折り返し防止用CSSクラスを返す。"""
+    try:
+        digit_count = len(str(abs(int(Decimal(str(value))))))
+    except (ValueError, TypeError, ArithmeticError):
+        digit_count = 1
+    return 'money-value money-value-long' if digit_count >= 8 else 'money-value'
+
+
 @register.filter(name='darker')
 def darker(color: str, factor: float = 0.7) -> str:
     """色を暗くするフィルター"""

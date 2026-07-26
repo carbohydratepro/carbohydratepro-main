@@ -457,6 +457,33 @@ body.has-bottomnav .skeleton-overlay {
     max-height: 300px;  /* グラフの最大高さを指定 */
 }
 
+.money-value {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+    .money-value-long {
+        font-size: 0.72rem !important;
+        letter-spacing: -0.02em;
+    }
+}
+
+.dashboard-brief-icon {
+    align-items: center;
+    background: var(--color-primary-soft);
+    border-radius: 50%;
+    color: var(--color-primary);
+    display: flex;
+    flex: 0 0 2.5rem;
+    height: 2.5rem;
+    justify-content: center;
+}
+
+.dashboard-weather-status {
+    min-height: 2.5rem;
+}
+
 @media (max-width: 768px) {
     .chart-canvas {
         max-height: 200px;  /* モバイルサイズでの高さを調整 */

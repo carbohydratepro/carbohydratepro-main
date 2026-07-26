@@ -1,5 +1,5 @@
 {% extends "app/base.html" %}
-{% load humanize %}
+{% load app_filters humanize %}
 {% block title %}予算 | Life management{% endblock %}
 
 {% block content %}
@@ -27,11 +27,11 @@
         <div class="card-body py-3">
             {% if overall.has_budget %}
             <div class="d-flex justify-content-between align-items-baseline mb-1">
-                <span class="{% if overall.status == 'over' %}text-danger{% elif overall.status == 'warning' %}text-warning{% endif %}">
+                <span class="{{ overall.limit|money_size_class }} {% if overall.status == 'over' %}text-danger{% elif overall.status == 'warning' %}text-warning{% endif %}">
                     <span class="h5 mb-0">{{ overall.used|floatformat:0|intcomma }}</span>
                     <span class="text-muted small"> / {{ overall.limit|floatformat:0|intcomma }}円</span>
                 </span>
-                <span class="small {% if overall.remaining < 0 %}text-danger{% else %}text-muted{% endif %}">
+                <span class="small {{ overall.remaining|money_size_class }} {% if overall.remaining < 0 %}text-danger{% else %}text-muted{% endif %}">
                     {% if overall.remaining < 0 %}超過 {{ overall.remaining|floatformat:0|intcomma|cut:"-" }}円{% else %}残り {{ overall.remaining|floatformat:0|intcomma }}円{% endif %}
                 </span>
             </div>
@@ -81,7 +81,7 @@
                 <div class="list-group-item px-2 py-2">
                     <div class="d-flex justify-content-between align-items-baseline mb-1">
                         <span class="font-weight-bold">{{ row.category.name }}</span>
-                        <span class="small">
+                        <span class="small {{ row.limit|money_size_class }}">
                             <span class="{% if row.status == 'over' %}text-danger{% elif row.status == 'warning' %}text-warning{% endif %}">{{ row.used|floatformat:0|intcomma }}円</span>
                             {% if row.has_budget %}<span class="text-muted"> / {{ row.limit|floatformat:0|intcomma }}円</span>{% endif %}
                         </span>

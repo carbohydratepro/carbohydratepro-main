@@ -39,11 +39,11 @@ class TaskLabelModelTest(TestCase):
         self.assertEqual(label.color, '#6c757d')
 
     def test_label_ordering(self) -> None:
-        """ラベルの並び順テスト（名前順）"""
+        """ラベルの並び順テスト（登録順）"""
         TaskLabel.objects.create(user=self.user, name='Zラベル')
         TaskLabel.objects.create(user=self.user, name='Aラベル')
         labels = TaskLabel.objects.filter(user=self.user)
-        self.assertEqual(labels[0].name, 'Aラベル')
+        self.assertEqual(labels[0].name, 'Zラベル')
 
 
 class TaskModelTest(TestCase):

@@ -9,14 +9,23 @@ class TaskLabel(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='task_labels')
     name = models.CharField(max_length=30, verbose_name="ラベル名")
     color = models.CharField(max_length=7, default='#6c757d', verbose_name="色")  # HEXカラーコード
+    sort_order = models.PositiveIntegerField(default=0, verbose_name='表示順')
+    is_default = models.BooleanField(default=False, verbose_name='既定のラベル')
     
     def __str__(self) -> str:
         return self.name
     
     class Meta:
-        ordering = ['name']
+        ordering = ['sort_order', 'pk']
         verbose_name = 'タスクラベル'
         verbose_name_plural = 'タスクラベル'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user'],
+                condition=models.Q(is_default=True),
+                name='unique_default_task_label_per_user',
+            ),
+        ]
 
 
 class Task(models.Model):

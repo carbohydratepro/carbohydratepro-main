@@ -42,7 +42,7 @@
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h5 class="mb-0 {% if recurring.transaction_type == 'income' %}text-primary{% elif recurring.transaction_type == 'expense' %}text-danger{% else %}text-secondary{% endif %}">
+                        <h5 class="mb-0 {{ recurring.amount|money_size_class }} {% if recurring.transaction_type == 'income' %}text-primary{% elif recurring.transaction_type == 'expense' %}text-danger{% else %}text-secondary{% endif %}">
                             {% if recurring.transaction_type == 'income' %}+{% elif recurring.transaction_type == 'expense' %}-{% endif %}&yen;{{ recurring.amount|comma_format }}
                         </h5>
                         <span class="badge badge-info">{{ recurring.get_frequency_display }}</span>

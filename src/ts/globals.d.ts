@@ -60,6 +60,12 @@ interface ChartOptions {
     x?: ChartScaleOptions;
     y?: ChartScaleOptions;
   };
+  onClick?: (event: unknown, elements: ChartElement[]) => void;
+}
+
+interface ChartElement {
+  index: number;
+  datasetIndex: number;
 }
 
 interface ChartDataset {
@@ -79,6 +85,7 @@ interface ChartDataset {
 interface ChartData {
   labels: string[];
   datasets: ChartDataset[];
+  filterValues?: string[];
 }
 
 interface ChartConfig {

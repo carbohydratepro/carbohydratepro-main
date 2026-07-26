@@ -102,9 +102,14 @@ class TaskForm(forms.ModelForm):
         
         # ユーザーに基づいてラベルのクエリセットをフィルタリング
         if user is not None:
-            self.fields['label'].queryset = TaskLabel.objects.filter(user=user)
+            labels = TaskLabel.objects.filter(user=user).order_by('sort_order', 'pk')
+            self.fields['label'].queryset = labels
             self.fields['label'].empty_label = 'ラベルなし'
             self.fields['label'].required = False
+            if not self.instance.pk and not self.is_bound:
+                default_label = labels.filter(is_default=True).first()
+                if default_label is not None:
+                    self.fields['label'].initial = default_label
         
         # 既存のインスタンスがある場合、時刻フィールドを初期化（ローカル時刻で表示）
         if self.instance.pk:

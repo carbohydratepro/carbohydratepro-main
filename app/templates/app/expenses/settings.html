@@ -10,6 +10,7 @@
     <table class="table table-striped">
         <thead>
             <tr>
+                <th style="width: 92px;">順序</th>
                 <th>支払方法</th>
                 <th></th>
             </tr>
@@ -21,10 +22,19 @@
                 data-delete-modal-id="deletePaymentModal{{ payment.id }}"
                 data-edit-modal-id="editPaymentModal{{ payment.id }}"
                 data-item-id="{{ payment.id }}">
+                <td>
+                    <form method="post" class="btn-group btn-group-sm" onclick="event.stopPropagation();">
+                        {% csrf_token %}
+                        <input type="hidden" name="payment_id" value="{{ payment.id }}">
+                        <input type="hidden" name="move_payment" value="1">
+                        <button type="submit" name="direction" value="up" class="btn btn-outline-secondary" aria-label="{{ payment.name }}を上へ" {% if forloop.first %}disabled{% endif %}><i class="fas fa-arrow-up"></i></button>
+                        <button type="submit" name="direction" value="down" class="btn btn-outline-secondary" aria-label="{{ payment.name }}を下へ" {% if forloop.last %}disabled{% endif %}><i class="fas fa-arrow-down"></i></button>
+                    </form>
+                </td>
                 <td>{{ payment.name }}</td>
                 <td class="lp-actions-cell">
                     <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="編集"
+                    <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="{{ payment.name }}を編集"
                             data-toggle="modal" data-target="#editPaymentModal{{ payment.id }}"
                             onclick="event.stopPropagation();">
                         <i class="fas fa-pencil-alt"></i>
@@ -92,7 +102,7 @@
             <tr>
                 <form method="post">
                     {% csrf_token %}
-                    <td colspan="2">
+                    <td colspan="3">
                         <div class="form-group mb-0">
                             <input type="text" name="payment-name" aria-label="新しい支払方法" placeholder="新しい支払方法" class="form-control" maxlength="20">
                             <input type="hidden" name="payment" value="true">
@@ -116,7 +126,7 @@
                 </form>
             </tr>
             <tr>
-                <td colspan="2">
+                <td colspan="3">
                     <button type="button" class="btn btn-sm btn-primary" onclick="this.closest('tr').previousElementSibling.querySelector('form').submit()">追加</button>
                 </td>
             </tr>
@@ -127,6 +137,7 @@
     <table class="table table-striped">
         <thead>
             <tr>
+                <th style="width: 92px;">順序</th>
                 <th>使用用途</th>
                 <th>グラフ色</th>
                 <th></th>
@@ -139,6 +150,15 @@
                 data-delete-modal-id="deletePurposeModal{{ purpose.id }}"
                 data-edit-modal-id="editPurposeModal{{ purpose.id }}"
                 data-item-id="{{ purpose.id }}">
+                <td>
+                    <form method="post" class="btn-group btn-group-sm" onclick="event.stopPropagation();">
+                        {% csrf_token %}
+                        <input type="hidden" name="purpose_id" value="{{ purpose.id }}">
+                        <input type="hidden" name="move_purpose" value="1">
+                        <button type="submit" name="direction" value="up" class="btn btn-outline-secondary" aria-label="{{ purpose.name }}を上へ" {% if forloop.first %}disabled{% endif %}><i class="fas fa-arrow-up"></i></button>
+                        <button type="submit" name="direction" value="down" class="btn btn-outline-secondary" aria-label="{{ purpose.name }}を下へ" {% if forloop.last %}disabled{% endif %}><i class="fas fa-arrow-down"></i></button>
+                    </form>
+                </td>
                 <td>{{ purpose.name }}</td>
                 <td>
                     <span style="display:inline-block; width:20px; height:20px; border-radius:3px; background:{{ purpose.effective_chart_color }}; border:1px solid #ccc; vertical-align:middle;"></span>
@@ -146,7 +166,7 @@
                 </td>
                 <td class="lp-actions-cell">
                     <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="編集"
+                    <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="{{ purpose.name }}を編集"
                             data-toggle="modal" data-target="#editPurposeModal{{ purpose.id }}"
                             onclick="event.stopPropagation();">
                         <i class="fas fa-pencil-alt"></i>
@@ -236,7 +256,7 @@
             <tr>
                 <form method="post">
                     {% csrf_token %}
-                    <td colspan="2">
+                    <td colspan="3">
                         <div class="form-group mb-0">
                             <input type="text" name="purpose-name" aria-label="新しい使用用途" placeholder="新しい使用用途" class="form-control" maxlength="20">
                             <input type="hidden" name="purpose" value="true">
@@ -260,13 +280,13 @@
                 </form>
             </tr>
             <tr>
-                <td colspan="2">
+                <td colspan="3">
                     <button type="button" class="btn btn-sm btn-primary" onclick="this.closest('tr').previousElementSibling.querySelector('form').submit()">追加</button>
                 </td>
             </tr>
         </tbody>
     </table>
-    <p class="text-muted small text-center"><i class="fas fa-info-circle"></i> 長押し（0.5秒）で削除、ダブルタップで編集</p>
+    <p class="text-muted small text-center"><i class="fas fa-info-circle"></i> 矢印で表示順を変更できます。鉛筆ボタンまたは行のダブルクリックで編集できます。</p>
 
     <!-- グラフ設定 -->
     <h4 class="mt-4 mb-3">グラフ設定</h4>

@@ -250,4 +250,4 @@ def build_external_api_json(external_events: list[ExternalEvent]) -> list[dict[s
 
 def get_labels(user: AbstractBaseUser) -> QuerySet:
     """ユーザーのラベル一覧を取得"""
-    return TaskLabel.objects.filter(user=user)
+    return TaskLabel.objects.filter(user=user).order_by('sort_order', 'pk')

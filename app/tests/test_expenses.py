@@ -817,6 +817,8 @@ class RecurringPaymentModelTest(TestCase):
         target = date(2025, 3, 15)
         transaction = services.execute_recurring_payment(recurring, target)
 
+        self.assertIsNotNone(transaction)
+        assert transaction is not None
         self.assertEqual(transaction.user, self.user)
         self.assertEqual(transaction.amount, Decimal('5000.00'))
         self.assertEqual(transaction.purpose, '電気代')
@@ -827,6 +829,21 @@ class RecurringPaymentModelTest(TestCase):
 
         recurring.refresh_from_db()
         self.assertEqual(recurring.last_executed, target)
+
+    def test_execute_is_idempotent_for_same_target_date(self) -> None:
+        """同じ対象日の再実行では取引を重複作成しない。"""
+        recurring = self._create_recurring()
+        target = date(2025, 3, 15)
+
+        first = services.execute_recurring_payment(recurring, target)
+        second = services.execute_recurring_payment(recurring, target)
+
+        self.assertIsNotNone(first)
+        self.assertIsNone(second)
+        self.assertEqual(
+            Transaction.objects.filter(user=self.user, purpose=recurring.purpose).count(),
+            1,
+        )
 
     def test_execute_updates_last_executed(self) -> None:
         """実行後にlast_executedが更新されるテスト"""

@@ -6,7 +6,7 @@ from datetime import timezone as dt_timezone
 from typing import TYPE_CHECKING
 
 from django.db.models import Q, QuerySet
-from django.utils.timezone import localtime, make_aware
+from django.utils.timezone import localdate, localtime, make_aware
 
 from .models import ExternalEvent, Task, TaskLabel
 
@@ -150,7 +150,7 @@ def build_calendar_data(
     )
     external_events = external_events or []
 
-    today = date.today()
+    today = localdate()
     calendar_data: list[list[dict[str, object]]] = []
     for week in cal:
         week_data: list[dict[str, object]] = []

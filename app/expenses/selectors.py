@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from django.db.models import Q, QuerySet, Sum
+from django.utils import timezone
 from django.utils.timezone import make_aware
 
 from project.utils import CHART_COLORS, MAJOR_CATEGORY_LABELS
@@ -27,7 +28,13 @@ def get_date_range(year_month: str | None) -> tuple[datetime, datetime, list[str
     if year_month:
         target_dt = make_aware(datetime.strptime(year_month, '%Y-%m'))
     else:
-        target_dt = make_aware(datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0))
+        target_dt = timezone.localtime().replace(
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
 
     start_date = target_dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     end_date = (
@@ -180,9 +187,9 @@ def build_daily_chart_data(transactions_qs: QuerySet, date_range: list[str]) -> 
 def get_year_date_range(year_str: str | None) -> tuple[datetime, datetime, int]:
     """指定年の開始日・終了日・年を返す。"""
     try:
-        year = int(year_str) if year_str else datetime.now().year
+        year = int(year_str) if year_str else timezone.localdate().year
     except (ValueError, TypeError):
-        year = datetime.now().year
+        year = timezone.localdate().year
     start_date = make_aware(datetime(year, 1, 1, 0, 0, 0))
     end_date = make_aware(datetime(year, 12, 31, 23, 59, 59))
     return start_date, end_date, year

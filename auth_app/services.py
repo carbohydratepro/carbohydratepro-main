@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 import requests
@@ -14,7 +14,13 @@ from django.db.models import Q
 from django.utils import timezone
 
 from app.models import Category, PaymentMethod
-from .models import AccountGroup, AccountGroupLink, AccountMembership, LoginHistory
+from .models import (
+    AccountGroup,
+    AccountGroupLink,
+    AccountMembership,
+    EmailVerificationToken,
+    LoginHistory,
+)
 
 if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
@@ -219,28 +225,31 @@ def remember_account_group(request: HttpRequest, group: AccountGroup) -> None:
     request.session[ACCOUNT_GROUP_SESSION_KEY] = group.pk
 
 
-def activate_group_accounts(request: HttpRequest, group: AccountGroup) -> None:
-    """セッション内でログイン済みとして切替可能なアカウント一覧を更新する。"""
-    active_user_ids = [membership.user_id for membership in get_related_memberships(group)]
-    request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = active_user_ids
+def activate_authenticated_account(
+    request: HttpRequest,
+    group: AccountGroup,
+    user: AbstractBaseUser,
+) -> None:
+    """このセッションで認証したアカウントだけを切替可能として記録する。"""
+    related_user_ids = [
+        membership.user_id for membership in get_related_memberships(group)
+    ]
+    if user.pk not in related_user_ids:
+        return
+
+    raw_user_ids = request.session.get(ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY, [])
+    active_user_ids = {int(user_id) for user_id in raw_user_ids}
+    active_user_ids.add(user.pk)
+    request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = [
+        user_id for user_id in related_user_ids if user_id in active_user_ids
+    ]
 
 
 def remember_authenticated_account(request: HttpRequest, user: AbstractBaseUser) -> AccountGroup:
     """ログイン済みユーザーのグループと有効アカウントをセッションへ保存する。"""
     group = ensure_account_group(user)
     remember_account_group(request, group)
-    active_user_ids = request.session.get(ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY)
-    if active_user_ids is not None:
-        normalized_user_ids = {int(user_id) for user_id in active_user_ids}
-        normalized_user_ids.add(user.pk)
-        verified_user_ids = {
-            membership.user_id for membership in get_related_memberships(group)
-        }
-        request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = [
-            user_id for user_id in normalized_user_ids if user_id in verified_user_ids
-        ]
-    else:
-        activate_group_accounts(request, group)
+    activate_authenticated_account(request, group, user)
     return group
 
 
@@ -280,9 +289,55 @@ def get_active_account_user_ids(request: HttpRequest, group: AccountGroup) -> li
     """セッション上でログイン済みとして扱うユーザーIDを取得する。"""
     raw_user_ids = request.session.get(ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY)
     if raw_user_ids is None:
-        activate_group_accounts(request, group)
+        if request.user.is_authenticated:
+            activate_authenticated_account(request, group, request.user)
+        else:
+            request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = []
         raw_user_ids = request.session.get(ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY, [])
     return [int(user_id) for user_id in raw_user_ids]
+
+
+def reserve_password_reset_email(user: AbstractBaseUser) -> bool:
+    """パスワードリセットメールの送信枠を原子的に確保する。"""
+    cooldown_seconds = getattr(settings, 'PASSWORD_RESET_EMAIL_COOLDOWN_SECONDS', 60)
+    now = timezone.now()
+    cutoff = now - timedelta(seconds=max(0, cooldown_seconds))
+    User = get_user_model()
+    updated = (
+        User.objects
+        .filter(pk=user.pk)
+        .filter(
+            Q(last_password_reset_email_at__isnull=True)
+            | Q(last_password_reset_email_at__lt=cutoff)
+        )
+        .update(last_password_reset_email_at=now)
+    )
+    return updated == 1
+
+
+@transaction.atomic
+def issue_verification_token(
+    user: AbstractBaseUser,
+) -> EmailVerificationToken | None:
+    """クールダウンを満たす場合だけ新しいメール認証トークンを発行する。"""
+    cooldown_seconds = getattr(settings, 'EMAIL_VERIFICATION_COOLDOWN_SECONDS', 60)
+    cutoff = timezone.now() - timedelta(seconds=max(0, cooldown_seconds))
+    User = get_user_model()
+    locked_user = User.objects.select_for_update().get(pk=user.pk)
+    latest_token = (
+        EmailVerificationToken.objects
+        .filter(user=locked_user)
+        .order_by('-created_at')
+        .first()
+    )
+    if latest_token is not None and latest_token.created_at >= cutoff:
+        return None
+
+    EmailVerificationToken.objects.filter(
+        user=locked_user,
+        is_verified=False,
+    ).update(is_verified=True)
+    return EmailVerificationToken.objects.create(user=locked_user)
 
 
 def get_account_memberships(request: HttpRequest) -> list[AccountMembership]:
@@ -416,7 +471,7 @@ def notify_admin_login(user: AbstractBaseUser, request: HttpRequest) -> None:
     email = user.email
     ip_address = get_client_ip(request)
     user_agent = request.META.get('HTTP_USER_AGENT', 'Unknown')
-    login_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    login_time = timezone.localtime().strftime('%Y-%m-%d %H:%M:%S')
 
     user_type = []
     if user.is_superuser:

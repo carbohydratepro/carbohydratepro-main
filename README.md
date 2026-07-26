@@ -19,10 +19,9 @@
 |---|---|---|
 | フレームワーク | Django | 5.2 |
 | 言語 | Python | 3.12 |
-| 言語 | JavaScript | - |
+| 言語 | TypeScript / JavaScript | - |
 | 言語 | HTML / CSS | - |
 | ライブラリ | Bootstrap | - |
-| REST API | Django REST Framework | - |
 | データベース | PostgreSQL | 16 |
 | Web サーバー | Nginx | 1.17.7 |
 | WSGI サーバー | Gunicorn | 最新 |

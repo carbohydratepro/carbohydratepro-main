@@ -205,13 +205,16 @@ class PasswordReset(PasswordResetView):
     def form_valid(self, form):
         """カスタムHTMLメール送信処理"""
         email = form.cleaned_data['email']
-        logger.info(f"Password reset requested for email: {email}")
+        logger.info('Password reset requested')
 
         # ユーザーを取得
         User = get_user_model()
         users = User.objects.filter(email__iexact=email, is_active=True)
 
         for user in users:
+            if not services.reserve_password_reset_email(user):
+                continue
+
             # トークン生成
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
@@ -314,7 +317,8 @@ def account_add(request):
                 target_user = existing_form.user
                 group = services.link_accounts(request.user, target_user, created_by=request.user)
                 services.remember_account_group(request, group)
-                services.activate_group_accounts(request, group)
+                services.activate_authenticated_account(request, group, request.user)
+                services.activate_authenticated_account(request, group, target_user)
                 active_user_ids = services.get_active_account_user_ids(request, group)
                 _login_with_account_session(request, target_user, group, active_user_ids)
                 messages.success(request, f'{target_user.username} に切り替えました。')
@@ -431,8 +435,6 @@ def verify_email(request, token):
 '''メール認証再送信'''
 def resend_verification_email(request):
     """メール認証メールを再送信するビュー"""
-    from .models import EmailVerificationToken
-
     if request.method == 'POST':
         email = request.POST.get('email')
 
@@ -443,15 +445,13 @@ def resend_verification_email(request):
         try:
             User = get_user_model()
             user = User.objects.get(email=email, is_email_verified=False)
-
-            # 既存の未使用トークンを無効化
-            EmailVerificationToken.objects.filter(
-                user=user,
-                is_verified=False
-            ).update(is_verified=True)
-
-            # 新しいトークンを生成
-            token = EmailVerificationToken.objects.create(user=user)
+            token = services.issue_verification_token(user)
+            if token is None:
+                messages.success(
+                    request,
+                    '送信可能な場合は確認メールを送信しました。メールをご確認ください。',
+                )
+                return redirect('signup_done')
 
             # 認証メールを送信
             verification_url = f"{settings.SITE_PROTOCOL}://{settings.SITE_DOMAIN}/verify-email/{token.token}/"
@@ -461,21 +461,27 @@ def resend_verification_email(request):
                 'site_name': settings.SITE_NAME,
             }
 
-            if send_html_email(
+            sent = send_html_email(
                 subject=f'{settings.SITE_NAME} - メールアドレスの確認',
                 template_name='registration/email_verification.html',
                 context=context,
                 recipient_list=[user.email],
-            ):
-                messages.success(request, '確認メールを再送信しました。メールをご確認ください。')
-            else:
-                messages.error(request, 'メール送信に失敗しました。時間をおいて再度お試しください。')
+            )
+            if not sent:
+                logger.error('Verification email could not be sent')
+
+            messages.success(
+                request,
+                '送信可能な場合は確認メールを送信しました。メールをご確認ください。',
+            )
 
             return redirect('signup_done')
 
         except User.DoesNotExist:
-            # セキュリティのため、ユーザーが存在しない場合も同じメッセージを表示
-            messages.info(request, 'メールアドレスが登録されていないか、既に認証済みです。')
-            return redirect('resend_verification')
+            messages.success(
+                request,
+                '送信可能な場合は確認メールを送信しました。メールをご確認ください。',
+            )
+            return redirect('signup_done')
 
     return render(request, 'registration/resend_verification.html')

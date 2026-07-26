@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.timezone import make_aware
 
 from django.db import IntegrityError, transaction
@@ -29,9 +30,15 @@ def task_list(request: HttpRequest) -> HttpResponse:
             target_date = make_aware(datetime.strptime(target_date_str, '%Y-%m'))
     else:
         if view_mode == 'day':
-            target_date = make_aware(datetime.now())
+            target_date = timezone.localtime()
         else:
-            target_date = make_aware(datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0))
+            target_date = timezone.localtime().replace(
+                day=1,
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0,
+            )
             view_mode = 'month'
 
     if view_mode == 'day':

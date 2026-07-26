@@ -73,6 +73,27 @@ class AccountSwitchViewTest(TestCase):
             ).exists()
         )
 
+        active_user_ids = self.client.session[services.ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY]
+        self.assertIn(self.user.pk, active_user_ids)
+        self.assertIn(self.other_user.pk, active_user_ids)
+
+    def test_fresh_login_requires_reauthentication_for_linked_accounts(self) -> None:
+        """新しいセッションではログインした本人以外を自動認証しない。"""
+        services.link_accounts(self.user, self.other_user, created_by=self.user)
+        self.client.logout()
+
+        self.assertTrue(self.client.login(username=self.user.email, password=self.password))
+
+        active_user_ids = self.client.session[services.ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY]
+        self.assertEqual(active_user_ids, [self.user.pk])
+
+        response = self.client.post(
+            reverse('account_switch', kwargs={'pk': self.other_user.pk}),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith(reverse('login')))
+        self.assertEqual(int(self.client.session['_auth_user_id']), self.user.pk)
+
     def test_unverified_account_cannot_be_added(self) -> None:
         self.other_user.is_email_verified = False
         self.other_user.save(update_fields=['is_email_verified'])

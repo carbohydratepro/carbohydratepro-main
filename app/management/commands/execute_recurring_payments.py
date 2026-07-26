@@ -1,6 +1,7 @@
 from datetime import date
 
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 from app.expenses.models import RecurringPayment
 from app.expenses import services
@@ -21,7 +22,7 @@ class Command(BaseCommand):
         if date_str:
             target_date = date.fromisoformat(str(date_str))
         else:
-            target_date = date.today()
+            target_date = timezone.localdate()
 
         recurring_payments = RecurringPayment.objects.filter(
             is_active=True,
@@ -30,11 +31,12 @@ class Command(BaseCommand):
         executed_count = 0
         for recurring in recurring_payments:
             if recurring.should_execute_on(target_date):
-                services.execute_recurring_payment(recurring, target_date)
-                executed_count += 1
-                self.stdout.write(
-                    f'  実行: {recurring.user.username} - {recurring.purpose} (¥{recurring.amount})'
-                )
+                created_transaction = services.execute_recurring_payment(recurring, target_date)
+                if created_transaction is not None:
+                    executed_count += 1
+                    self.stdout.write(
+                        f'  実行: {recurring.user.username} - {recurring.purpose} (¥{recurring.amount})'
+                    )
 
         self.stdout.write(
             self.style.SUCCESS(f'{executed_count}件の定期支払いを実行しました。（対象日: {target_date}）')

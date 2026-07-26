@@ -77,6 +77,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     created_at = models.DateTimeField('作成日時', auto_now_add=True, null=True)
     last_login_at = models.DateTimeField('最終ログイン日時', null=True, blank=True)
     last_active_at = models.DateTimeField('最終アクティブ日時', null=True, blank=True)
+    last_password_reset_email_at = models.DateTimeField(
+        'パスワードリセットメール最終送信日時',
+        null=True,
+        blank=True,
+    )
     login_attempt_count = models.IntegerField('ログイン試行回数', default=0)
     access_count = models.IntegerField('アクセス数', default=0)
     

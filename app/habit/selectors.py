@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from django.db.models import Case, IntegerField, QuerySet, Value, When
+from django.utils import timezone
 
 from .models import Habit, HabitRecord
 
@@ -31,7 +32,7 @@ def get_heatmap_data(
     指定がない場合は直近 days 日を対象にする。
     記録があるが合計スコアが 0 の日付もキーとして含まれる（値=0）。
     """
-    today = date.today()
+    today = timezone.localdate()
     if year is not None:
         start_date = date(year, 1, 1)
         end_date = min(date(year, 12, 31), today)

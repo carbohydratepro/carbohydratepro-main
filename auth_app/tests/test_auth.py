@@ -365,6 +365,19 @@ class ResendVerificationViewTest(TestCase):
             {'email': self.user.email}
         )
         self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('signup_done'))
+        mock_send_email.assert_called_once()
+
+    @patch('auth_app.views.send_html_email', return_value=True)
+    def test_resend_verification_is_throttled_per_account(self, mock_send_email) -> None:
+        """クールダウン中は確認メールを再送信しない。"""
+        for _ in range(2):
+            response = self.client.post(
+                reverse('resend_verification'),
+                {'email': self.user.email},
+            )
+            self.assertEqual(response.url, reverse('signup_done'))
+
         mock_send_email.assert_called_once()
 
     def test_resend_verification_already_verified(self) -> None:
@@ -376,6 +389,17 @@ class ResendVerificationViewTest(TestCase):
             {'email': self.user.email}
         )
         self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('signup_done'))
+
+    def test_resend_verification_unknown_email_uses_same_response(self) -> None:
+        """未登録メールでも登録済みの場合と同じ応答にする。"""
+        response = self.client.post(
+            reverse('resend_verification'),
+            {'email': 'unknown@example.com'},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('signup_done'))
 
 
 @override_settings(
@@ -406,6 +430,31 @@ class PasswordResetViewTest(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         mock_send_email.assert_called_once()
+
+    @patch('auth_app.views.send_html_email', return_value=True)
+    def test_password_reset_email_is_throttled_per_account(self, mock_send_email) -> None:
+        """クールダウン中は同一アカウントへ再送信しない。"""
+        for _ in range(2):
+            response = self.client.post(
+                reverse('password_reset'),
+                {'email': self.user.email},
+            )
+            self.assertEqual(response.status_code, 302)
+
+        mock_send_email.assert_called_once()
+
+    @override_settings(PASSWORD_RESET_EMAIL_COOLDOWN_SECONDS=60)
+    @patch('auth_app.views.send_html_email', return_value=True)
+    def test_password_reset_email_can_be_sent_after_cooldown(self, mock_send_email) -> None:
+        """クールダウン経過後は再送信できる。"""
+        self.client.post(reverse('password_reset'), {'email': self.user.email})
+        get_user_model().objects.filter(pk=self.user.pk).update(
+            last_password_reset_email_at=timezone.now() - timedelta(seconds=61),
+        )
+
+        self.client.post(reverse('password_reset'), {'email': self.user.email})
+
+        self.assertEqual(mock_send_email.call_count, 2)
 
     def test_password_reset_nonexistent_email(self) -> None:
         """存在しないメールアドレスでの申請テスト"""

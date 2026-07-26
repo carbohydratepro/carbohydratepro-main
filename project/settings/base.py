@@ -167,6 +167,14 @@ AUTH_USER_MODEL = 'auth_app.CustomUser'
 # ログイン失敗による一時ロック（ウィンドウ内の失敗が閾値に達すると認証を拒否）
 LOGIN_LOCKOUT_THRESHOLD = env.int('LOGIN_LOCKOUT_THRESHOLD', default=5)
 LOGIN_LOCKOUT_WINDOW_MINUTES = env.int('LOGIN_LOCKOUT_WINDOW_MINUTES', default=15)
+PASSWORD_RESET_EMAIL_COOLDOWN_SECONDS = env.int(
+    'PASSWORD_RESET_EMAIL_COOLDOWN_SECONDS',
+    default=60,
+)
+EMAIL_VERIFICATION_COOLDOWN_SECONDS = env.int(
+    'EMAIL_VERIFICATION_COOLDOWN_SECONDS',
+    default=60,
+)
 
 SITE_NAME = env('SITE_NAME', default='carbohydratepro')
 

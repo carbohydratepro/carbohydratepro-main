@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import HabitForm
@@ -13,7 +14,7 @@ from . import selectors
 
 @login_required
 def habit_dashboard(request: HttpRequest) -> HttpResponse:
-    today = date.today()
+    today = timezone.localdate()
     min_date = today - timedelta(days=6)
 
     # 日ビュー: 過去7日以内の日付を選択可能
@@ -108,11 +109,11 @@ def toggle_habit(request: HttpRequest) -> JsonResponse:
     """習慣の達成状態をトグル（AJAX）。係数の上書きも受け付ける。"""
     try:
         habit_id = int(request.POST.get('habit_id', 0))
-        date_str = request.POST.get('date', date.today().isoformat())
+        date_str = request.POST.get('date', timezone.localdate().isoformat())
         target_date = date.fromisoformat(date_str)
 
         # 過去7日以内のみ許可
-        today = date.today()
+        today = timezone.localdate()
         if target_date > today or target_date < today - timedelta(days=6):
             return JsonResponse({'error': 'invalid date'}, status=400)
 
@@ -143,7 +144,7 @@ def toggle_habit(request: HttpRequest) -> JsonResponse:
 @login_required
 def habit_status_json(request: HttpRequest) -> JsonResponse:
     """指定日の習慣状態を返す AJAX エンドポイント。週/年ビューの詳細表示にも使用するため過去全日付に対応。"""
-    today = date.today()
+    today = timezone.localdate()
     date_str = request.GET.get('date', today.isoformat())
     try:
         target_date = date.fromisoformat(date_str)
@@ -169,7 +170,7 @@ def habit_list(request: HttpRequest) -> HttpResponse:
 @login_required
 def habit_heatmap_json(request: HttpRequest) -> JsonResponse:
     """年指定のヒートマップデータを返す AJAX エンドポイント。"""
-    today = date.today()
+    today = timezone.localdate()
     year_str = request.GET.get('year', '')
     try:
         year = int(year_str)

@@ -93,6 +93,11 @@ git fetch origin
 git checkout "${BRANCH}"
 git pull --ff-only origin "${BRANCH}"
 echo "本番コミット: $(git rev-parse HEAD)"
+
+# 稼働・停止コンテナが参照するイメージとボリュームを保持しながら、
+# 7日より古い未使用イメージとBuildKitキャッシュだけを削除する。
+docker image prune -a -f --filter until=168h
+docker builder prune -a -f --filter until=168h
 docker-compose -f "${COMPOSE_FILE}" build
 mkdir -p static_root
 docker-compose -f "${COMPOSE_FILE}" down

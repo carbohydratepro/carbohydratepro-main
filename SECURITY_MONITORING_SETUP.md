@@ -3,8 +3,12 @@
 ## 概要
 このシステムは以下のログファイルを監視し、問題が検知された場合にメール通知を送信します：
 
-1. **security.log**: セキュリティイベント（管理者ログイン、不正アクセス試行など）- **1分ごと**に監視
-2. **django_debug.log**: アプリケーションエラー（ERROR、WARNING、CRITICAL、Traceback）- **5分ごと**に監視
+1. **security.log**: セキュリティイベント（管理者ログイン、不正アクセス試行など）
+2. **django_debug.log**: アプリケーションの重大ログ（ERROR、CRITICAL）
+
+これらを毎日6時（JST）に集約し、対象がある場合だけ1通のレポートを送信します。
+管理画面探索、CSRF拒否、存在しないアカウントへのログイン試行などの日常的な
+インターネットノイズは件数のみを記載します。
 
 ## 本番環境・ローカル環境（Docker環境）
 
@@ -19,8 +23,8 @@
 
 ## 機能
 1. **リアルタイム通知**: 管理者・スタッフがログインした際に即座にメール送信（オプション）
-2. **定期セキュリティ監視**: 1分ごとにsecurity.logを確認し、過去1分間の活動をレポート
-3. **定期エラー監視**: 5分ごとにdjango_debug.logを確認し、エラー・警告・Tracebackをレポート
+2. **日次セキュリティ監視**: 過去24時間のsecurity.logを分類・集約
+3. **重大エラー監視**: ERRORとCRITICALだけを日次レポートへ統合（WARNINGはメール対象外）
 
 ## セットアップ方法
 
@@ -76,23 +80,15 @@ docker-compose -f docker-compose-dev.yml exec cron python manage.py check_debug_
 
 ## メール通知の種類
 
-### 1. セキュリティレポート
-- **頻度**: 1分ごと（過去1分間にイベントがあった場合のみ）
+### 1. セキュリティ・エラーレポート
+- **頻度**: 毎日6時（過去24時間に対象があった場合のみ、最大1通）
 - **内容**:
-  - 特権ユーザーログイン
-  - 警告 (WARNING)
-  - エラー (ERROR)
-  - その他のセキュリティイベント
+  - 管理画面探索、CSRF拒否、ログイン失敗などのカテゴリ別件数
+  - 特権ユーザーログイン（詳細）
+  - ERROR / CRITICAL（優先して詳細を掲載、詳細全体で最大20件）
+  - WARNING、404、通常のbot探索はメール詳細から除外
 
-### 2. エラーレポート
-- **頻度**: 5分ごと（過去5分間にエラーがあった場合のみ）
-- **内容**:
-  - CRITICAL: 重大なエラー
-  - ERROR: アプリケーションエラー
-  - WARNING: 警告
-  - Traceback: スタックトレース
-
-### 3. 即座の通知（オプション）
+### 2. 即座の通知（オプション）
 - **頻度**: 管理者・スタッフログイン時
 - **設定**: `SEND_INSTANT_SECURITY_EMAIL=True` で有効化
 
@@ -162,8 +158,9 @@ EMAIL_HOST_USER = 'carbohydratepro@gmail.com'
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 
 # 監視設定
-SEND_INSTANT_SECURITY_EMAIL = False  # True: 即座通知あり、False: 定期レポートのみ
-SECURITY_EMAIL_RECIPIENTS = ['carbohydratepro@gmail.com']
+SEND_INSTANT_SECURITY_EMAIL = False  # True: 特権ログインの即座通知あり
+SEND_PERIODIC_SECURITY_EMAIL = True  # False: 日次レポートを停止
+SECURITY_ALERT_EMAIL = 'carbohydratepro@gmail.com'
 
 # ログ設定
 LOGGING = {
@@ -211,7 +208,6 @@ LOGGING = {
 ## 注意事項
 
 - メール送信には有効なSMTP設定が必要です
-- セキュリティログは1分間隔、デバッグログは5分間隔で監視されます
-- Tracebackも自動的にエラーとしてカウントされます
+- 日次レポートは1日1通を上限とし、通常のWARNINGは件数集計だけに使います
 - 本番環境では必ずSSL/TLS接続を使用してください
 - 頻繁なメール送信により、メールサーバーの制限に達する可能性があります

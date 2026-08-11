@@ -258,8 +258,9 @@ EMAIL_USE_SSL = False  # TLS と SSL は併用しない
 DEFAULT_FROM_EMAIL = env('EMAIL_HOST_USER', default='no-reply@gmail.com')
 
 # セキュリティアラート送信先メールアドレス
-SECURITY_ALERT_EMAIL = 'carbohydratepro@gmail.com'
+SECURITY_ALERT_EMAIL = env('SECURITY_ALERT_EMAIL', default='carbohydratepro@gmail.com')
 
 # セキュリティアラート設定
 SEND_INSTANT_SECURITY_EMAIL = env.bool('SEND_INSTANT_SECURITY_EMAIL', default=False)
 SEND_PERIODIC_SECURITY_EMAIL = env.bool('SEND_PERIODIC_SECURITY_EMAIL', default=True)
+SECURITY_REPORT_MAX_DETAILS = env.int('SECURITY_REPORT_MAX_DETAILS', default=20)

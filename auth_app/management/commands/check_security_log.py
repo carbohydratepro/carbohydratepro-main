@@ -1,138 +1,126 @@
-"""
-セキュリティログを監視し、過去1分間に記録があればメール通知を送信する管理コマンド
-使用方法: python manage.py check_security_log
-"""
+"""セキュリティイベントと重大エラーを日次集約して通知する。"""
 
-from django.core.management.base import BaseCommand
-from django.core.mail import send_mail
+from datetime import timedelta
+from pathlib import Path
+from typing import Any
+
 from django.conf import settings
-from datetime import datetime, timedelta
-import os
-import re
+from django.core.mail import send_mail
+from django.core.management.base import BaseCommand, CommandError, CommandParser
+from django.utils import timezone
+
+from auth_app.log_monitoring import (
+    actionable_details,
+    classify_security_logs,
+    log_paths,
+    recent_log_lines,
+)
+
+
+CATEGORY_LABELS: tuple[tuple[str, str], ...] = (
+    ("privileged_login", "特権ユーザーログイン"),
+    ("unknown_login", "存在しないユーザーへのログイン試行"),
+    ("locked_login", "ロック中アカウントへのログイン試行"),
+    ("admin_probe", "管理画面への未認証アクセス"),
+    ("csrf", "CSRF拒否"),
+    ("forbidden", "その他のアクセス拒否"),
+    ("other", "その他"),
+)
 
 
 class Command(BaseCommand):
-    help = 'セキュリティログを監視し、過去1分間に新しいログがあればメール通知を送信'
+    help = "セキュリティイベントとERROR/CRITICALを指定期間で集約して1通通知する"
 
-    def handle(self, *args: object, **options: object) -> None:
-        # セキュリティログファイルのパス
-        log_file_path = os.path.join(settings.BASE_DIR, 'security.log')
-        
-        if not os.path.exists(log_file_path):
-            self.stdout.write(self.style.WARNING('security.logファイルが見つかりません'))
+    def add_arguments(self, parser: CommandParser) -> None:
+        parser.add_argument(
+            "--hours",
+            type=float,
+            default=24.0,
+            help="集計対象とする直近時間（既定: 24時間）",
+        )
+
+    def handle(self, *args: object, **options: Any) -> None:
+        if not getattr(settings, "SEND_PERIODIC_SECURITY_EMAIL", True):
+            self.stdout.write("定期セキュリティレポートは無効です")
             return
-        
-        # 現在時刻と1分前の時刻を取得
-        now = datetime.now()
-        one_minute_ago = now - timedelta(minutes=1)
-        
-        # セキュリティログから過去1分間のエントリを抽出
-        recent_logs = []
-        
-        try:
-            with open(log_file_path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    # 空行はスキップ
-                    if not line.strip():
-                        continue
-                    
-                    # ログのタイムスタンプを抽出（例: 2025-10-20 15:30:45）
-                    timestamp_match = re.search(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})', line)
-                    
-                    if timestamp_match:
-                        try:
-                            log_time_str = timestamp_match.group(1)
-                            log_time = datetime.strptime(log_time_str, '%Y-%m-%d %H:%M:%S')
-                            
-                            # 過去1分間のログのみを対象（すべてのセキュリティイベント）
-                            if log_time >= one_minute_ago and log_time <= now:
-                                recent_logs.append(line.strip())
-                        except ValueError:
-                            # タイムスタンプのパースに失敗した場合はスキップ
-                            continue
-        
-        except Exception as e:
-            self.stdout.write(self.style.ERROR(f'ログファイル読み込みエラー: {str(e)}'))
+
+        hours = float(options["hours"])
+        if hours <= 0:
+            raise CommandError("--hours には0より大きい値を指定してください")
+
+        end = timezone.localtime().replace(tzinfo=None)
+        start = end - timedelta(hours=hours)
+        base_dir = Path(settings.BASE_DIR)
+        security_lines = recent_log_lines(
+            log_paths(base_dir, "security.log"),
+            start,
+            end,
+        )
+        debug_lines = recent_log_lines(
+            log_paths(base_dir, "django_debug.log"),
+            start,
+            end,
+        )
+        critical_count = sum(line.startswith("CRITICAL") for line in debug_lines)
+        error_count = sum(line.startswith("ERROR") for line in debug_lines)
+
+        if not security_lines and critical_count == 0 and error_count == 0:
+            self.stdout.write("集計対象のセキュリティイベント・重大エラーはありません")
             return
-        
-        # 過去1分間にログがあればメール送信
-        if recent_logs:
-            self.send_security_alert(recent_logs, one_minute_ago, now)
-            self.stdout.write(self.style.SUCCESS(
-                f'セキュリティアラートメールを送信しました（{len(recent_logs)}件のログ）'
-            ))
-        else:
-            self.stdout.write(self.style.SUCCESS('過去1分間に新しいセキュリティログはありません'))
-    
-    def send_security_alert(self, logs: list[str], start_time: datetime, end_time: datetime) -> None:
-        """セキュリティアラートメールを送信"""
-        
-        # ログの種類を分類
-        login_logs = [log for log in logs if '特権ユーザーログイン検知' in log]
-        warning_logs = [log for log in logs if 'WARNING' in log and log not in login_logs]
-        error_logs = [log for log in logs if 'ERROR' in log]
-        other_logs = [log for log in logs if log not in login_logs and log not in warning_logs and log not in error_logs]
-        
-        subject = f'【定期セキュリティレポート】セキュリティイベント検知 ({len(logs)}件)'
-        
-        # メール本文を作成
-        message = f'''
-定期セキュリティレポート
 
-【監視期間】
-{start_time.strftime('%Y-%m-%d %H:%M:%S')} ～ {end_time.strftime('%Y-%m-%d %H:%M:%S')}
+        counts = classify_security_logs(security_lines)
+        max_details = int(getattr(settings, "SECURITY_REPORT_MAX_DETAILS", 20))
+        details = actionable_details(security_lines, debug_lines)[:max_details]
+        summary_lines = [
+            "日次セキュリティ・エラーレポート",
+            "",
+            f"監視期間: {start:%Y-%m-%d %H:%M:%S} ～ {end:%Y-%m-%d %H:%M:%S}",
+            "",
+            "【セキュリティイベント】",
+            f"総件数: {len(security_lines)}件",
+        ]
+        summary_lines.extend(
+            f"- {label}: {counts.get(category, 0)}件"
+            for category, label in CATEGORY_LABELS
+        )
+        summary_lines.extend(
+            [
+                "",
+                "【アプリケーション重大ログ】",
+                f"- CRITICAL: {critical_count}件",
+                f"- ERROR: {error_count}件",
+            ]
+        )
+        if details:
+            summary_lines.extend(["", f"【要確認の詳細（最大{max_details}件）】"])
+            summary_lines.extend(
+                f"{index}. {line[:2000]}" for index, line in enumerate(details, 1)
+            )
+        summary_lines.extend(
+            [
+                "",
+                "管理画面探索やCSRF拒否などの日常的なインターネットノイズは件数のみ集約しています。",
+            ]
+        )
 
-【検知件数サマリー】
-総イベント数: {len(logs)}件
-- 特権ユーザーログイン: {len(login_logs)}件
-- 警告 (WARNING): {len(warning_logs)}件
-- エラー (ERROR): {len(error_logs)}件
-- その他: {len(other_logs)}件
-
-'''
-        
-        # 特権ユーザーログイン
-        if login_logs:
-            message += '【特権ユーザーログイン】\n'
-            for i, log in enumerate(login_logs, 1):
-                message += f'{i}. {log}\n'
-            message += '\n'
-        
-        # 警告ログ
-        if warning_logs:
-            message += '【警告ログ】\n'
-            for i, log in enumerate(warning_logs, 1):
-                message += f'{i}. {log}\n'
-            message += '\n'
-        
-        # エラーログ
-        if error_logs:
-            message += '【エラーログ】\n'
-            for i, log in enumerate(error_logs, 1):
-                message += f'{i}. {log}\n'
-            message += '\n'
-        
-        # その他のログ
-        if other_logs:
-            message += '【その他のセキュリティイベント】\n'
-            for i, log in enumerate(other_logs, 1):
-                message += f'{i}. {log}\n'
-            message += '\n'
-        
-        message += '''---
-このメールは1分ごとに自動送信されています。
-不審なアクティビティを検知した場合は、直ちに管理者に連絡してください。
-'''
-        
+        recipient = getattr(settings, "SECURITY_ALERT_EMAIL", "carbohydratepro@gmail.com")
         try:
-            recipient_email = getattr(settings, 'SECURITY_ALERT_EMAIL', 'carbohydratepro@gmail.com')
             send_mail(
-                subject=subject,
-                message=message,
+                subject=(
+                    "【日次セキュリティレポート】"
+                    f"イベント{len(security_lines)}件・重大ログ{critical_count + error_count}件"
+                ),
+                message="\n".join(summary_lines),
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[recipient_email],
+                recipient_list=[recipient],
                 fail_silently=False,
             )
-            
-        except Exception as e:
-            self.stdout.write(self.style.ERROR(f'メール送信エラー: {str(e)}'))
+        except Exception as exc:
+            raise CommandError(f"日次セキュリティレポート送信エラー: {exc}") from exc
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                "日次セキュリティレポートを1通送信しました "
+                f"（セキュリティ{len(security_lines)}件、重大ログ{critical_count + error_count}件）"
+            )
+        )

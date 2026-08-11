@@ -9,6 +9,8 @@
 - [x] スマホの金額折り返しを防止し、8桁以上の文字サイズを調整
 - [x] ホームに今日の簡易情報とオプトインの現在地天気を追加
 - [x] 機能修正のDjango回帰テスト11件と `E2E-FIXES-001` を追加
+- [x] PostgreSQL開発DBへmigration 0036・0037を適用し、Django全521件を完走
+- [x] `npm run check` と `E2E-FIXES-001`・`E2E-COOKING-001` を完走
 - [x] 料理記録の仕様を `workspace/cooking.md` に整理
 - [x] 料理・最大10手順・日別作成履歴モデルとmigration 0036を追加
 - [x] 料理一覧・検索・並べ替え・登録・編集・ノート形式の詳細画面を実装
@@ -80,10 +82,10 @@
 
 ## 未着手
 
-- [ ] Docker/PostgreSQLで料理記録のDjangoテストを実行
-- [ ] Docker起動後に `E2E-COOKING-001` を実行
-- [ ] Docker/PostgreSQLでmigration 0037と機能修正テストを実行
-- [ ] 認証済み環境で `E2E-FIXES-001` を実行
+- [x] Docker/PostgreSQLで料理記録のDjangoテストを実行
+- [x] Docker起動後に `E2E-COOKING-001` を実行
+- [x] Docker/PostgreSQLでmigration 0037と機能修正テストを実行
+- [x] 認証済み環境で `E2E-FIXES-001` を実行
 - [ ] UI一新の方向性を決めて実施（ユーザーと相談中）
 - [x] E2E残課題を解消しスイート全59件成功（aria-label付与、デモ習慣JSエラー修正、テストの曖昧ロケーター/UTC日付/404検証方法を修正）
 
@@ -91,5 +93,5 @@
 
 - 基盤改善と料理記録は指定どおり別コミットに分離済み。
 - 料理記録のPythonコードは一時venvのRuffで確認済み。Pyrightは一時環境にDjango型スタブがなく、プロジェクト全体の厳格な型検査は未完了。
-- Dockerデーモンが停止中のため、PostgreSQLとPlaywrightの追加検証は未実行。
+- Docker開発環境でmigration 0036・0037を適用済み。PostgreSQL上のDjango全521件と対象Playwright 2件は成功済み。
 - 通常サンドボックスユーザーではWSL登録が見えないため、ホスト権限の `wsl.exe` 経由で操作する。

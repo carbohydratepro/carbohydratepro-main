@@ -118,6 +118,9 @@ done
 
 docker-compose -f "${COMPOSE_FILE}" exec -T gunicorn python manage.py migrate --noinput </dev/null
 docker-compose -f "${COMPOSE_FILE}" exec -T gunicorn python manage.py collectstatic --noinput </dev/null
+if [[ -x scripts/install-production-docker-maintenance.sh ]]; then
+    scripts/install-production-docker-maintenance.sh
+fi
 REMOTE_UPDATE
 
 if ! compgen -G "static/app/*.js" >/dev/null; then

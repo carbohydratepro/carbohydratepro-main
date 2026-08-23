@@ -1,0 +1,28 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "WriteEncryptedProductionLogArchives",
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::carbohydratepro-system-logs/production/*",
+      "Condition": {
+        "StringEquals": {
+          "s3:x-amz-server-side-encryption": "AES256"
+        }
+      }
+    },
+    {
+      "Sid": "AbortFailedMultipartProductionLogUploads",
+      "Effect": "Allow",
+      "Action": "s3:AbortMultipartUpload",
+      "Resource": "arn:aws:s3:::carbohydratepro-system-logs/production/*"
+    },
+    {
+      "Sid": "VerifyProductionLogArchives",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::carbohydratepro-system-logs/production/*"
+    }
+  ]
+}

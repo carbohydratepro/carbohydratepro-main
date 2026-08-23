@@ -1,12 +1,13 @@
 """セキュリティイベントと重大エラーを日次集約して通知する。"""
 
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from django.conf import settings
 from django.core.mail import send_mail
 from django.core.management.base import BaseCommand, CommandError, CommandParser
+from django.db import transaction
 from django.utils import timezone
 
 from auth_app.log_monitoring import (
@@ -15,6 +16,7 @@ from auth_app.log_monitoring import (
     log_paths,
     recent_log_lines,
 )
+from auth_app.models import SecurityReportDelivery
 
 
 CATEGORY_LABELS: tuple[tuple[str, str], ...] = (
@@ -30,6 +32,8 @@ CATEGORY_LABELS: tuple[tuple[str, str], ...] = (
 
 class Command(BaseCommand):
     help = "セキュリティイベントとERROR/CRITICALを指定期間で集約して1通通知する"
+
+    CLAIM_TIMEOUT = timedelta(minutes=30)
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
@@ -66,6 +70,14 @@ class Command(BaseCommand):
 
         if not security_lines and critical_count == 0 and error_count == 0:
             self.stdout.write("集計対象のセキュリティイベント・重大エラーはありません")
+            return
+
+        report_date = timezone.localdate()
+        attempted_at = timezone.now()
+        if not self._claim_delivery(report_date, attempted_at):
+            self.stdout.write(
+                f"{report_date:%Y-%m-%d}のセキュリティレポートは送信済みまたは送信中です"
+            )
             return
 
         counts = classify_security_logs(security_lines)
@@ -116,7 +128,23 @@ class Command(BaseCommand):
                 fail_silently=False,
             )
         except Exception as exc:
+            SecurityReportDelivery.objects.filter(
+                report_date=report_date,
+                status=SecurityReportDelivery.STATUS_SENDING,
+                attempted_at=attempted_at,
+            ).update(status=SecurityReportDelivery.STATUS_FAILED)
             raise CommandError(f"日次セキュリティレポート送信エラー: {exc}") from exc
+
+        SecurityReportDelivery.objects.filter(
+            report_date=report_date,
+            status=SecurityReportDelivery.STATUS_SENDING,
+            attempted_at=attempted_at,
+        ).update(
+            status=SecurityReportDelivery.STATUS_SENT,
+            sent_at=timezone.now(),
+            security_event_count=len(security_lines),
+            critical_error_count=critical_count + error_count,
+        )
 
         self.stdout.write(
             self.style.SUCCESS(
@@ -124,3 +152,32 @@ class Command(BaseCommand):
                 f"（セキュリティ{len(security_lines)}件、重大ログ{critical_count + error_count}件）"
             )
         )
+
+    def _claim_delivery(self, report_date: date, attempted_at: datetime) -> bool:
+        """同日の送信権をDB行ロックで1実行だけに与える。"""
+        stale_before = attempted_at - self.CLAIM_TIMEOUT
+        with transaction.atomic():
+            delivery, created = (
+                SecurityReportDelivery.objects.select_for_update().get_or_create(
+                    report_date=report_date,
+                    defaults={
+                        "status": SecurityReportDelivery.STATUS_SENDING,
+                        "attempted_at": attempted_at,
+                    },
+                )
+            )
+            if created:
+                return True
+            if delivery.status == SecurityReportDelivery.STATUS_SENT:
+                return False
+            if (
+                delivery.status == SecurityReportDelivery.STATUS_SENDING
+                and delivery.attempted_at > stale_before
+            ):
+                return False
+
+            delivery.status = SecurityReportDelivery.STATUS_SENDING
+            delivery.attempted_at = attempted_at
+            delivery.sent_at = None
+            delivery.save(update_fields=["status", "attempted_at", "sent_at"])
+            return True

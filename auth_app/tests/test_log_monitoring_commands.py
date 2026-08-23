@@ -6,11 +6,14 @@ from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
 
 from django.core.management import call_command
-from django.test import SimpleTestCase, override_settings
+from django.core.management.base import CommandError
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
+from auth_app.models import SecurityReportDelivery
 
-class DailySecurityReportCommandTest(SimpleTestCase):
+
+class DailySecurityReportCommandTest(TestCase):
     def setUp(self) -> None:
         self.temporary_directory = TemporaryDirectory()
         self.addCleanup(self.temporary_directory.cleanup)
@@ -66,6 +69,52 @@ class DailySecurityReportCommandTest(SimpleTestCase):
         self.assertNotIn("Not Found: /wp-login.php", call_kwargs["message"])
         self.assertEqual(call_kwargs["message"].count("特権ユーザーログイン検知"), 1)
         self.assertIn("application error", call_kwargs["message"])
+
+        delivery = SecurityReportDelivery.objects.get(report_date=timezone.localdate())
+        self.assertEqual(delivery.status, SecurityReportDelivery.STATUS_SENT)
+        self.assertEqual(delivery.security_event_count, 4)
+        self.assertEqual(delivery.critical_error_count, 1)
+
+    @override_settings(SEND_PERIODIC_SECURITY_EMAIL=True)
+    @patch("auth_app.management.commands.check_security_log.send_mail")
+    def test_report_is_sent_at_most_once_per_day(self, send_mail_mock: MagicMock) -> None:
+        timestamp = timezone.localtime().strftime("%Y-%m-%d %H:%M:%S")
+        self._write_log(
+            "security.log",
+            [f"WARNING {timestamp},000 middleware 1 1 Unauthenticated admin access attempt"],
+        )
+
+        with override_settings(BASE_DIR=self.base_dir):
+            call_command("check_security_log", hours=24)
+            call_command("check_security_log", hours=24)
+
+        send_mail_mock.assert_called_once()
+        self.assertEqual(
+            SecurityReportDelivery.objects.filter(
+                report_date=timezone.localdate(),
+                status=SecurityReportDelivery.STATUS_SENT,
+            ).count(),
+            1,
+        )
+
+    @override_settings(SEND_PERIODIC_SECURITY_EMAIL=True)
+    @patch("auth_app.management.commands.check_security_log.send_mail")
+    def test_failed_report_can_be_retried(self, send_mail_mock: MagicMock) -> None:
+        timestamp = timezone.localtime().strftime("%Y-%m-%d %H:%M:%S")
+        self._write_log(
+            "security.log",
+            [f"WARNING {timestamp},000 middleware 1 1 Unauthenticated admin access attempt"],
+        )
+        send_mail_mock.side_effect = [RuntimeError("SMTP error"), None]
+
+        with override_settings(BASE_DIR=self.base_dir):
+            with self.assertRaises(CommandError):
+                call_command("check_security_log", hours=24)
+            call_command("check_security_log", hours=24)
+
+        self.assertEqual(send_mail_mock.call_count, 2)
+        delivery = SecurityReportDelivery.objects.get(report_date=timezone.localdate())
+        self.assertEqual(delivery.status, SecurityReportDelivery.STATUS_SENT)
 
     @override_settings(SEND_PERIODIC_SECURITY_EMAIL=True)
     @patch("auth_app.management.commands.check_security_log.send_mail")

@@ -55,6 +55,10 @@ Dockerのcronコンテナが毎日6:00 JSTに過去24時間を集約し、対象
 日次レポートは最大1日1通である。
 `SEND_INSTANT_SECURITY_EMAIL=True`を明示した場合は、特権ログイン時のメールが別に送信される。
 
+管理コマンドは`SecurityReportDelivery`へJST日付ごとの送信状態を保存する。
+cronの重複登録や誤った毎分実行があっても、送信済みまたは送信中の同日レポートは
+DB行ロックで拒否される。SMTP送信に失敗した場合だけ、同日中の再試行を許可する。
+
 SMTP認証情報は`secret.env`で管理し、ドキュメント、ログ、Gitへ記録しない。
 
 ## ログファイル
@@ -95,6 +99,11 @@ docker-compose -f docker-compose-dev.yml exec -T cron \
 2. ホスト側cronに`check_security_log`や`check_debug_log`が重複していないか確認する。
 3. `SEND_INSTANT_SECURITY_EMAIL`が意図せず有効になっていないか確認する。
 4. 同じcronコンテナが複数起動していないか確認する。
+5. `SecurityReportDelivery`に当日の`sent`履歴が1件だけ記録されているか確認する。
+
+メール本文に「このメールは1分ごとに自動送信されています」とある場合は、
+日次集約へ切り替える前の旧`check_security_log`が送信元である。現行コマンドの件名は
+`【日次セキュリティレポート】`であり、本文に毎分送信の記載はない。
 
 ### メールが届かない
 

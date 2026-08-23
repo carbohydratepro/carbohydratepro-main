@@ -244,3 +244,40 @@ class EmailVerificationToken(models.Model):
 
     def __str__(self) -> str:
         return f'{self.user.username} - {self.token}'
+
+
+class SecurityReportDelivery(models.Model):
+    """日次セキュリティレポートの送信状態。
+
+    cronの重複登録や管理コマンドの誤った頻回実行があっても、
+    同じJST日付のレポートを複数送信しないために使用する。
+    """
+
+    STATUS_SENDING = 'sending'
+    STATUS_SENT = 'sent'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = (
+        (STATUS_SENDING, '送信中'),
+        (STATUS_SENT, '送信済み'),
+        (STATUS_FAILED, '送信失敗'),
+    )
+
+    report_date = models.DateField('レポート日', unique=True)
+    status = models.CharField(
+        '送信状態',
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default=STATUS_SENDING,
+    )
+    attempted_at = models.DateTimeField('最終送信試行日時', default=timezone.now)
+    sent_at = models.DateTimeField('送信完了日時', null=True, blank=True)
+    security_event_count = models.PositiveIntegerField('セキュリティイベント件数', default=0)
+    critical_error_count = models.PositiveIntegerField('重大エラー件数', default=0)
+
+    class Meta:
+        verbose_name = 'セキュリティレポート送信履歴'
+        verbose_name_plural = 'セキュリティレポート送信履歴'
+        ordering = ['-report_date']
+
+    def __str__(self) -> str:
+        return f'{self.report_date:%Y-%m-%d} ({self.get_status_display()})'

@@ -439,6 +439,67 @@ function toggleWeekendColor(): void {
 // 棒グラフのチャートインスタンスを保持
 const activeBarCharts: Chart[] = [];
 
+let expenseComparisonChart: Chart | null = null;
+const EXPENSE_COMPARISON_STORAGE_KEY = 'expenseComparisonVisible';
+
+function initializeExpenseComparisonChart(): void {
+    if (expenseComparisonChart || typeof comparisonData === 'undefined') return;
+    const canvas = document.getElementById('expenseComparisonChart') as HTMLCanvasElement | null;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx) return;
+
+    expenseComparisonChart = new Chart(ctx, {
+        type: 'bar',
+        data: comparisonData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, position: 'bottom' },
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        label: (tooltipContext: ChartTooltipContext) => {
+                            const label = tooltipContext.dataset.label ?? '';
+                            const value = Math.round(tooltipContext.parsed.y).toLocaleString('ja-JP');
+                            return `${label}: ¥${value}`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: { type: 'category' },
+                y: { beginAtZero: true },
+            },
+        },
+    });
+}
+
+function setExpenseComparisonVisible(visible: boolean): void {
+    const panel = document.getElementById('expenseComparisonPanel');
+    const button = document.getElementById('expenseComparisonToggle');
+    const label = document.getElementById('expenseComparisonToggleLabel');
+    if (!(panel instanceof HTMLElement) || !(button instanceof HTMLButtonElement)) return;
+
+    panel.hidden = !visible;
+    button.setAttribute('aria-expanded', String(visible));
+    button.classList.toggle('btn-info', visible);
+    button.classList.toggle('btn-outline-info', !visible);
+    if (label) label.textContent = visible ? '比較を閉じる' : '先月・全期間平均と比較';
+    if (visible) initializeExpenseComparisonChart();
+    localStorage.setItem(EXPENSE_COMPARISON_STORAGE_KEY, String(visible));
+}
+
+function initializeExpenseComparisonToggle(): void {
+    const button = document.getElementById('expenseComparisonToggle');
+    if (!(button instanceof HTMLButtonElement)) return;
+    const initiallyVisible = localStorage.getItem(EXPENSE_COMPARISON_STORAGE_KEY) === 'true';
+    setExpenseComparisonVisible(initiallyVisible);
+    button.addEventListener('click', () => {
+        setExpenseComparisonVisible(button.getAttribute('aria-expanded') !== 'true');
+    });
+}
+
 // グラフ初期化関数
 function initializeExpenseCharts(): void {
     if (typeof categoryData === 'undefined' || typeof expenseData === 'undefined' ||
@@ -652,6 +713,7 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeExpenseCharts();
     }
     initializeExpenseFilters();
+    initializeExpenseComparisonToggle();
     initLongPressDelete();
     initTransactionDoubleClick();
 });

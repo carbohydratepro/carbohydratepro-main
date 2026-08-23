@@ -8,6 +8,9 @@ import calendar as cal_module
 import json
 from datetime import date, datetime, timedelta
 from django.core.paginator import Paginator
+from django.http import QueryDict
+
+from project.utils import CHART_COLORS, MAJOR_CATEGORY_LABELS
 
 
 # ---------------------------------------------------------------------------
@@ -20,14 +23,17 @@ class FakeTransaction:
 
     def __init__(self, id: int, purpose: str, date_val: date, amount: int,
                  transaction_type: str, payment_method: str, category: str,
-                 major_category: str, purpose_description: str | None = None) -> None:
+                 major_category: str, purpose_description: str | None = None,
+                 payment_method_id: int = 0, category_id: int = 0) -> None:
         self.id = id
         self.purpose = purpose
         self.date = date_val
         self.amount = amount
         self.transaction_type = transaction_type
         self.payment_method = payment_method
+        self.payment_method_id = payment_method_id
         self.category = category
+        self.category_id = category_id
         self.major_category = major_category
         self.purpose_description = purpose_description
 
@@ -200,97 +206,360 @@ class FakeWeekHeaderDay:
 # 家計簿デモデータ
 # ---------------------------------------------------------------------------
 
-def get_expenses_context() -> dict:
-    transactions = [
-        FakeTransaction(1,  '給与',              date(2026, 3, 25), 280000, 'income',   '銀行振込',  '収入',   'variable'),
-        FakeTransaction(2,  'スーパー（食材）',  date(2026, 3, 27),   3240, 'expense',  '現金',      '食費',   'variable'),
-        FakeTransaction(3,  '電気代',            date(2026, 3, 27),   8200, 'expense',  '口座振替',  '光熱費', 'fixed'),
-        FakeTransaction(4,  '家賃',              date(2026, 3,  1),  85000, 'expense',  '口座振替',  '住居費', 'fixed'),
-        FakeTransaction(5,  'ランチ',            date(2026, 3, 24),   1050, 'expense',  'カード',    '外食',   'variable'),
-        FakeTransaction(6,  '書籍',              date(2026, 3, 22),   2860, 'expense',  'カード',    '教育',   'variable'),
-        FakeTransaction(7,  'ジム月会費',        date(2026, 3, 20),   7700, 'expense',  'カード',    '健康',   'fixed'),
-        FakeTransaction(8,  '映画',              date(2026, 3, 18),   1800, 'expense',  'カード',    '娯楽',   'variable'),
-        FakeTransaction(9,  '水道代',            date(2026, 3, 15),   3500, 'expense',  '口座振替',  '光熱費', 'fixed'),
-        FakeTransaction(10, 'コンビニ',          date(2026, 3, 14),    860, 'expense',  '現金',      '日用品', 'variable'),
-        FakeTransaction(11, 'スーパー（日用品）',date(2026, 3, 12),   4320, 'expense',  '現金',      '日用品', 'variable'),
-        FakeTransaction(12, '交通費（定期）',    date(2026, 3, 10),   9800, 'expense',  'カード',    '交通',   'fixed'),
-        FakeTransaction(13, 'カフェ',            date(2026, 3,  9),    680, 'expense',  'カード',    '外食',   'variable'),
-        FakeTransaction(14, 'プレゼント代',      date(2026, 3,  5),  16000, 'expense',  'カード',    'ギフト', 'special'),
-        FakeTransaction(15, '保険料',            date(2026, 3,  1),   9710, 'expense',  '口座振替',  '保険',   'fixed'),
+def _demo_expense_transactions() -> list[FakeTransaction]:
+    """月次比較を体験できる3か月分の家計簿デモ取引を返す。"""
+    rows = [
+        (1, '給与', date(2026, 3, 25), 280000, 'income', 3, '銀行振込', 12, '収入', 'variable'),
+        (2, 'スーパー（食材）', date(2026, 3, 27), 3240, 'expense', 1, '現金', 1, '食費', 'variable'),
+        (3, '電気代', date(2026, 3, 27), 8200, 'expense', 4, '口座振替', 3, '光熱費', 'fixed'),
+        (4, '家賃', date(2026, 3, 1), 85000, 'expense', 4, '口座振替', 4, '住居費', 'fixed'),
+        (5, 'ランチ', date(2026, 3, 24), 1050, 'expense', 2, 'カード', 2, '外食', 'variable'),
+        (6, '書籍', date(2026, 3, 22), 2860, 'expense', 2, 'カード', 5, '教育', 'variable'),
+        (7, 'ジム月会費', date(2026, 3, 20), 7700, 'expense', 2, 'カード', 6, '健康', 'fixed'),
+        (8, '映画', date(2026, 3, 18), 1800, 'expense', 2, 'カード', 7, '娯楽', 'variable'),
+        (9, '水道代', date(2026, 3, 15), 3500, 'expense', 4, '口座振替', 3, '光熱費', 'fixed'),
+        (10, 'コンビニ', date(2026, 3, 14), 860, 'expense', 1, '現金', 8, '日用品', 'variable'),
+        (11, 'スーパー（日用品）', date(2026, 3, 12), 4320, 'expense', 1, '現金', 8, '日用品', 'variable'),
+        (12, '交通費（定期）', date(2026, 3, 10), 9800, 'expense', 2, 'カード', 9, '交通', 'fixed'),
+        (13, 'カフェ', date(2026, 3, 9), 680, 'expense', 2, 'カード', 2, '外食', 'variable'),
+        (14, 'プレゼント代', date(2026, 3, 5), 16000, 'expense', 2, 'カード', 10, 'ギフト', 'special'),
+        (15, '保険料', date(2026, 3, 1), 9710, 'expense', 4, '口座振替', 11, '保険', 'fixed'),
+        (16, '給与', date(2026, 2, 25), 280000, 'income', 3, '銀行振込', 12, '収入', 'variable'),
+        (17, '家賃', date(2026, 2, 1), 85000, 'expense', 4, '口座振替', 4, '住居費', 'fixed'),
+        (18, '食材まとめ買い', date(2026, 2, 8), 28400, 'expense', 1, '現金', 1, '食費', 'variable'),
+        (19, '電気代', date(2026, 2, 18), 7600, 'expense', 4, '口座振替', 3, '光熱費', 'fixed'),
+        (20, '交通費（定期）', date(2026, 2, 10), 9800, 'expense', 2, 'カード', 9, '交通', 'fixed'),
+        (21, '外食', date(2026, 2, 14), 4200, 'expense', 2, 'カード', 2, '外食', 'variable'),
+        (22, '給与', date(2026, 1, 25), 275000, 'income', 3, '銀行振込', 12, '収入', 'variable'),
+        (23, '家賃', date(2026, 1, 1), 85000, 'expense', 4, '口座振替', 4, '住居費', 'fixed'),
+        (24, '食費', date(2026, 1, 12), 31500, 'expense', 1, '現金', 1, '食費', 'variable'),
+        (25, '帰省交通費', date(2026, 1, 4), 22000, 'expense', 2, 'カード', 9, '交通', 'special'),
+        (26, '光熱費', date(2026, 1, 18), 12400, 'expense', 4, '口座振替', 3, '光熱費', 'fixed'),
+    ]
+    return [
+        FakeTransaction(
+            row[0], row[1], row[2], row[3], row[4], row[6], row[8], row[9],
+            payment_method_id=row[5], category_id=row[7],
+        )
+        for row in rows
     ]
 
-    paginator = Paginator(transactions, 20)
-    transactions_page = paginator.get_page(1)
 
+def _demo_expense_summary(transactions: list[FakeTransaction]) -> tuple[float, float, float]:
+    income = float(sum(item.amount for item in transactions if item.transaction_type == 'income'))
+    expense = float(sum(item.amount for item in transactions if item.transaction_type == 'expense'))
+    return income, expense, income - expense
+
+
+def _demo_selected_ids(query: QueryDict, name: str) -> list[int]:
+    selected: list[int] = []
+    for raw_value in query.getlist(name):
+        try:
+            value = int(raw_value)
+        except (TypeError, ValueError):
+            continue
+        if value > 0 and value not in selected:
+            selected.append(value)
+    return selected
+
+
+def _demo_category_chart_data(
+    transactions: list[FakeTransaction],
+    categories: list[FakeCategory],
+) -> str:
+    totals: dict[int, float] = {}
+    for item in transactions:
+        if item.transaction_type == 'expense':
+            totals[item.category_id] = totals.get(item.category_id, 0.0) + item.amount
+    category_map = {item.id: item for item in categories}
+    rows = sorted(totals.items(), key=lambda row: row[1], reverse=True)
+    if not rows:
+        return json.dumps({
+            'labels': ['データなし'],
+            'filterValues': [''],
+            'datasets': [{'data': [1], 'backgroundColor': [CHART_COLORS['no_data']]}],
+        })
+    top_rows = rows[:5]
+    other_total = sum(amount for _, amount in rows[5:])
+    labels = [category_map[category_id].name for category_id, _ in top_rows]
+    amounts = [amount for _, amount in top_rows]
+    colors = [category_map[category_id].chart_color for category_id, _ in top_rows]
+    filter_values = [str(category_id) for category_id, _ in top_rows]
+    if other_total:
+        labels.append('その他')
+        amounts.append(other_total)
+        colors.append(CHART_COLORS['no_data'])
+        filter_values.append(f"exclude:{','.join(str(row[0]) for row in top_rows)}")
+    return json.dumps({
+        'labels': labels,
+        'filterValues': filter_values,
+        'datasets': [{'data': amounts, 'backgroundColor': colors}],
+    })
+
+
+def _demo_major_category_chart_data(transactions: list[FakeTransaction]) -> str:
+    totals: dict[str, float] = {}
+    for item in transactions:
+        if item.transaction_type == 'expense':
+            totals[item.major_category] = totals.get(item.major_category, 0.0) + item.amount
+    rows = sorted(totals.items(), key=lambda row: row[1], reverse=True)
+    if not rows:
+        return json.dumps({
+            'labels': ['データなし'],
+            'filterValues': [''],
+            'datasets': [{'data': [1], 'backgroundColor': [CHART_COLORS['no_data']]}],
+        })
+    return json.dumps({
+        'labels': [MAJOR_CATEGORY_LABELS[key] for key, _ in rows],
+        'filterValues': [key for key, _ in rows],
+        'datasets': [{
+            'data': [amount for _, amount in rows],
+            'backgroundColor': [CHART_COLORS['major_category'][key] for key, _ in rows],
+        }],
+    })
+
+
+def _demo_daily_chart_data(
+    transactions: list[FakeTransaction],
+    year: int,
+    month: int,
+) -> tuple[str, str]:
+    day_count = cal_module.monthrange(year, month)[1]
+    labels = [date(year, month, day).isoformat() for day in range(1, day_count + 1)]
+    expense_values: list[float] = []
+    balance_values: list[float] = []
+    balance = 0.0
+    for label in labels:
+        day = date.fromisoformat(label)
+        day_transactions = [item for item in transactions if item.date == day]
+        income, expense, _ = _demo_expense_summary(day_transactions)
+        balance += income - expense
+        expense_values.append(expense)
+        balance_values.append(balance)
+    return json.dumps({
+        'labels': labels,
+        'datasets': [{'label': '支出', 'data': expense_values, 'backgroundColor': CHART_COLORS['expense_bar']}],
+    }), json.dumps({
+        'labels': labels,
+        'datasets': [{'label': '収支', 'data': balance_values, 'fill': False, 'borderColor': CHART_COLORS['balance_line']}],
+    })
+
+
+def _demo_monthly_chart_data(transactions: list[FakeTransaction]) -> str:
+    income_values: list[float] = []
+    expense_values: list[float] = []
+    for month in range(1, 13):
+        monthly = [item for item in transactions if item.date.month == month]
+        income, expense, _ = _demo_expense_summary(monthly)
+        income_values.append(income)
+        expense_values.append(expense)
+    return json.dumps({
+        'labels': [f'{month}月' for month in range(1, 13)],
+        'datasets': [
+            {'label': '収入', 'data': income_values, 'backgroundColor': 'rgba(54, 162, 235, 0.7)'},
+            {'label': '支出', 'data': expense_values, 'backgroundColor': CHART_COLORS['expense_bar']},
+        ],
+    })
+
+
+def get_expenses_context(params: QueryDict | None = None) -> dict:
+    """実画面と同じ検索・表示切替を適用した家計簿デモコンテキストを返す。"""
+    query = params if params is not None else QueryDict('')
+    transactions = _demo_expense_transactions()
     categories = [
-        FakeCategory(1, '食費'),   FakeCategory(2, '外食'),   FakeCategory(3, '光熱費'),
-        FakeCategory(4, '住居費'), FakeCategory(5, '教育'),   FakeCategory(6, '健康'),
-        FakeCategory(7, '娯楽'),   FakeCategory(8, '日用品'), FakeCategory(9, '交通'),
-        FakeCategory(10, 'ギフト'), FakeCategory(11, '保険'), FakeCategory(12, '収入'),
+        FakeCategory(index, name, CHART_COLORS['category'][index % len(CHART_COLORS['category'])])
+        for index, name in enumerate(
+            ['食費', '外食', '光熱費', '住居費', '教育', '健康', '娯楽', '日用品', '交通', 'ギフト', '保険', '収入'],
+            start=1,
+        )
     ]
     payment_methods = [
         FakePaymentMethod(1, '現金'), FakePaymentMethod(2, 'カード'),
         FakePaymentMethod(3, '銀行振込'), FakePaymentMethod(4, '口座振替'),
     ]
 
-    total_income = 280000
-    total_expense = 154720
-    net_balance = total_income - total_expense
+    search_query = query.get('search', '').strip()
+    filter_transaction_type = query.get('transaction_type', '')
+    filter_major_category = query.get('major_category', '')
+    filter_categories = _demo_selected_ids(query, 'category')
+    excluded_categories = _demo_selected_ids(query, 'exclude_category')
+    filter_payment_methods = _demo_selected_ids(query, 'payment_method')
+    excluded_payment_methods = _demo_selected_ids(query, 'exclude_payment_method')
+    try:
+        filter_date = date.fromisoformat(query.get('date', '')).isoformat()
+    except (TypeError, ValueError):
+        filter_date = ''
 
-    category_data_json = json.dumps({
-        'labels': ['住居費', '保険', '交通', '健康', '光熱費', '日用品', '食費', 'ギフト', '教育', '外食', '娯楽'],
-        'datasets': [{'data': [85000, 9710, 9800, 7700, 11700, 5180, 8400, 16000, 2860, 1730, 1800],
-                      'backgroundColor': ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac','#86bcb6']}],
-    })
-    major_category_data_json = json.dumps({
-        'labels': ['変動費', '固定費', '特別費'],
-        'datasets': [{'data': [29470, 109210, 16000],
-                      'backgroundColor': ['#4e79a7', '#f28e2b', '#e15759']}],
-    })
-    _expense_vals = [94710,0,0,0,16000,0,0,0,680,9800,0,4320,0,860,3500,0,0,1800,0,7700,0,2860,0,1050,0,0,11440,0,0,0]
-    _balance_vals = [-94710,-94710,-94710,-94710,-110710,-110710,-110710,-110710,
-                     -111390,-121190,-121190,-125510,-125510,-126370,-129870,-129870,
-                     -129870,-131670,-131670,-139370,-139370,-142230,-142230,-143280,
-                     136720,136720,125280,125280,125280,125280]
-    _day_labels   = [f'2026-03-{str(i).zfill(2)}' for i in range(1, 32)]
-    expense_data_json = json.dumps({
-        'labels': _day_labels,
-        'datasets': [{'label': '支出', 'data': _expense_vals, 'backgroundColor': 'rgba(255,99,132,0.5)'}],
-    })
-    balance_data_json = json.dumps({
-        'labels': _day_labels,
-        'datasets': [{'label': '所持金', 'data': _balance_vals, 'fill': False, 'borderColor': 'rgba(54,162,235,0.8)'}],
-    })
+    def apply_filters(
+        items: list[FakeTransaction],
+        *,
+        include_exact_date: bool = True,
+    ) -> list[FakeTransaction]:
+        filtered = list(items)
+        if search_query:
+            needle = search_query.lower()
+            filtered = [
+                item for item in filtered
+                if needle in item.purpose.lower()
+                or needle in (item.purpose_description or '').lower()
+                or needle in item.category.lower()
+                or needle in item.payment_method.lower()
+            ]
+        if filter_transaction_type:
+            filtered = [item for item in filtered if item.transaction_type == filter_transaction_type]
+        if filter_major_category:
+            filtered = [item for item in filtered if item.major_category == filter_major_category]
+        if filter_categories:
+            filtered = [item for item in filtered if item.category_id in filter_categories]
+        if excluded_categories:
+            filtered = [item for item in filtered if item.category_id not in excluded_categories]
+        if filter_payment_methods:
+            filtered = [item for item in filtered if item.payment_method_id in filter_payment_methods]
+        if excluded_payment_methods:
+            filtered = [item for item in filtered if item.payment_method_id not in excluded_payment_methods]
+        if include_exact_date and filter_date:
+            filtered = [item for item in filtered if item.date.isoformat() == filter_date]
+        return filtered
 
-    return {
-        'view_mode':              'month',
-        'transactions_page':      transactions_page,
-        'transactions_count':     len(transactions),
-        'category_data_json':     category_data_json,
-        'major_category_data_json': major_category_data_json,
-        'expense_data_json':      expense_data_json,
-        'balance_data_json':      balance_data_json,
-        'total_income':           total_income,
-        'total_expense':          total_expense,
-        'net_balance':            net_balance,
+    view_mode = 'year' if query.get('view_mode') == 'year' else 'month'
+    if view_mode == 'year':
+        try:
+            current_year = int(query.get('target_date', '2026'))
+        except (TypeError, ValueError):
+            current_year = 2026
+        period_transactions = [item for item in transactions if item.date.year == current_year]
+        filtered_transactions = apply_filters(period_transactions)
+        default_target_date = str(current_year)
+        target_month = f'{current_year}年'
+        monthly_chart_data_json = _demo_monthly_chart_data(filtered_transactions)
+        year_range = list(range(current_year - 5, current_year + 3))
+        year_for_toggle = current_year
+        month_for_toggle = f'{current_year}-03'
+    else:
+        try:
+            target_date = datetime.strptime(query.get('target_date', '2026-03'), '%Y-%m').date()
+        except (TypeError, ValueError):
+            target_date = date(2026, 3, 1)
+        current_year = target_date.year
+        current_month = target_date.month
+        period_transactions = [
+            item for item in transactions
+            if item.date.year == current_year and item.date.month == current_month
+        ]
+        filtered_transactions = apply_filters(period_transactions)
+        default_target_date = f'{current_year:04d}-{current_month:02d}'
+        target_month = f'{current_year}年{current_month:02d}月'
+        year_for_toggle = current_year
+        month_for_toggle = default_target_date
+
+    sort_by = query.get('sort_by', 'date_desc')
+    if sort_by == 'date_asc':
+        filtered_transactions.sort(key=lambda item: (item.date, item.id))
+    elif sort_by == 'amount_desc':
+        filtered_transactions.sort(key=lambda item: (item.amount, item.date), reverse=True)
+    elif sort_by == 'amount_asc':
+        filtered_transactions.sort(key=lambda item: (item.amount, item.date))
+    else:
+        sort_by = 'date_desc'
+        filtered_transactions.sort(key=lambda item: (item.date, item.id), reverse=True)
+
+    per_page_options = ['10', '20', '50', '100']
+    per_page_raw = query.get('per_page', '20')
+    per_page = int(per_page_raw) if per_page_raw in per_page_options else 20
+    paginator = Paginator(filtered_transactions, per_page)
+    transactions_page = paginator.get_page(query.get('page'))
+    total_income, total_expense, net_balance = _demo_expense_summary(filtered_transactions)
+    pagination_query = query.copy()
+    pagination_query.pop('page', None)
+    has_active_filters = bool(
+        search_query or filter_transaction_type or filter_major_category
+        or filter_categories or excluded_categories or filter_payment_methods
+        or excluded_payment_methods or filter_date
+    )
+
+    context = {
+        'view_mode': view_mode,
+        'transactions_page': transactions_page,
+        'transactions_count': len(filtered_transactions),
+        'total_income': total_income,
+        'total_expense': total_expense,
+        'net_balance': net_balance,
         'total_income_formatted': f'{total_income:,.0f}',
-        'total_expense_formatted':f'{total_expense:,.0f}',
-        'net_balance_formatted':  f'{net_balance:,.0f}',
-        'target_month':           '2026年3月',
-        'search_query':           '',
-        'user_categories':        categories,
-        'user_payment_methods':   payment_methods,
-        'filter_transaction_type':'',
-        'filter_major_category':  '',
-        'filter_category':        '',
-        'filter_payment_method':  '',
-        'default_target_date':    '2026-03',
-        'per_page':               20,
-        'per_page_options':       ['10', '20', '50', '100'],
-        'sort_by':                'date_desc',
-        'year_for_toggle':        2026,
-        'month_for_toggle':       '2026-03',
+        'total_expense_formatted': f'{total_expense:,.0f}',
+        'net_balance_formatted': f'{net_balance:,.0f}',
+        'target_month': target_month,
+        'search_query': search_query,
+        'user_categories': categories,
+        'user_payment_methods': payment_methods,
+        'filter_transaction_type': filter_transaction_type,
+        'filter_major_category': filter_major_category,
+        'filter_category': str(filter_categories[0]) if len(filter_categories) == 1 else '',
+        'filter_payment_method': str(filter_payment_methods[0]) if len(filter_payment_methods) == 1 else '',
+        'filter_categories': filter_categories,
+        'excluded_categories': excluded_categories,
+        'filter_payment_methods': filter_payment_methods,
+        'excluded_payment_methods': excluded_payment_methods,
+        'filter_date': filter_date,
+        'has_active_filters': has_active_filters,
+        'pagination_query': pagination_query.urlencode(),
+        'default_target_date': default_target_date,
+        'per_page': per_page,
+        'per_page_options': per_page_options,
+        'sort_by': sort_by,
+        'year_for_toggle': year_for_toggle,
+        'month_for_toggle': month_for_toggle,
     }
+    if view_mode == 'year':
+        context.update({
+            'current_year': current_year,
+            'year_range': year_range,
+            'monthly_chart_data_json': monthly_chart_data_json,
+        })
+        return context
+
+    category_data_json = _demo_category_chart_data(filtered_transactions, categories)
+    major_category_data_json = _demo_major_category_chart_data(filtered_transactions)
+    expense_data_json, balance_data_json = _demo_daily_chart_data(
+        filtered_transactions,
+        current_year,
+        current_month,
+    )
+    comparison_transactions = apply_filters(transactions, include_exact_date=False)
+    current_comparison = [
+        item for item in comparison_transactions
+        if item.date.year == current_year and item.date.month == current_month
+    ]
+    previous_target = date(current_year, current_month, 1) - timedelta(days=1)
+    previous_comparison = [
+        item for item in comparison_transactions
+        if item.date.year == previous_target.year and item.date.month == previous_target.month
+    ]
+    average_month_count = len({(item.date.year, item.date.month) for item in comparison_transactions})
+    current_summary = _demo_expense_summary(current_comparison)
+    previous_summary = _demo_expense_summary(previous_comparison)
+    all_summary = _demo_expense_summary(comparison_transactions)
+    divisor = average_month_count or 1
+    comparison_data_json = json.dumps({
+        'labels': [
+            f'{current_year}年{current_month}月',
+            f'{previous_target.year}年{previous_target.month}月',
+            '全期間平均',
+        ],
+        'datasets': [
+            {'label': '収入', 'data': [current_summary[0], previous_summary[0], all_summary[0] / divisor], 'backgroundColor': 'rgba(54, 162, 235, 0.7)'},
+            {'label': '支出', 'data': [current_summary[1], previous_summary[1], all_summary[1] / divisor], 'backgroundColor': CHART_COLORS['expense_bar']},
+            {'label': '収支', 'data': [current_summary[2], previous_summary[2], all_summary[2] / divisor], 'backgroundColor': 'rgba(40, 167, 69, 0.7)'},
+        ],
+    })
+    context.update({
+        'category_data_json': category_data_json,
+        'major_category_data_json': major_category_data_json,
+        'expense_data_json': expense_data_json,
+        'balance_data_json': balance_data_json,
+        'comparison_data_json': comparison_data_json,
+        'comparison_average_month_count': average_month_count,
+    })
+    return context
 
 
 # ---------------------------------------------------------------------------

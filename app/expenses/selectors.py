@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from django.db.models import Q, QuerySet, Sum
+from django.db.models.functions import TruncMonth
 from django.utils import timezone
 from django.utils.timezone import make_aware
 
@@ -56,10 +57,8 @@ _SORT_FIELD_MAP: dict[str, tuple[str, ...]] = {
 }
 
 
-def get_transactions(
-    user: AbstractBaseUser,
-    start_date: datetime,
-    end_date: datetime,
+def _apply_transaction_filters(
+    qs: QuerySet,
     *,
     search: str = '',
     transaction_type: str = '',
@@ -71,15 +70,8 @@ def get_transactions(
     payment_method_ids: list[int | str] | None = None,
     excluded_payment_method_ids: list[int | str] | None = None,
     exact_date: str = '',
-    sort_by: str = 'date_desc',
 ) -> QuerySet:
-    """フィルタリング済みの取引クエリセットを返す。"""
-    order_fields = _SORT_FIELD_MAP.get(sort_by, _SORT_FIELD_MAP['date_desc'])
-    qs = (
-        Transaction.objects.filter(user=user, date__range=(start_date, end_date))
-        .select_related('payment_method', 'category')
-        .order_by(*order_fields)
-    )
+    """日付範囲以外の共通取引フィルターを適用する。"""
     if search:
         qs = qs.filter(
             Q(purpose__icontains=search)
@@ -106,6 +98,42 @@ def get_transactions(
     if exact_date:
         qs = qs.filter(date__date=exact_date)
     return qs
+
+
+def get_transactions(
+    user: AbstractBaseUser,
+    start_date: datetime,
+    end_date: datetime,
+    *,
+    search: str = '',
+    transaction_type: str = '',
+    major_category: str = '',
+    category_id: str = '',
+    payment_method_id: str = '',
+    category_ids: list[int | str] | None = None,
+    excluded_category_ids: list[int | str] | None = None,
+    payment_method_ids: list[int | str] | None = None,
+    excluded_payment_method_ids: list[int | str] | None = None,
+    exact_date: str = '',
+    sort_by: str = 'date_desc',
+) -> QuerySet:
+    """フィルタリング済みの取引クエリセットを返す。"""
+    order_fields = _SORT_FIELD_MAP.get(sort_by, _SORT_FIELD_MAP['date_desc'])
+    qs = Transaction.objects.filter(user=user, date__range=(start_date, end_date))
+    qs = _apply_transaction_filters(
+        qs,
+        search=search,
+        transaction_type=transaction_type,
+        major_category=major_category,
+        category_id=category_id,
+        payment_method_id=payment_method_id,
+        category_ids=category_ids,
+        excluded_category_ids=excluded_category_ids,
+        payment_method_ids=payment_method_ids,
+        excluded_payment_method_ids=excluded_payment_method_ids,
+        exact_date=exact_date,
+    )
+    return qs.select_related('payment_method', 'category').order_by(*order_fields)
 
 
 def get_summary(transactions_qs: QuerySet) -> dict[str, Decimal | float]:
@@ -246,6 +274,99 @@ def build_monthly_chart_data(transactions_qs: QuerySet, year: int) -> str:
             {'label': '支出', 'data': expense_data, 'backgroundColor': CHART_COLORS['expense_bar']},
         ],
     })
+
+
+def build_month_comparison_chart_data(
+    user: AbstractBaseUser,
+    start_date: datetime,
+    end_date: datetime,
+    *,
+    search: str = '',
+    transaction_type: str = '',
+    major_category: str = '',
+    category_ids: list[int | str] | None = None,
+    excluded_category_ids: list[int | str] | None = None,
+    payment_method_ids: list[int | str] | None = None,
+    excluded_payment_method_ids: list[int | str] | None = None,
+    exact_date: str = '',
+    sort_by: str = 'date_desc',
+) -> tuple[str, int]:
+    """選択月・前月・記録月全体の月平均を比較するグラフデータを返す。"""
+    del exact_date  # 日付一点ではなく月単位で比較するため、完全一致日は適用しない。
+    previous_end = start_date - timedelta(microseconds=1)
+    previous_start = previous_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    filter_kwargs = {
+        'search': search,
+        'transaction_type': transaction_type,
+        'major_category': major_category,
+        'category_ids': category_ids,
+        'excluded_category_ids': excluded_category_ids,
+        'payment_method_ids': payment_method_ids,
+        'excluded_payment_method_ids': excluded_payment_method_ids,
+        'sort_by': sort_by,
+    }
+
+    current_summary = get_summary(
+        get_transactions(user, start_date, end_date, **filter_kwargs)
+    )
+    previous_summary = get_summary(
+        get_transactions(user, previous_start, previous_end, **filter_kwargs)
+    )
+
+    all_transactions = _apply_transaction_filters(
+        Transaction.objects.filter(user=user),
+        search=search,
+        transaction_type=transaction_type,
+        major_category=major_category,
+        category_ids=category_ids,
+        excluded_category_ids=excluded_category_ids,
+        payment_method_ids=payment_method_ids,
+        excluded_payment_method_ids=excluded_payment_method_ids,
+    )
+    average_month_count = (
+        all_transactions.annotate(month=TruncMonth('date'))
+        .values('month')
+        .distinct()
+        .count()
+    )
+    all_summary = get_summary(all_transactions)
+    divisor = average_month_count or 1
+    average_income = float(all_summary['total_income']) / divisor
+    average_expense = float(all_summary['total_expense']) / divisor
+    average_balance = float(all_summary['net_balance']) / divisor
+
+    current_income = float(current_summary['total_income'])
+    current_expense = float(current_summary['total_expense'])
+    previous_income = float(previous_summary['total_income'])
+    previous_expense = float(previous_summary['total_expense'])
+    return json.dumps({
+        'labels': [
+            f'{start_date.year}年{start_date.month}月',
+            f'{previous_start.year}年{previous_start.month}月',
+            '全期間平均',
+        ],
+        'datasets': [
+            {
+                'label': '収入',
+                'data': [current_income, previous_income, round(average_income, 2)],
+                'backgroundColor': 'rgba(54, 162, 235, 0.7)',
+            },
+            {
+                'label': '支出',
+                'data': [current_expense, previous_expense, round(average_expense, 2)],
+                'backgroundColor': CHART_COLORS['expense_bar'],
+            },
+            {
+                'label': '収支',
+                'data': [
+                    current_income - current_expense,
+                    previous_income - previous_expense,
+                    round(average_balance, 2),
+                ],
+                'backgroundColor': 'rgba(40, 167, 69, 0.7)',
+            },
+        ],
+    }), average_month_count
 
 
 def get_payment_methods(user: AbstractBaseUser) -> QuerySet:

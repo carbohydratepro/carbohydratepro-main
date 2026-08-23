@@ -16,9 +16,14 @@ def demo_home(request: HttpRequest) -> HttpResponse:
 
 
 def demo_expenses(request: HttpRequest) -> HttpResponse:
-    context = demo_data.get_expenses_context()
+    context = demo_data.get_expenses_context(request.GET)
     context['is_demo'] = True
-    return render(request, 'app/expenses/list.html', context)
+    template_name = (
+        'app/expenses/_transaction_list.html'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        else 'app/expenses/list.html'
+    )
+    return render(request, template_name, context)
 
 
 def demo_budget(request: HttpRequest) -> HttpResponse:

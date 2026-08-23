@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 from decimal import Decimal
 
 from django.test import Client, SimpleTestCase, TestCase
@@ -137,6 +138,57 @@ class ExpenseFeatureFixTest(TestCase):
         self.assertIn(str(self.food.pk), category_data["filterValues"])
         self.assertEqual(major_data["filterValues"], ["variable"])
         self.assertEqual(json.loads(balance_json)["datasets"][0]["label"], "収支")
+
+    def test_month_comparison_uses_previous_month_and_all_recorded_months(self) -> None:
+        start_date, end_date, _ = expense_selectors.get_date_range(
+            timezone.localdate().strftime("%Y-%m")
+        )
+        previous_month = (start_date - timedelta(days=1)).replace(day=1)
+        older_month = (previous_month - timedelta(days=1)).replace(day=1)
+
+        amounts_by_month = [
+            (start_date, Decimal("9000"), Decimal("0")),
+            (previous_month, Decimal("12000"), Decimal("6000")),
+            (older_month, Decimal("15000"), Decimal("9000")),
+        ]
+        for month_start, income, expense in amounts_by_month:
+            if income:
+                Transaction.objects.create(
+                    user=self.user,
+                    amount=income,
+                    date=month_start + timedelta(days=5),
+                    transaction_type="income",
+                    payment_method=self.card,
+                    purpose="比較用収入",
+                    major_category="variable",
+                    category=self.food,
+                    purpose_description="",
+                )
+            if expense:
+                Transaction.objects.create(
+                    user=self.user,
+                    amount=expense,
+                    date=month_start + timedelta(days=6),
+                    transaction_type="expense",
+                    payment_method=self.card,
+                    purpose="比較用支出",
+                    major_category="variable",
+                    category=self.food,
+                    purpose_description="",
+                )
+
+        comparison_json, month_count = expense_selectors.build_month_comparison_chart_data(
+            self.user,
+            start_date,
+            end_date,
+        )
+        comparison = json.loads(comparison_json)
+
+        self.assertEqual(month_count, 3)
+        self.assertEqual(comparison["labels"][1], f"{previous_month.year}年{previous_month.month}月")
+        self.assertEqual(comparison["datasets"][0]["data"], [9000.0, 12000.0, 12000.0])
+        self.assertEqual(comparison["datasets"][1]["data"], [3000.0, 6000.0, 6000.0])
+        self.assertEqual(comparison["datasets"][2]["data"], [6000.0, 6000.0, 6000.0])
 
     def test_new_settings_are_appended_and_can_be_reordered(self) -> None:
         response = self.client.post(

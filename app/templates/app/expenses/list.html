@@ -199,6 +199,31 @@
         </div>
     </div>
 
+    {% if view_mode == 'month' %}
+    <div class="d-flex justify-content-end mb-2">
+        <button type="button"
+                id="expenseComparisonToggle"
+                class="btn btn-outline-info btn-sm"
+                aria-controls="expenseComparisonPanel"
+                aria-expanded="false">
+            <i class="fas fa-chart-bar"></i> <span id="expenseComparisonToggleLabel">先月・全期間平均と比較</span>
+        </button>
+    </div>
+    <div id="expenseComparisonPanel" class="card mb-3" hidden>
+        <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center">
+            <h6 class="mb-0">月次比較</h6>
+            <small class="text-muted">
+                全期間平均: {% if comparison_average_month_count %}記録のある{{ comparison_average_month_count }}か月{% else %}対象データなし{% endif %}
+            </small>
+        </div>
+        <div class="card-body py-2">
+            <div style="height: 260px;">
+                <canvas id="expenseComparisonChart" class="chart-canvas" aria-label="選択月、先月、全期間平均の収入・支出・収支比較"></canvas>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     {% if view_mode == 'year' %}
     <!-- 年ビュー: 月別収支グラフ -->
     <div class="row mb-3">
@@ -271,6 +296,7 @@
     window.expenseData = JSON.parse('{{ expense_data_json|escapejs }}');
     window.balanceData = JSON.parse('{{ balance_data_json|escapejs }}');
     window.majorCategoryData = JSON.parse('{{ major_category_data_json|escapejs }}');
+    window.comparisonData = JSON.parse('{{ comparison_data_json|escapejs }}');
     {% endif %}
 </script>
 

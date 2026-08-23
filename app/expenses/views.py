@@ -218,6 +218,14 @@ def expenses_list(request: HttpRequest) -> HttpResponse:
     category_data_json = selectors.build_category_chart_data(transactions_qs)
     major_category_data_json = selectors.build_major_category_chart_data(transactions_qs)
     expense_data_json, balance_data_json = selectors.build_daily_chart_data(transactions_qs, date_range)
+    comparison_data_json, comparison_average_month_count = (
+        selectors.build_month_comparison_chart_data(
+            request.user,
+            start_date,
+            end_date,
+            **common_filter_kwargs,
+        )
+    )
 
     return _render_expenses_list(request, {
         'view_mode': 'month',
@@ -227,6 +235,8 @@ def expenses_list(request: HttpRequest) -> HttpResponse:
         'major_category_data_json': major_category_data_json,
         'expense_data_json': expense_data_json,
         'balance_data_json': balance_data_json,
+        'comparison_data_json': comparison_data_json,
+        'comparison_average_month_count': comparison_average_month_count,
         'total_income': summary['total_income'],
         'total_expense': summary['total_expense'],
         'net_balance': summary['net_balance'],

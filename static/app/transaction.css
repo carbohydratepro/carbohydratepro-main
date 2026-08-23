@@ -137,6 +137,10 @@
     white-space: nowrap;
 }
 
+.money-value.summary-money-value {
+    text-align: center;
+}
+
 .chart-filterable {
     cursor: pointer;
 }

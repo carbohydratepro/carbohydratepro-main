@@ -1,0 +1,85 @@
+{% load app_filters %}
+<!-- 取引一覧（グラフ絞り込み時の差し替え対象） -->
+{% if has_active_filters %}
+<div class="alert alert-info alert-sm py-2">
+    <i class="fas fa-filter"></i> 絞り込み結果: {{ transactions_count }}件
+</div>
+{% endif %}
+
+<ul class="list-group list-group-flush">
+    {% for transaction in transactions_page %}
+    <li class="list-group-item px-2 py-2 lp-delete-item bulk-item"
+        data-delete-url="{% url 'delete_expenses' transaction.id %}"
+        data-item-id="{{ transaction.id }}"
+        data-bulk-id="{{ transaction.id }}"
+        onclick="openEditModal({{ transaction.id }})"
+        style="cursor:pointer;">
+        <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
+        <div class="transaction-list-row">
+            <div class="transaction-list-main">
+                <input type="checkbox" class="bulk-check" aria-label="この取引を選択">
+                <small class="text-muted mr-2" style="white-space:nowrap;">{{ transaction.date|date:"m/d" }}</small>
+                <span class="text-truncate" title="{{ transaction.purpose }}" style="font-size:0.9rem;">{{ transaction.purpose|truncatechars:25 }}</span>
+                {% if transaction.purpose_description %}
+                <small class="text-muted ml-1 d-none d-sm-inline">— {{ transaction.purpose_description|truncatechars:20 }}</small>
+                {% endif %}
+            </div>
+            <small class="transaction-payment text-muted d-none d-sm-inline" title="{{ transaction.payment_method }}"><i class="fas fa-credit-card"></i> {{ transaction.payment_method|truncatechars:8 }}</small>
+            <span class="transaction-amount {{ transaction.amount|money_size_class }} font-weight-bold
+                    {% if transaction.transaction_type == 'income' %}text-primary
+                    {% elif transaction.transaction_type == 'expense' %}text-danger
+                    {% else %}text-secondary{% endif %}">
+                    {% if transaction.transaction_type == 'income' %}+{% elif transaction.transaction_type == 'expense' %}-{% endif %}¥{{ transaction.amount|comma_format }}
+                </span>
+        </div>
+    </li>
+    {% empty %}
+    <li class="list-group-item">
+        <div class="alert alert-info text-center py-2 mb-0">
+            <i class="fas fa-info-circle"></i>
+            {% if has_active_filters %}
+                検索・絞り込み条件に一致する取引がありません。
+            {% else %}
+                この期間の取引はありません。
+            {% endif %}
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+
+{% if transactions_page.paginator.num_pages > 1 %}
+<nav aria-label="取引ページネーション">
+    <ul class="pagination justify-content-center">
+        {% if transactions_page.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page=1">&laquo; 最初</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ transactions_page.previous_page_number }}">前へ</a>
+        </li>
+        {% endif %}
+
+        {% for num in transactions_page.paginator.page_range %}
+            {% if transactions_page.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > transactions_page.number|add:'-3' and num < transactions_page.number|add:'3' %}
+            <li class="page-item"><a class="page-link" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ num }}">{{ num }}</a></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if transactions_page.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ transactions_page.next_page_number }}">次へ</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ transactions_page.paginator.num_pages }}">最後 &raquo;</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+<div class="text-center mt-2">
+    <small class="text-muted">
+        {{ transactions_page.start_index }} - {{ transactions_page.end_index }} / {{ transactions_page.paginator.count }}件
+    </small>
+</div>
+{% endif %}

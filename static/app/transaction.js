@@ -1,8 +1,9 @@
 "use strict";
 // 取引管理用JavaScript
-function navigateWithExpenseFilter(name, value) {
+let expenseListAbortController = null;
+function buildExpenseFilterUrl(name, value) {
     if (!value || value === 'データなし')
-        return;
+        return null;
     const url = new URL(window.location.href);
     url.searchParams.delete('page');
     if (name === 'category' && value.startsWith('exclude:')) {
@@ -11,8 +12,7 @@ function navigateWithExpenseFilter(name, value) {
         value.slice('exclude:'.length).split(',').filter(Boolean).forEach(categoryId => {
             url.searchParams.append('exclude_category', categoryId);
         });
-        window.location.assign(url.toString());
-        return;
+        return url;
     }
     if (name === 'category')
         url.searchParams.delete('exclude_category');
@@ -20,7 +20,80 @@ function navigateWithExpenseFilter(name, value) {
         url.searchParams.delete('exclude_payment_method');
     url.searchParams.delete(name);
     url.searchParams.append(name, value);
-    window.location.assign(url.toString());
+    return url;
+}
+function syncExpenseFilterForm(url) {
+    const form = document.getElementById('expenseSearchFilterForm');
+    if (!(form instanceof HTMLFormElement))
+        return;
+    const repeatedFields = [
+        'category',
+        'exclude_category',
+        'payment_method',
+        'exclude_payment_method',
+    ];
+    repeatedFields.forEach(name => {
+        const selected = new Set(url.searchParams.getAll(name));
+        form.querySelectorAll(`input[name="${name}"]`).forEach(input => {
+            input.checked = selected.has(input.value);
+        });
+    });
+    ['major_category', 'transaction_type', 'date', 'target_date', 'view_mode'].forEach(name => {
+        var _a;
+        const field = form.elements.namedItem(name);
+        if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
+            field.value = (_a = url.searchParams.get(name)) !== null && _a !== void 0 ? _a : '';
+        }
+    });
+}
+async function updateExpenseList(url) {
+    var _a;
+    const listRegion = document.getElementById('transactionListRegion');
+    if (!(listRegion instanceof HTMLElement))
+        return;
+    const bulkContainer = document.querySelector('[data-bulk-container]');
+    if (bulkContainer === null || bulkContainer === void 0 ? void 0 : bulkContainer.classList.contains('bulk-mode')) {
+        (_a = bulkContainer.querySelector('[data-bulk-toggle]')) === null || _a === void 0 ? void 0 : _a.click();
+    }
+    expenseListAbortController === null || expenseListAbortController === void 0 ? void 0 : expenseListAbortController.abort();
+    const controller = new AbortController();
+    expenseListAbortController = controller;
+    listRegion.setAttribute('aria-busy', 'true');
+    try {
+        const response = await fetch(url.toString(), {
+            headers: {
+                'Accept': 'text/html',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            signal: controller.signal,
+        });
+        if (!response.ok || response.redirected) {
+            throw new Error(`ステータス: ${response.status}`);
+        }
+        const html = await response.text();
+        listRegion.innerHTML = html;
+        syncExpenseFilterForm(url);
+        window.history.replaceState(null, '', url.toString());
+        initLongPressDelete(listRegion);
+        initTransactionDoubleClick(listRegion);
+    }
+    catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError')
+            return;
+        console.error('Expense list filter error:', error);
+        showToast('取引一覧の絞り込みに失敗しました。', 'error');
+    }
+    finally {
+        if (expenseListAbortController === controller) {
+            listRegion.removeAttribute('aria-busy');
+            expenseListAbortController = null;
+        }
+    }
+}
+function filterExpenseList(name, value) {
+    const url = buildExpenseFilterUrl(name, value);
+    if (url)
+        void updateExpenseList(url);
 }
 function chartFilterHandler(name, data) {
     return (_event, elements) => {
@@ -29,7 +102,7 @@ function chartFilterHandler(name, data) {
         if (index === undefined)
             return;
         const value = (_d = (_c = (_b = data.filterValues) === null || _b === void 0 ? void 0 : _b[index]) !== null && _c !== void 0 ? _c : data.labels[index]) !== null && _d !== void 0 ? _d : '';
-        navigateWithExpenseFilter(name, value);
+        filterExpenseList(name, value);
     };
 }
 // エラーメッセージを表示する関数
@@ -481,7 +554,7 @@ function initializeYearlyCharts() {
                 url.searchParams.set('view_mode', 'month');
                 url.searchParams.set('target_date', `${year}-${month}`);
                 url.searchParams.delete('page');
-                window.location.assign(url.toString());
+                void updateExpenseList(url);
             },
             scales: {
                 x: { type: 'category' },
@@ -507,8 +580,8 @@ function initializeExpenseFilters() {
         });
     });
 }
-function initTransactionDoubleClick() {
-    document.querySelectorAll('.lp-delete-item[data-item-id]').forEach(card => {
+function initTransactionDoubleClick(container = document) {
+    container.querySelectorAll('.lp-delete-item[data-item-id]').forEach(card => {
         var _a;
         const transactionId = (_a = card.dataset['itemId']) !== null && _a !== void 0 ? _a : '';
         if (!transactionId)

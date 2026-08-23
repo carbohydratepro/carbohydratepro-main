@@ -94,6 +94,29 @@ class ExpenseFeatureFixTest(TestCase):
         self.assertContains(response, "電車")
         self.assertNotContains(response, "食材")
 
+    def test_chart_filter_request_returns_only_filtered_transaction_list(self) -> None:
+        response = self.client.get(
+            reverse("expense_list"),
+            {
+                "target_date": timezone.localdate().strftime("%Y-%m"),
+                "category": self.food.pk,
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "app/expenses/_transaction_list.html")
+        self.assertTemplateNotUsed(response, "app/expenses/list.html")
+        self.assertContains(response, "外食")
+        self.assertContains(response, "食材")
+        self.assertNotContains(response, "電車")
+        self.assertNotContains(response, "categoryPieChart")
+
+    def test_summary_amounts_have_center_alignment_class(self) -> None:
+        response = self.client.get(reverse("expense_list"))
+
+        self.assertContains(response, "summary-money-value", count=3)
+
     def test_required_choice_fields_do_not_show_blank_option(self) -> None:
         transaction_form = TransactionForm(user=self.user)
         recurring_form = RecurringPaymentForm(user=self.user)
@@ -201,6 +224,15 @@ class ScheduleFeatureFixTest(TestCase):
         self.assertContains(response, "仕事を編集")
         self.assertContains(response, "仕事を既定にする")
         self.assertContains(response, "保存")
+
+    def test_week_start_uses_native_labelled_radio_controls(self) -> None:
+        response = self.client.get(reverse("task_settings"))
+
+        self.assertContains(response, 'id="week-start-sunday"')
+        self.assertContains(response, 'for="week-start-sunday"')
+        self.assertContains(response, 'id="week-start-monday"')
+        self.assertContains(response, 'for="week-start-monday"')
+        self.assertNotContains(response, 'data-toggle="buttons"')
 
 
 class ResponsiveAndDashboardFixTest(SimpleTestCase):

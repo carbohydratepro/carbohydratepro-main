@@ -11,8 +11,10 @@ interface NiceScale {
   step: number;
 }
 
-function navigateWithExpenseFilter(name: string, value: string): void {
-    if (!value || value === 'データなし') return;
+let expenseListAbortController: AbortController | null = null;
+
+function buildExpenseFilterUrl(name: string, value: string): URL | null {
+    if (!value || value === 'データなし') return null;
     const url = new URL(window.location.href);
     url.searchParams.delete('page');
     if (name === 'category' && value.startsWith('exclude:')) {
@@ -21,14 +23,87 @@ function navigateWithExpenseFilter(name: string, value: string): void {
         value.slice('exclude:'.length).split(',').filter(Boolean).forEach(categoryId => {
             url.searchParams.append('exclude_category', categoryId);
         });
-        window.location.assign(url.toString());
-        return;
+        return url;
     }
     if (name === 'category') url.searchParams.delete('exclude_category');
     if (name === 'payment_method') url.searchParams.delete('exclude_payment_method');
     url.searchParams.delete(name);
     url.searchParams.append(name, value);
-    window.location.assign(url.toString());
+    return url;
+}
+
+function syncExpenseFilterForm(url: URL): void {
+    const form = document.getElementById('expenseSearchFilterForm');
+    if (!(form instanceof HTMLFormElement)) return;
+
+    const repeatedFields = [
+        'category',
+        'exclude_category',
+        'payment_method',
+        'exclude_payment_method',
+    ];
+    repeatedFields.forEach(name => {
+        const selected = new Set(url.searchParams.getAll(name));
+        form.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`).forEach(input => {
+            input.checked = selected.has(input.value);
+        });
+    });
+
+    ['major_category', 'transaction_type', 'date', 'target_date', 'view_mode'].forEach(name => {
+        const field = form.elements.namedItem(name);
+        if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
+            field.value = url.searchParams.get(name) ?? '';
+        }
+    });
+}
+
+async function updateExpenseList(url: URL): Promise<void> {
+    const listRegion = document.getElementById('transactionListRegion');
+    if (!(listRegion instanceof HTMLElement)) return;
+
+    const bulkContainer = document.querySelector<HTMLElement>('[data-bulk-container]');
+    if (bulkContainer?.classList.contains('bulk-mode')) {
+        bulkContainer.querySelector<HTMLElement>('[data-bulk-toggle]')?.click();
+    }
+
+    expenseListAbortController?.abort();
+    const controller = new AbortController();
+    expenseListAbortController = controller;
+    listRegion.setAttribute('aria-busy', 'true');
+
+    try {
+        const response = await fetch(url.toString(), {
+            headers: {
+                'Accept': 'text/html',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            signal: controller.signal,
+        });
+        if (!response.ok || response.redirected) {
+            throw new Error(`ステータス: ${response.status}`);
+        }
+
+        const html = await response.text();
+        listRegion.innerHTML = html;
+        syncExpenseFilterForm(url);
+        window.history.replaceState(null, '', url.toString());
+        initLongPressDelete(listRegion);
+        initTransactionDoubleClick(listRegion);
+    } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        console.error('Expense list filter error:', error);
+        showToast('取引一覧の絞り込みに失敗しました。', 'error');
+    } finally {
+        if (expenseListAbortController === controller) {
+            listRegion.removeAttribute('aria-busy');
+            expenseListAbortController = null;
+        }
+    }
+}
+
+function filterExpenseList(name: string, value: string): void {
+    const url = buildExpenseFilterUrl(name, value);
+    if (url) void updateExpenseList(url);
 }
 
 function chartFilterHandler(name: string, data: ChartData): (event: unknown, elements: ChartElement[]) => void {
@@ -36,7 +111,7 @@ function chartFilterHandler(name: string, data: ChartData): (event: unknown, ele
         const index = elements[0]?.index;
         if (index === undefined) return;
         const value = data.filterValues?.[index] ?? data.labels[index] ?? '';
-        navigateWithExpenseFilter(name, value);
+        filterExpenseList(name, value);
     };
 }
 
@@ -520,7 +595,7 @@ function initializeYearlyCharts(): void {
                 url.searchParams.set('view_mode', 'month');
                 url.searchParams.set('target_date', `${year}-${month}`);
                 url.searchParams.delete('page');
-                window.location.assign(url.toString());
+                void updateExpenseList(url);
             },
             scales: {
                 x: { type: 'category' },
@@ -545,8 +620,8 @@ function initializeExpenseFilters(): void {
     });
 }
 
-function initTransactionDoubleClick(): void {
-    document.querySelectorAll<HTMLElement>('.lp-delete-item[data-item-id]').forEach(card => {
+function initTransactionDoubleClick(container: ParentNode = document): void {
+    container.querySelectorAll<HTMLElement>('.lp-delete-item[data-item-id]').forEach(card => {
         const transactionId = card.dataset['itemId'] ?? '';
         if (!transactionId) return;
 

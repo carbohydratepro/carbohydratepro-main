@@ -48,6 +48,19 @@ def _selected_date(request: HttpRequest) -> str:
         return ''
 
 
+def _render_expenses_list(
+    request: HttpRequest,
+    context: dict[str, object],
+) -> HttpResponse:
+    """グラフ絞り込み時は取引一覧だけを返す。"""
+    template_name = (
+        'app/expenses/_transaction_list.html'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        else 'app/expenses/list.html'
+    )
+    return render(request, template_name, context)
+
+
 @login_required
 def budget_view(request: HttpRequest) -> HttpResponse:
     """予算画面。全体・カテゴリ別の月予算を設定し、当月の消化状況を表示する。"""
@@ -169,7 +182,7 @@ def expenses_list(request: HttpRequest) -> HttpResponse:
         current_month_str = dt.now().strftime('%Y-%m')
         year_range = list(range(current_year - 5, current_year + 3))
 
-        return render(request, 'app/expenses/list.html', {
+        return _render_expenses_list(request, {
             'view_mode': 'year',
             'current_year': current_year,
             'year_range': year_range,
@@ -206,7 +219,7 @@ def expenses_list(request: HttpRequest) -> HttpResponse:
     major_category_data_json = selectors.build_major_category_chart_data(transactions_qs)
     expense_data_json, balance_data_json = selectors.build_daily_chart_data(transactions_qs, date_range)
 
-    return render(request, 'app/expenses/list.html', {
+    return _render_expenses_list(request, {
         'view_mode': 'month',
         'transactions_page': transactions_page,
         'transactions_count': transactions_count,

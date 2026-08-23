@@ -50,7 +50,10 @@ FAKE_AWS
 set -euo pipefail
 case " $* " in
     *' --vacuum-'*) touch "${FAKE_JOURNAL_STATE}/vacuumed" ;;
-    *) printf '2026-08-23T00:00:00+0000 test journal entry\n' ;;
+    *)
+        printf '%s\n' "$*" >> "${FAKE_JOURNAL_STATE}/calls"
+        printf '2026-08-23T00:00:00+0000 test journal entry\n'
+        ;;
 esac
 FAKE_JOURNALCTL
     chmod +x "${case_dir}/bin/aws" "${case_dir}/bin/journalctl"
@@ -104,6 +107,8 @@ run_archive "${catchup_case}" >/dev/null
 [[ -s "${catchup_case}/state/bootstrap.done" ]]
 [[ "$(<"${catchup_case}/state/next-hour-epoch")" == '1787443200' ]]
 [[ -e "${catchup_case}/journal-state/vacuumed" ]]
+rg -Fq -- '--since @1787439600 --until @1787443200' \
+    "${catchup_case}/journal-state/calls"
 
 failure_case="$(setup_case failure)"
 set +e

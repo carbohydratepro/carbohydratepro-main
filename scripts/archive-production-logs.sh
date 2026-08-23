@@ -176,8 +176,8 @@ archive_completed_journal_hours() {
 
         CURRENT_STAGE="system journal ${start_text}～${end_text}のアーカイブ"
         "${JOURNALCTL_BIN}" \
-            --since "${start_text}" \
-            --until "${end_text}" \
+            --since "@${cursor}" \
+            --until "@${next_cursor}" \
             --no-pager \
             --output=short-iso | gzip -6 > "${archive_file}"
         upload_and_verify "${archive_file}" "${object_key}"

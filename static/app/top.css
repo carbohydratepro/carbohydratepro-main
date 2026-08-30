@@ -22,3 +22,30 @@
 .update-item hr {
     border-top: 1px solid #dee2e6;
 }
+
+@media (max-width: 575.98px) {
+    .container > .text-center.my-4 {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 1rem !important;
+        margin-top: 0.5rem !important;
+    }
+
+    .container > .text-center.my-4 .btn {
+        margin: 0 !important;
+        width: 100%;
+    }
+
+    .container > .text-center.my-4 p {
+        margin-bottom: 0.75rem !important;
+    }
+
+    .container .card.text-center .card-body {
+        padding: 0.75rem 0.5rem !important;
+    }
+
+    .container .card.text-center .fa-2x {
+        font-size: 1.35rem;
+        margin-bottom: 0.4rem !important;
+    }
+}

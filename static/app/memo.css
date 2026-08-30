@@ -65,3 +65,31 @@
     font-size: 0.85rem;
     line-height: 1.4;
 }
+
+@media (max-width: 767.98px) {
+    .memo-card {
+        margin-bottom: 0;
+    }
+
+    .memo-card .card-body {
+        padding: 0.65rem 0.75rem !important;
+    }
+
+    .memo-card .card-title {
+        -webkit-line-clamp: 1;
+        font-size: 0.9rem;
+    }
+
+    .memo-preview {
+        min-height: 0 !important;
+        padding: 0.5rem !important;
+    }
+
+    .memo-preview .card-text {
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        display: -webkit-box;
+        margin-bottom: 0.25rem !important;
+        overflow: hidden;
+    }
+}

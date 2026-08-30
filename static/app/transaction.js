@@ -354,17 +354,11 @@ function initializeLineChart(canvasId, balanceData, maxTicksX, maxTicksY, hoverR
     const canvas = document.getElementById(canvasId);
     if (!canvas)
         return;
-    if (canvasId.includes('Mobile')) {
-        if (canvas.parentElement)
-            canvas.parentElement.style.height = '300px';
-        canvas.style.height = '300px';
-        canvas.height = 300;
-    }
     const config = createLineChartConfig(balanceData, maxTicksX, maxTicksY, hoverRadius);
     const ctx = canvas.getContext('2d');
     if (!ctx)
         return;
-    const chart = new Chart(ctx, config);
+    const chart = registerExpenseChart(new Chart(ctx, config));
     const originalData = balanceData.datasets[0].data;
     const minValue = Math.min(...originalData);
     const maxValue = Math.max(...originalData);
@@ -404,6 +398,21 @@ function toggleWeekendColor() {
 }
 // 棒グラフのチャートインスタンスを保持
 const activeBarCharts = [];
+const activeExpenseCharts = [];
+function registerExpenseChart(chart) {
+    activeExpenseCharts.push(chart);
+    return chart;
+}
+function initializeExpenseChartCollapses() {
+    document.querySelectorAll('.expense-chart-collapse').forEach(panel => {
+        $(panel).on('shown.bs.collapse', () => {
+            activeExpenseCharts.forEach(chart => {
+                if (panel.contains(chart.canvas))
+                    chart.resize();
+            });
+        });
+    });
+}
 let expenseComparisonChart = null;
 const EXPENSE_COMPARISON_STORAGE_KEY = 'expenseComparisonVisible';
 function initializeExpenseComparisonChart() {
@@ -413,7 +422,7 @@ function initializeExpenseComparisonChart() {
     const ctx = canvas === null || canvas === void 0 ? void 0 : canvas.getContext('2d');
     if (!ctx)
         return;
-    expenseComparisonChart = new Chart(ctx, {
+    expenseComparisonChart = registerExpenseChart(new Chart(ctx, {
         type: 'bar',
         data: comparisonData,
         options: {
@@ -438,7 +447,7 @@ function initializeExpenseComparisonChart() {
                 y: { beginAtZero: true },
             },
         },
-    });
+    }));
 }
 function setExpenseComparisonVisible(visible) {
     const panel = document.getElementById('expenseComparisonPanel');
@@ -478,7 +487,7 @@ function initializeExpenseCharts() {
     if (ctxPie) {
         const pieCtx = ctxPie.getContext('2d');
         if (pieCtx) {
-            new Chart(pieCtx, {
+            registerExpenseChart(new Chart(pieCtx, {
                 type: 'pie',
                 data: categoryData,
                 options: {
@@ -490,7 +499,26 @@ function initializeExpenseCharts() {
                     },
                     onClick: chartFilterHandler('category', categoryData),
                 },
-            });
+            }));
+        }
+    }
+    const ctxPiePC = document.getElementById('categoryPieChartPC');
+    if (ctxPiePC) {
+        const piePCCtx = ctxPiePC.getContext('2d');
+        if (piePCCtx) {
+            registerExpenseChart(new Chart(piePCCtx, {
+                type: 'pie',
+                data: categoryData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'カテゴリ別割合' },
+                        legend: { display: false },
+                    },
+                    onClick: chartFilterHandler('category', categoryData),
+                },
+            }));
         }
     }
     // 棒グラフ用データを土日色付け状態に応じて準備
@@ -524,20 +552,16 @@ function initializeExpenseCharts() {
     if (ctxBar) {
         const barCtx = ctxBar.getContext('2d');
         if (barCtx) {
-            const chart = new Chart(barCtx, createBarConfig(expenseDataWithColors, 10, 5));
+            const chart = registerExpenseChart(new Chart(barCtx, createBarConfig(expenseDataWithColors, 10, 5)));
             activeBarCharts.push(chart);
         }
     }
     // モバイル用棒グラフ
     const ctxBarMobile = document.getElementById('expenseBarChartMobile');
     if (ctxBarMobile) {
-        if (ctxBarMobile.parentElement)
-            ctxBarMobile.parentElement.style.height = '250px';
-        ctxBarMobile.style.height = '250px';
-        ctxBarMobile.height = 250;
         const barMobileCtx = ctxBarMobile.getContext('2d');
         if (barMobileCtx) {
-            const chart = new Chart(barMobileCtx, createBarConfig(expenseDataWithColors, 8, 4));
+            const chart = registerExpenseChart(new Chart(barMobileCtx, createBarConfig(expenseDataWithColors, 8, 4)));
             activeBarCharts.push(chart);
         }
     }
@@ -560,14 +584,14 @@ function initializeExpenseCharts() {
     if (ctxMajorCategory) {
         const majorCtx = ctxMajorCategory.getContext('2d');
         if (majorCtx)
-            new Chart(majorCtx, majorCategoryConfig);
+            registerExpenseChart(new Chart(majorCtx, majorCategoryConfig));
     }
     // PC用メインカテゴリ
     const ctxMajorCategoryPC = document.getElementById('majorCategoryChartPC');
     if (ctxMajorCategoryPC) {
         const majorPCCtx = ctxMajorCategoryPC.getContext('2d');
         if (majorPCCtx)
-            new Chart(majorPCCtx, majorCategoryConfig);
+            registerExpenseChart(new Chart(majorPCCtx, majorCategoryConfig));
     }
     // PC用折れ線グラフ
     initializeLineChart('balanceLineChart', balanceData, 10, 5, 6, 5);
@@ -586,7 +610,7 @@ function initializeYearlyCharts() {
     if (!ctx)
         return;
     const year = (_a = canvas.dataset['year']) !== null && _a !== void 0 ? _a : '';
-    new Chart(ctx, {
+    registerExpenseChart(new Chart(ctx, {
         type: 'bar',
         data: monthlyData,
         options: {
@@ -626,7 +650,7 @@ function initializeYearlyCharts() {
                 },
             },
         },
-    });
+    }));
 }
 // フィルター変更時の処理（filterFormはonchange="this.form.submit()"で処理するため不要）
 function initializeExpenseFilters() {
@@ -677,6 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     initializeExpenseFilters();
     initializeExpenseComparisonToggle();
+    initializeExpenseChartCollapses();
     initLongPressDelete();
     initTransactionDoubleClick();
 });

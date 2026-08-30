@@ -380,16 +380,10 @@ function initializeLineChart(
     const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
     if (!canvas) return;
 
-    if (canvasId.includes('Mobile')) {
-        if (canvas.parentElement) canvas.parentElement.style.height = '300px';
-        canvas.style.height = '300px';
-        canvas.height = 300;
-    }
-
     const config = createLineChartConfig(balanceData, maxTicksX, maxTicksY, hoverRadius);
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const chart = new Chart(ctx, config);
+    const chart = registerExpenseChart(new Chart(ctx, config));
 
     const originalData = balanceData.datasets[0].data;
     const minValue = Math.min(...originalData);
@@ -438,6 +432,22 @@ function toggleWeekendColor(): void {
 
 // 棒グラフのチャートインスタンスを保持
 const activeBarCharts: Chart[] = [];
+const activeExpenseCharts: Chart[] = [];
+
+function registerExpenseChart(chart: Chart): Chart {
+    activeExpenseCharts.push(chart);
+    return chart;
+}
+
+function initializeExpenseChartCollapses(): void {
+    document.querySelectorAll<HTMLElement>('.expense-chart-collapse').forEach(panel => {
+        $(panel).on('shown.bs.collapse', () => {
+            activeExpenseCharts.forEach(chart => {
+                if (panel.contains(chart.canvas)) chart.resize();
+            });
+        });
+    });
+}
 
 let expenseComparisonChart: Chart | null = null;
 const EXPENSE_COMPARISON_STORAGE_KEY = 'expenseComparisonVisible';
@@ -448,7 +458,7 @@ function initializeExpenseComparisonChart(): void {
     const ctx = canvas?.getContext('2d');
     if (!ctx) return;
 
-    expenseComparisonChart = new Chart(ctx, {
+    expenseComparisonChart = registerExpenseChart(new Chart(ctx, {
         type: 'bar',
         data: comparisonData,
         options: {
@@ -472,7 +482,7 @@ function initializeExpenseComparisonChart(): void {
                 y: { beginAtZero: true },
             },
         },
-    });
+    }));
 }
 
 function setExpenseComparisonVisible(visible: boolean): void {
@@ -513,7 +523,7 @@ function initializeExpenseCharts(): void {
     if (ctxPie) {
         const pieCtx = ctxPie.getContext('2d');
         if (pieCtx) {
-            new Chart(pieCtx, {
+            registerExpenseChart(new Chart(pieCtx, {
                 type: 'pie',
                 data: categoryData,
                 options: {
@@ -525,7 +535,27 @@ function initializeExpenseCharts(): void {
                     },
                     onClick: chartFilterHandler('category', categoryData),
                 },
-            });
+            }));
+        }
+    }
+
+    const ctxPiePC = document.getElementById('categoryPieChartPC') as HTMLCanvasElement | null;
+    if (ctxPiePC) {
+        const piePCCtx = ctxPiePC.getContext('2d');
+        if (piePCCtx) {
+            registerExpenseChart(new Chart(piePCCtx, {
+                type: 'pie',
+                data: categoryData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'カテゴリ別割合' },
+                        legend: { display: false },
+                    },
+                    onClick: chartFilterHandler('category', categoryData),
+                },
+            }));
         }
     }
 
@@ -565,7 +595,7 @@ function initializeExpenseCharts(): void {
     if (ctxBar) {
         const barCtx = ctxBar.getContext('2d');
         if (barCtx) {
-            const chart = new Chart(barCtx, createBarConfig(expenseDataWithColors, 10, 5));
+            const chart = registerExpenseChart(new Chart(barCtx, createBarConfig(expenseDataWithColors, 10, 5)));
             activeBarCharts.push(chart);
         }
     }
@@ -573,12 +603,9 @@ function initializeExpenseCharts(): void {
     // モバイル用棒グラフ
     const ctxBarMobile = document.getElementById('expenseBarChartMobile') as HTMLCanvasElement | null;
     if (ctxBarMobile) {
-        if (ctxBarMobile.parentElement) ctxBarMobile.parentElement.style.height = '250px';
-        ctxBarMobile.style.height = '250px';
-        ctxBarMobile.height = 250;
         const barMobileCtx = ctxBarMobile.getContext('2d');
         if (barMobileCtx) {
-            const chart = new Chart(barMobileCtx, createBarConfig(expenseDataWithColors, 8, 4));
+            const chart = registerExpenseChart(new Chart(barMobileCtx, createBarConfig(expenseDataWithColors, 8, 4)));
             activeBarCharts.push(chart);
         }
     }
@@ -602,14 +629,14 @@ function initializeExpenseCharts(): void {
     const ctxMajorCategory = document.getElementById('majorCategoryChart') as HTMLCanvasElement | null;
     if (ctxMajorCategory) {
         const majorCtx = ctxMajorCategory.getContext('2d');
-        if (majorCtx) new Chart(majorCtx, majorCategoryConfig);
+        if (majorCtx) registerExpenseChart(new Chart(majorCtx, majorCategoryConfig));
     }
 
     // PC用メインカテゴリ
     const ctxMajorCategoryPC = document.getElementById('majorCategoryChartPC') as HTMLCanvasElement | null;
     if (ctxMajorCategoryPC) {
         const majorPCCtx = ctxMajorCategoryPC.getContext('2d');
-        if (majorPCCtx) new Chart(majorPCCtx, majorCategoryConfig);
+        if (majorPCCtx) registerExpenseChart(new Chart(majorPCCtx, majorCategoryConfig));
     }
 
     // PC用折れ線グラフ
@@ -629,7 +656,7 @@ function initializeYearlyCharts(): void {
     if (!ctx) return;
 
     const year = canvas.dataset['year'] ?? '';
-    new Chart(ctx, {
+    registerExpenseChart(new Chart(ctx, {
         type: 'bar',
         data: monthlyData,
         options: {
@@ -666,7 +693,7 @@ function initializeYearlyCharts(): void {
                 },
             },
         },
-    });
+    }));
 }
 
 // フィルター変更時の処理（filterFormはonchange="this.form.submit()"で処理するため不要）
@@ -714,6 +741,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     initializeExpenseFilters();
     initializeExpenseComparisonToggle();
+    initializeExpenseChartCollapses();
     initLongPressDelete();
     initTransactionDoubleClick();
 });

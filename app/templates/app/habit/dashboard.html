@@ -182,7 +182,7 @@
               </div>
               <div class="coeff-slider-wrap">
                 <span class="coeff-slider-label">係数: <span class="coeff-val">{% if item.is_positive %}+{% else %}-{% endif %}{{ item.default_coefficient }}</span></span>
-                <input type="range" class="coeff-slider" min="1" max="10" step="1" value="{{ item.default_coefficient }}" data-positive="{{ item.is_positive|lower }}">
+                <input type="range" class="coeff-slider" min="1" max="10" step="1" value="{{ item.default_coefficient }}" data-positive="{{ item.is_positive|lower }}" aria-label="{{ item.title }}の係数">
               </div>
             </div>
             {% endif %}{% endfor %}
@@ -211,7 +211,7 @@
               </div>
               <div class="coeff-slider-wrap">
                 <span class="coeff-slider-label">係数: <span class="coeff-val">{% if item.is_positive %}+{% else %}-{% endif %}{{ item.used_coefficient }}</span></span>
-                <input type="range" class="coeff-slider" min="1" max="10" step="1" value="{{ item.used_coefficient }}" data-positive="{{ item.is_positive|lower }}">
+                <input type="range" class="coeff-slider" min="1" max="10" step="1" value="{{ item.used_coefficient }}" data-positive="{{ item.is_positive|lower }}" aria-label="{{ item.title }}の係数">
               </div>
             </div>
             {% endif %}{% endfor %}

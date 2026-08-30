@@ -161,12 +161,43 @@
 }
 
 @media (max-width: 575.98px) {
+  .cooking-card-photo {
+    aspect-ratio: 16 / 9;
+  }
+
+  .cooking-card .card-body {
+    padding: 0.75rem;
+  }
+
+  .cooking-ingredients-preview {
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    margin-bottom: 0.65rem !important;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .cooking-stat-number {
+    font-size: 1.8rem;
+  }
+
+  .cooking-today-button {
+    min-height: 64px;
+  }
+
   .cooking-notebook {
+    min-height: 300px;
     padding: 0.75rem 0.75rem 0.75rem 1.5rem;
   }
 
   .cooking-notebook-body {
+    min-height: 240px;
     padding: 1rem;
+  }
+
+  .cooking-step-text {
+    min-height: 130px;
   }
 
   .cooking-gallery {

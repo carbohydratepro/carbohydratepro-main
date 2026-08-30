@@ -14,15 +14,22 @@
 
 {% block content %}
 <div class="container mt-2" data-bulk-container data-bulk-url="{% url 'bulk_delete_shopping_items' %}">
-    <div class="d-flex justify-content-between align-items-center mb-1">
+    <div class="page-heading-row">
         <h4 class="mb-0"><i class="fas fa-shopping-cart mr-1"></i> 買い物リスト <button type="button" class="btn btn-link btn-sm p-0" aria-label="説明を表示" data-toggle="collapse" data-target="#shoppingDescription" aria-expanded="false"><i class="fas fa-info-circle text-info"></i></button></h4>
-        <div class="d-flex">
-            <button type="button" class="btn btn-outline-secondary btn-sm mr-2 bulk-toggle-btn" data-bulk-toggle aria-pressed="false">
-                <i class="fas fa-check-square"></i> 選択
-            </button>
+        <div class="page-actions">
             <button onclick="openCreateShoppingModal()" class="btn btn-primary btn-sm">
-                <i class="fas fa-plus"></i> 追加
+                <i class="fas fa-plus"></i> <span class="mobile-action-label">追加</span>
             </button>
+            <div class="dropdown page-actions-menu">
+                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" aria-label="買い物リストのその他の操作">
+                    <i class="fas fa-ellipsis-h" aria-hidden="true"></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right">
+                    <button type="button" class="dropdown-item page-secondary-action bulk-toggle-btn" data-bulk-toggle aria-pressed="false">
+                        <i class="fas fa-check-square"></i> 選択
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
     <div class="collapse mb-2" id="shoppingDescription">
@@ -137,7 +144,8 @@
                     <div class="d-flex align-items-center flex-shrink-0 mt-1">
                         <small class="text-muted mr-1" style="white-space: nowrap;">残数</small>
                         <button class="btn btn-sm btn-outline-secondary py-0 px-2"
-                                onclick="updateCount({{ item.id }}, 'remaining', 'decrease')">
+                                onclick="updateCount({{ item.id }}, 'remaining', 'decrease')"
+                                aria-label="{{ item.title }}の残数を減らす">
                             <i class="fas fa-minus"></i>
                         </button>
                         <span class="mx-2 font-weight-bold text-center" id="remaining-count-{{ item.id }}"
@@ -145,7 +153,8 @@
                             {{ item.remaining_count }}
                         </span>
                         <button class="btn btn-sm btn-outline-primary py-0 px-2"
-                                onclick="updateCount({{ item.id }}, 'remaining', 'increase')">
+                                onclick="updateCount({{ item.id }}, 'remaining', 'increase')"
+                                aria-label="{{ item.title }}の残数を増やす">
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>

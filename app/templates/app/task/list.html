@@ -8,20 +8,26 @@
 {% block og_description %}{% if is_demo %}タスク管理機能のデモ。カレンダー表示・ガントチャート・繰り返しタスクを体験できます。{% endif %}{% endblock %}
 {% block content %}
 <div class="container mt-5">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+    <div class="page-heading-row">
         <h2 class="mb-0">スケジュール <button type="button" class="btn btn-link btn-sm p-0" aria-label="説明を表示" data-toggle="collapse" data-target="#scheduleDescription" aria-expanded="false"><i class="fas fa-info-circle text-info"></i></button></h2>
+        <div class="page-actions">
+            <button onclick="openCreateTaskModal()" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> <span class="mobile-action-label">新規タスク</span>
+            </button>
+            <div class="dropdown page-actions-menu">
+                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" aria-label="スケジュールのその他の操作">
+                    <i class="fas fa-ellipsis-h" aria-hidden="true"></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right">
+                    <a href="{% url 'task_settings' %}" class="dropdown-item page-secondary-action">
+                        <i class="fas fa-cog"></i> 設定
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
     <div class="collapse mb-2" id="scheduleDescription">
         <div class="alert alert-info py-1 mb-1 small">タスクをカレンダー（月表示）またはガントチャート（日表示）で管理します。日付セルをクリックしてタスクを追加・確認できます。</div>
-    </div>
-
-    <div class="d-flex flex-row-reverse mb-2">
-        <a href="{% url 'task_settings' %}" class="btn btn-outline-secondary btn-sm mb-1">
-            <i class="fas fa-cog"></i> 設定
-        </a>
-        <button onclick="openCreateTaskModal()" class="btn btn-primary btn-sm mr-2 mb-1">
-            <i class="fas fa-plus"></i> 新規タスク登録
-        </button>
     </div>
 
     <!-- 表示モード切替と日付選択 -->
@@ -201,6 +207,16 @@
                                 <div class="text-muted small">...</div>
                                 {% endif %}
                             </div>
+                            {% if day_data.task_count %}
+                            <div class="task-mobile-summary" aria-label="予定{{ day_data.task_count }}件">
+                                <span class="task-mobile-dots" aria-hidden="true">
+                                    {% for task in day_data.tasks|slice:":3" %}
+                                    <span class="task-mobile-dot"{% if task.label %} style="background-color: {{ task.label.color }};"{% endif %}></span>
+                                    {% endfor %}
+                                </span>
+                                <span class="task-mobile-count">{{ day_data.task_count }}</span>
+                            </div>
+                            {% endif %}
                         </td>
                         {% endfor %}
                     </tr>
@@ -253,5 +269,6 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 {% endblock %}

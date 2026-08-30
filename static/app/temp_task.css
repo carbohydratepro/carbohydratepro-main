@@ -462,7 +462,7 @@
 /* モバイル対応 */
 @media (max-width: 768px) {
     .temp-task-container {
-        padding: 10px;
+        padding: 14px 12px;
     }
 
     .temp-task-title {
@@ -476,7 +476,8 @@
 
     .kanban-column {
         width: 100%;
-        min-height: 120px;
+        min-height: 100px;
+        padding: 10px;
     }
 
     .drag-overlay {
@@ -503,6 +504,34 @@
     /* モバイルでは削除ゾーンを非表示 */
     .kanban-delete-zone {
         display: none !important;
+    }
+
+    .set-tabs-wrapper {
+        flex-wrap: nowrap;
+        margin-bottom: 10px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+    }
+
+    .set-tabs {
+        flex-wrap: nowrap;
+    }
+
+    .set-tab {
+        min-height: 38px;
+        padding: 8px 12px;
+    }
+
+    .set-add-btn {
+        height: 40px;
+        min-width: 40px;
+        width: 40px;
+    }
+
+    .kanban-hint {
+        line-height: 1.45;
+        margin-bottom: 0;
+        margin-top: 8px;
     }
 }
 

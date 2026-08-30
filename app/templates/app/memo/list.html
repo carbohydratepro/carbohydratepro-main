@@ -8,31 +8,31 @@
 {% block og_description %}{% if is_demo %}メモ機能のデモ。Markdown対応のメモ作成、種別管理、お気に入り機能を体験できます。{% endif %}{% endblock %}
 {% block content %}
 <div class="container mt-2" data-bulk-container data-bulk-url="{% url 'bulk_delete_memos' %}">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
-        <h2 class="mb-2">メモ <button type="button" class="btn btn-link btn-sm p-0" aria-label="説明を表示" data-toggle="collapse" data-target="#memoDescription" aria-expanded="false"><i class="fas fa-info-circle text-info"></i></button></h2>
-        <div class="d-flex flex-row align-items-center">
-            <button type="button" class="btn btn-outline-secondary btn-sm mb-1 mr-2 bulk-toggle-btn" data-bulk-toggle aria-pressed="false">
-                <i class="fas fa-check-square"></i> 選択
+    <div class="page-heading-row">
+        <h2>メモ <button type="button" class="btn btn-link btn-sm p-0" aria-label="説明を表示" data-toggle="collapse" data-target="#memoDescription" aria-expanded="false"><i class="fas fa-info-circle text-info"></i></button></h2>
+        <div class="page-actions">
+            <button onclick="openCreateMemoModal()" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> <span class="mobile-action-label">新規メモ</span>
             </button>
-            <div class="btn-group btn-group-sm mr-2 mb-1" role="group" aria-label="表示切替">
-                <button type="button" class="btn btn-primary" id="markdownToggleOn" onclick="setMarkdownMode(true)">
-                    <i class="fas fa-paragraph"></i>
-                    <span class="d-none d-sm-inline"> Markdown表示</span>
-                    <span class="d-sm-none"> MD</span>
+            <div class="dropdown page-actions-menu">
+                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" aria-label="メモのその他の操作">
+                    <i class="fas fa-ellipsis-h" aria-hidden="true"></i>
                 </button>
-                <button type="button" class="btn btn-outline-secondary" id="markdownToggleOff" onclick="setMarkdownMode(false)">
-                    <i class="fas fa-align-left"></i>
-                    <span class="d-none d-sm-inline"> テキスト表示</span>
-                    <span class="d-sm-none"> TXT</span>
-                </button>
-            </div>
-            <div class="d-flex flex-row-reverse">
-                <a href="{% url 'memo_settings' %}" class="btn btn-outline-secondary btn-sm mb-1">
-                    <i class="fas fa-cog"></i> 種別設定
-                </a>
-                <button onclick="openCreateMemoModal()" class="btn btn-primary btn-sm mb-1 mr-2">
-                    <i class="fas fa-plus"></i> 新規メモ作成
-                </button>
+                <div class="dropdown-menu dropdown-menu-right">
+                    <button type="button" class="dropdown-item page-secondary-action bulk-toggle-btn" data-bulk-toggle aria-pressed="false">
+                        <i class="fas fa-check-square"></i> 選択
+                    </button>
+                    <button type="button" class="dropdown-item page-secondary-action" id="markdownToggleOn" onclick="setMarkdownMode(true)">
+                        <i class="fas fa-paragraph"></i> Markdown表示
+                    </button>
+                    <button type="button" class="dropdown-item page-secondary-action" id="markdownToggleOff" onclick="setMarkdownMode(false)">
+                        <i class="fas fa-align-left"></i> テキスト表示
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    <a href="{% url 'memo_settings' %}" class="dropdown-item page-secondary-action">
+                        <i class="fas fa-cog"></i> 種別設定
+                    </a>
+                </div>
             </div>
         </div>
     </div>

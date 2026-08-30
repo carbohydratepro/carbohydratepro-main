@@ -99,9 +99,11 @@ interface ChartScaleContext {
 }
 
 declare class Chart {
+  canvas: HTMLCanvasElement;
   data: ChartData;
   options: ChartOptions;
   constructor(ctx: CanvasRenderingContext2D, config: ChartConfig);
+  resize(): void;
   update(mode?: string): void;
 }
 

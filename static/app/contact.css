@@ -219,6 +219,38 @@
     padding-top: 4px;
 }
 
+@media (max-width: 767.98px) {
+    .contact-header {
+        margin-bottom: 16px;
+    }
+
+    .contact-header h2 {
+        font-size: 1.35rem;
+    }
+
+    .form-card,
+    .history-card {
+        margin-bottom: 16px;
+        padding: 16px;
+    }
+
+    .contact-form,
+    .form-group {
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .history-item {
+        padding: 12px;
+    }
+
+    .history-item-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+}
+
 .status-badge {
     display: inline-block;
     padding: 4px 12px;

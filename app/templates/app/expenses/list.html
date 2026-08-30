@@ -9,29 +9,36 @@
 {% block og_description %}{% if is_demo %}家計簿機能のデモ。収入・支出の記録、月別グラフ、カテゴリ別集計を体験できます。{% endif %}{% endblock %}
 {% block content %}
 <div class="container mt-2" data-bulk-container data-bulk-url="{% url 'bulk_delete_expenses' %}">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+    <div class="page-heading-row">
         <h2 class="mb-0">家計簿 <button type="button" class="btn btn-link btn-sm p-0" aria-label="説明を表示" data-toggle="collapse" data-target="#expensesDescription" aria-expanded="false"><i class="fas fa-info-circle text-info"></i></button></h2>
-        <button type="button" class="btn btn-outline-secondary btn-sm bulk-toggle-btn" data-bulk-toggle aria-pressed="false">
-            <i class="fas fa-check-square"></i> 選択
-        </button>
+        <div class="page-actions">
+            <button onclick="openCreateModal()" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> <span class="mobile-action-label">収支登録</span>
+            </button>
+            <div class="dropdown page-actions-menu">
+                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" aria-label="家計簿のその他の操作">
+                    <i class="fas fa-ellipsis-h" aria-hidden="true"></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right">
+                    <button type="button" class="dropdown-item page-secondary-action bulk-toggle-btn" data-bulk-toggle aria-pressed="false">
+                        <i class="fas fa-check-square"></i> 選択
+                    </button>
+                    <a href="{% url 'recurring_payment_list' %}" class="dropdown-item page-secondary-action">
+                        <i class="fas fa-sync-alt"></i> 定期支払い
+                    </a>
+                    <a href="{% url 'budget' %}" class="dropdown-item page-secondary-action">
+                        <i class="fas fa-piggy-bank"></i> 予算
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <a href="{% url 'expenses_settings' %}" class="dropdown-item page-secondary-action">
+                        <i class="fas fa-cog"></i> 設定
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
     <div class="collapse mb-2" id="expensesDescription">
         <div class="alert alert-info py-1 mb-1 small">収入・支出を記録し、月次・年次のサマリーやグラフで家計を管理します。長押し（0.5秒）で削除、ダブルタップで編集できます。</div>
-    </div>
-
-    <div class="d-flex flex-row-reverse mb-2">
-        <a href="{% url 'expenses_settings' %}" class="btn btn-secondary btn-sm mb-1">
-            <i class="fas fa-cog"></i> 設定
-        </a>
-        <a href="{% url 'budget' %}" class="btn btn-outline-success btn-sm mr-2 mb-1">
-            <i class="fas fa-piggy-bank"></i> 予算
-        </a>
-        <a href="{% url 'recurring_payment_list' %}" class="btn btn-info btn-sm mr-2 mb-1">
-            <i class="fas fa-sync-alt"></i> 定期支払い
-        </a>
-        <button onclick="openCreateModal()" class="btn btn-primary btn-sm mr-2 mb-1">
-            <i class="fas fa-plus"></i> 収支登録
-        </button>
     </div>
 
     <!-- 表示モードと日付選択 -->
@@ -226,52 +233,97 @@
 
     {% if view_mode == 'year' %}
     <!-- 年ビュー: 月別収支グラフ -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div style="height: 260px;">
+    <div class="card expense-chart-card mb-3">
+        <div class="card-header py-2 d-md-none">
+            <button type="button" class="btn btn-link btn-sm p-0 expense-chart-toggle" data-toggle="collapse" data-target="#yearlyChartPanel" aria-expanded="true" aria-controls="yearlyChartPanel">
+                <i class="fas fa-chevron-down mr-1" aria-hidden="true"></i>月別収支グラフ
+            </button>
+        </div>
+        <div id="yearlyChartPanel" class="collapse show expense-chart-collapse">
+            <div class="card-body py-2 expense-chart-body">
                 <canvas id="monthlyBarChart" class="chart-canvas chart-filterable" data-year="{{ current_year }}" title="棒を選ぶとその月の取引一覧を絞り込みます"></canvas>
             </div>
         </div>
     </div>
     {% else %}
     <!-- 月ビュー: グラフ表示エリア -->
-    <div class="row mb-3">
-        <div class="col-md-3 col-6 mb-3">
-            <div style="height: 200px;">
-                <canvas id="categoryPieChart" class="chart-canvas chart-filterable" title="項目を選ぶとカテゴリで絞り込みます"></canvas>
+    <div class="d-none d-md-block">
+        <div class="row mb-3">
+            <div class="col-md-3 mb-3">
+                <div style="height: 200px;">
+                    <canvas id="categoryPieChartPC" class="chart-canvas chart-filterable" title="項目を選ぶとカテゴリで絞り込みます"></canvas>
+                </div>
             </div>
-        </div>
-        <div class="col-md-9 col-6 mb-3">
-            <div class="d-md-block d-none">
+            <div class="col-md-9 mb-3">
                 <div style="height: 200px;">
                     <canvas id="expenseBarChart" class="chart-canvas chart-filterable" title="棒を選ぶと日付で絞り込みます"></canvas>
                 </div>
             </div>
-            <div class="d-md-none" style="height: 200px;">
-                <canvas id="majorCategoryChart" class="chart-canvas chart-filterable" title="項目を選ぶと費用タイプで絞り込みます"></canvas>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-3 mb-3">
+                <div style="height: 200px;">
+                    <canvas id="majorCategoryChartPC" class="chart-canvas chart-filterable" title="項目を選ぶと費用タイプで絞り込みます"></canvas>
+                </div>
+            </div>
+            <div class="col-md-9 mb-3">
+                <div style="height: 200px;">
+                    <canvas id="balanceLineChart" class="chart-canvas chart-filterable" title="点を選ぶと日付で絞り込みます"></canvas>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="row mb-3">
-        <div class="col-md-3 d-none d-md-block mb-3">
-            <div style="height: 200px;">
-                <canvas id="majorCategoryChartPC" class="chart-canvas chart-filterable" title="項目を選ぶと費用タイプで絞り込みます"></canvas>
+    <div class="d-md-none expense-mobile-charts mb-3" aria-label="家計簿グラフ">
+        <div class="card expense-chart-card mb-2">
+            <div class="card-header py-2">
+                <button type="button" class="btn btn-link btn-sm p-0 expense-chart-toggle" data-toggle="collapse" data-target="#categoryChartPanel" aria-expanded="true" aria-controls="categoryChartPanel">
+                    <i class="fas fa-chevron-down mr-1" aria-hidden="true"></i>カテゴリ別割合
+                </button>
+            </div>
+            <div id="categoryChartPanel" class="collapse show expense-chart-collapse">
+                <div class="card-body py-2 expense-chart-body">
+                    <canvas id="categoryPieChart" class="chart-canvas chart-filterable" title="項目を選ぶとカテゴリで絞り込みます"></canvas>
+                </div>
             </div>
         </div>
-        <div class="col-md-9 d-none d-md-block mb-3">
-            <div style="height: 200px;">
-                <canvas id="balanceLineChart" class="chart-canvas chart-filterable" title="点を選ぶと日付で絞り込みます"></canvas>
+
+        <div class="card expense-chart-card mb-2">
+            <div class="card-header py-2">
+                <button type="button" class="btn btn-link btn-sm p-0 expense-chart-toggle collapsed" data-toggle="collapse" data-target="#majorCategoryChartPanel" aria-expanded="false" aria-controls="majorCategoryChartPanel">
+                    <i class="fas fa-chevron-down mr-1" aria-hidden="true"></i>費用タイプ別割合
+                </button>
+            </div>
+            <div id="majorCategoryChartPanel" class="collapse expense-chart-collapse">
+                <div class="card-body py-2 expense-chart-body">
+                    <canvas id="majorCategoryChart" class="chart-canvas chart-filterable" title="項目を選ぶと費用タイプで絞り込みます"></canvas>
+                </div>
             </div>
         </div>
-        <div class="col-12 d-md-none mb-2">
-            <div style="height: 250px; position: relative;">
-                <canvas id="expenseBarChartMobile" class="chart-canvas chart-filterable" style="height: 300px !important;" title="棒を選ぶと日付で絞り込みます"></canvas>
+
+        <div class="card expense-chart-card mb-2">
+            <div class="card-header py-2">
+                <button type="button" class="btn btn-link btn-sm p-0 expense-chart-toggle collapsed" data-toggle="collapse" data-target="#dailyExpenseChartPanel" aria-expanded="false" aria-controls="dailyExpenseChartPanel">
+                    <i class="fas fa-chevron-down mr-1" aria-hidden="true"></i>日別支出
+                </button>
+            </div>
+            <div id="dailyExpenseChartPanel" class="collapse expense-chart-collapse">
+                <div class="card-body py-2 expense-chart-body">
+                    <canvas id="expenseBarChartMobile" class="chart-canvas chart-filterable" title="棒を選ぶと日付で絞り込みます"></canvas>
+                </div>
             </div>
         </div>
-        <div class="col-12 d-md-none mb-2">
-            <div style="height: 250px; position: relative;">
-                <canvas id="balanceLineChartMobile" class="chart-canvas chart-filterable" style="height: 250px !important;" title="点を選ぶと日付で絞り込みます"></canvas>
+
+        <div class="card expense-chart-card mb-2">
+            <div class="card-header py-2">
+                <button type="button" class="btn btn-link btn-sm p-0 expense-chart-toggle collapsed" data-toggle="collapse" data-target="#balanceChartPanel" aria-expanded="false" aria-controls="balanceChartPanel">
+                    <i class="fas fa-chevron-down mr-1" aria-hidden="true"></i>日別収支推移
+                </button>
+            </div>
+            <div id="balanceChartPanel" class="collapse expense-chart-collapse">
+                <div class="card-body py-2 expense-chart-body">
+                    <canvas id="balanceLineChartMobile" class="chart-canvas chart-filterable" title="点を選ぶと日付で絞り込みます"></canvas>
+                </div>
             </div>
         </div>
     </div>

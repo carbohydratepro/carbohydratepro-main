@@ -576,3 +576,75 @@
         min-width: 26px;
     }
 }
+
+/* コンパクトなモバイル月表示 */
+.task-mobile-summary {
+    display: none;
+}
+
+@media (max-width: 767.98px) {
+    .task-calendar th {
+        font-size: 0.65rem;
+        padding: 0.25rem 0;
+        width: 14.285714%;
+    }
+
+    .task-calendar-cell {
+        height: 62px;
+        padding: 0;
+        width: 14.285714%;
+    }
+
+    .task-calendar-cell .day-number {
+        font-size: 0.68rem;
+        padding: 3px 4px 1px;
+    }
+
+    .task-calendar-cell .task-list {
+        display: none;
+    }
+
+    .task-mobile-summary {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        justify-content: center;
+        padding: 2px;
+    }
+
+    .task-mobile-dots {
+        display: flex;
+        gap: 2px;
+    }
+
+    .task-mobile-dot {
+        background-color: #6c8ebf;
+        border-radius: 50%;
+        height: 5px;
+        width: 5px;
+    }
+
+    .task-mobile-count {
+        color: #5f6875;
+        font-size: 0.62rem;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+    }
+
+    .day-number.today-number {
+        font-size: 0.68rem;
+        height: 22px;
+        width: 22px;
+    }
+
+    .view-mode-controls {
+        align-items: stretch;
+    }
+
+    .date-selection-form,
+    .date-selection-form .form-control {
+        flex: 1;
+        min-width: 0;
+    }
+}

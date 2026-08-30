@@ -16,12 +16,19 @@
      data-api-clear-url="{% url 'temp_task_clear_api' %}"
      data-api-sets-url="{% url 'temp_task_sets_api' %}"
      data-api-set-detail-base-url="{% url 'temp_task_set_detail_api' set_id=0 %}"
-     id="tempTaskContainer">
+    id="tempTaskContainer">
     <div class="temp-task-header">
         <h2 class="temp-task-title">一時タスク</h2>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearAllTasks()">
-            <i class="fas fa-trash"></i> 全削除
-        </button>
+        <div class="dropdown page-actions-menu">
+            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" aria-label="一時タスクのその他の操作">
+                <i class="fas fa-ellipsis-h" aria-hidden="true"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-right">
+                <button type="button" class="dropdown-item page-secondary-action text-danger" onclick="clearAllTasks()">
+                    <i class="fas fa-trash"></i> 全削除
+                </button>
+            </div>
+        </div>
     </div>
     <!-- セット切り替えタブ -->
     <div class="set-tabs-wrapper">

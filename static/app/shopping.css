@@ -46,5 +46,24 @@
         width: 100%;
         justify-content: flex-end;
     }
+
+    .shopping-check-btn {
+        align-items: center;
+        display: inline-flex;
+        justify-content: center;
+        margin-right: 0.6rem !important;
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .shopping-one-time-row,
+    .list-group-item[data-item-id] {
+        padding: 0.45rem 0.65rem !important;
+    }
+
+    .card-header form .btn {
+        font-size: 0.75rem;
+        white-space: normal;
+    }
 }
 

@@ -7,8 +7,12 @@
 {% block meta_robots %}{% if is_demo %}index, follow{% else %}noindex, nofollow{% endif %}{% endblock %}
 {% block og_title %}{% if is_demo %}家計簿デモ | Life management{% else %}家計簿 | Life management{% endif %}{% endblock %}
 {% block og_description %}{% if is_demo %}家計簿機能のデモ。収入・支出の記録、月別グラフ、カテゴリ別集計を体験できます。{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app/modal.css' %}">
+<link rel="stylesheet" href="{% static 'app/transaction.css' %}">
+{% endblock %}
 {% block content %}
-<div class="container mt-2" data-bulk-container data-bulk-url="{% url 'bulk_delete_expenses' %}">
+<div class="container mt-2 workspace-list" data-bulk-container data-bulk-url="{% url 'bulk_delete_expenses' %}">
     <div class="page-heading-row">
         <h2 class="mb-0">家計簿 <button type="button" class="btn btn-link btn-sm p-0" aria-label="説明を表示" data-toggle="collapse" data-target="#expensesDescription" aria-expanded="false"><i class="fas fa-info-circle text-info"></i></button></h2>
         <div class="page-actions">
@@ -21,7 +25,7 @@
                 </button>
                 <div class="dropdown-menu dropdown-menu-right">
                     <button type="button" class="dropdown-item page-secondary-action bulk-toggle-btn" data-bulk-toggle aria-pressed="false">
-                        <i class="fas fa-check-square"></i> 選択
+                        <i class="fas fa-check-square" aria-hidden="true"></i> 選択
                     </button>
                     <a href="{% url 'recurring_payment_list' %}" class="dropdown-item page-secondary-action">
                         <i class="fas fa-sync-alt"></i> 定期支払い
@@ -175,6 +179,11 @@
         </div>
     </div>
 
+    <nav class="page-section-links mb-3" aria-label="家計簿の表示位置">
+        <a href="#transactionListHeading">記録一覧へ</a>
+        <a href="#expenseChartsHeading">グラフへ</a>
+    </nav>
+
     <!-- 月次/年次サマリー表示 -->
     <div class="row mb-3">
         <div class="col-md-12">
@@ -206,11 +215,14 @@
         </div>
     </div>
 
+    <h3 id="expenseChartsHeading" class="h5 section-anchor" tabindex="-1">収支のグラフ</h3>
+    <p class="small text-muted">グラフや下の項目を選ぶと、記録一覧だけを絞り込めます。</p>
+    <div id="expenseChartFilters" class="chart-filter-options mb-3" aria-label="グラフの絞り込み項目"></div>
     {% if view_mode == 'month' %}
     <div class="d-flex justify-content-end mb-2">
         <button type="button"
                 id="expenseComparisonToggle"
-                class="btn btn-outline-info btn-sm"
+                class="btn btn-outline-primary btn-sm"
                 aria-controls="expenseComparisonPanel"
                 aria-expanded="false">
             <i class="fas fa-chart-bar"></i> <span id="expenseComparisonToggleLabel">先月・全期間平均と比較</span>
@@ -329,17 +341,17 @@
     </div>
     {% endif %}
 
+    <h3 id="transactionListHeading" class="h5 section-anchor" tabindex="-1">記録一覧</h3>
+    <div id="expenseListStatus" class="small text-muted mb-2" role="status" aria-live="polite"></div>
     <div id="transactionListRegion" aria-live="polite">
         {% include "app/expenses/_transaction_list.html" %}
     </div>
 </div>
 
 <!-- カスタムCSS -->
-<link rel="stylesheet" href="{% static 'app/modal.css' %}">
-<link rel="stylesheet" href="{% static 'app/transaction.css' %}">
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{% static 'app/transaction.js' %}"></script>
+<script src="{% static 'app/vendor/chart.umd.js' %}" defer></script>
+<script src="{% static 'app/transaction.js' %}" defer></script>
 <script>
     {% if view_mode == 'year' %}
     window.monthlyData = JSON.parse('{{ monthly_chart_data_json|escapejs }}');

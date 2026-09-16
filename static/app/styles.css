@@ -24,7 +24,9 @@
     --color-info: #17a2b8;
 
     /* 形状 */
-    --radius: 10px;
+    --radius: 12px;
+    --radius-control: 8px;
+    --control-height: 36px;
     --shadow-sm: 0 1px 2px rgba(20, 24, 33, 0.05);
     --shadow: 0 4px 6px rgba(20, 24, 33, 0.08);
 
@@ -40,10 +42,135 @@
     margin: 5%;
 }
 
+/* ブラウザ側の文字サイズ設定を尊重しつつ、標準16pxなら16.5pxへ。 */
+html { font-size: 103.125%; }
+
 html, body {
     height: 100%;
     background-color: var(--color-bg);
     color: var(--color-text);
+}
+
+body {
+    min-height: 100%;
+    height: auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    line-height: 1.6;
+}
+
+.section-anchor { scroll-margin-top: calc(var(--topbar-height) + 16px); }
+.settings-page-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.settings-page .table td { overflow-wrap: anywhere; }
+.settings-page .table th { white-space: normal; }
+.settings-page .lp-actions-cell { min-width: 60px; }
+.app-main > .auth-page { max-width: 560px; background: transparent; border: 0; }
+.auth-card .card-header { padding: 24px 24px 12px; border: 0; }
+.auth-card .card-body { padding: 16px 24px 24px; }
+.auth-card .card-header h4 { font-size: 1.5rem; margin: 0; }
+.auth-card .form-group { margin-bottom: 24px; }
+.page-section-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.page-section-links a {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    padding: 8px 16px;
+}
+
+.skip-link {
+    position: fixed;
+    top: -100px;
+    left: 16px;
+    z-index: 2000;
+    background: var(--color-surface);
+    padding: 12px 20px;
+}
+.skip-link:focus { top: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+}
+
+.btn, .form-control, .custom-select, .dropdown-menu {
+    border-radius: var(--radius-control);
+}
+
+.btn, .form-group > label, .form-check-label {
+    font-weight: 500;
+}
+
+@media (pointer: coarse) {
+    :root { --control-height: 40px; }
+}
+
+/* 本文・モーダルの操作を統一。ヘッダー/下部ナビの寸法は維持する。 */
+.app-main .btn, .modal .btn {
+    min-height: var(--control-height);
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    border-radius: var(--radius-control);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.app-main .btn-secondary, .app-main .btn-outline-secondary,
+.modal .btn-secondary, .modal .btn-outline-secondary {
+    background: var(--color-surface-alt);
+    border-color: var(--color-border);
+    color: var(--color-text);
+}
+.app-main .btn-secondary:hover, .app-main .btn-outline-secondary:hover,
+.modal .btn-secondary:hover, .modal .btn-outline-secondary:hover {
+    background: var(--color-primary-soft);
+    border-color: var(--color-border);
+    color: var(--color-primary);
+}
+.app-main .btn-outline-primary {
+    background: var(--color-primary-soft);
+    border-color: transparent;
+}
+.app-main .btn-outline-primary:hover,
+.app-main .btn-outline-primary[aria-pressed="true"] {
+    background: var(--color-primary);
+    color: white;
+}
+.modal-footer { padding: 16px 20px; gap: 8px; }
+.modal-footer > .btn { margin: 0; }
+.modal .dropdown-item { min-height: var(--control-height); }
+
+.form-control, .custom-select {
+    border-color: var(--color-border);
+    color: var(--color-text);
+}
+
+.form-control:focus, .custom-select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.app-main h1, .app-main h2 {
+    text-align: left;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--color-text);
+}
+
+.app-main h1 { font-size: 1.75rem; }
+.app-main h2 { font-size: 1.5rem; }
+
+.app-main .table thead th {
+    background: var(--color-surface-alt);
+    border-top: 0;
+    border-bottom: 1px solid var(--color-border);
+    font-weight: 600;
 }
 
 /* ==========================================================================
@@ -160,7 +287,7 @@ a:hover {
     flex: none;
     background-color: var(--color-surface);
     border-right: 1px solid var(--color-border);
-    padding: 14px 0;
+    padding: 24px 12px;
     position: sticky;
     top: var(--topbar-height);
     align-self: flex-start;
@@ -172,7 +299,9 @@ a:hover {
 
 .app-sidebar .side-link {
     display: block;
-    padding: 9px 20px;
+    padding: 12px 16px;
+    margin-bottom: 4px;
+    border-radius: var(--radius-control);
     font-size: 0.9rem;
     color: var(--color-text-muted);
     border-left: 3px solid transparent;
@@ -242,7 +371,7 @@ a:hover {
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    font-size: 10px;
+    font-size: 0.6875rem;
     color: var(--color-text-muted);
     padding: 4px 0 2px;
     text-decoration: none;
@@ -386,18 +515,23 @@ body.has-bottomnav .skeleton-overlay {
    読み込むこと）
    ========================================================================== */
 
-/* カード：角丸と控えめな影で統一。ヘッダーはニュートラルな背景に統一し、
+/* カード：角丸と細い境界線で統一。ヘッダーはニュートラルな背景に統一し、
    画面ごとの色付きヘッダーは使わない */
 .card {
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
+    box-shadow: none;
 }
 
 .card-header {
-    background-color: var(--color-surface-alt);
+    background-color: var(--color-surface);
     color: var(--color-text);
     font-weight: 600;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.card-header:first-child {
+    border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;
 }
 
 /* あいさつバー（ヘッダー直下） */
@@ -469,6 +603,19 @@ body.has-bottomnav .skeleton-overlay {
     }
 }
 
+.dashboard-context > summary {
+    padding: 12px 16px;
+    color: var(--color-text-muted);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+}
+
+.dashboard-context[open] > summary {
+    color: var(--color-primary);
+}
+
 .dashboard-brief-icon {
     align-items: center;
     background: var(--color-primary-soft);
@@ -493,11 +640,21 @@ body.has-bottomnav .skeleton-overlay {
 /* コンテナ */
 .container {
     max-width: 800px;
-    margin: 20px auto;
-    padding: 20px;
-    background-color: #ffffff; /* 白背景 */
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin: 24px auto;
+    padding: 24px;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: none;
+}
+
+@media (min-width: 768px) {
+    .app-main { padding: 24px; }
+    .app-main > .workspace-list,
+    .app-main > .workspace-wide { margin-top: 0 !important; }
+    .app-main > .workspace-list { max-width: 960px; }
+    .app-main > .dashboard-page { background: transparent; border: 0; padding: 0; }
+    .app-main > .workspace-wide { max-width: 1280px; }
 }
 
 /* 見出し */
@@ -926,7 +1083,7 @@ h1 {
     display: flex;
     gap: 12px;
     justify-content: space-between;
-    margin-bottom: 0.75rem;
+    margin-bottom: 20px;
 }
 
 .page-heading-row > :first-child {
@@ -965,14 +1122,17 @@ h1 {
 .page-actions-menu .page-secondary-action {
     align-items: center;
     border: 1px solid var(--color-border);
-    border-radius: 0.2rem;
-    color: var(--color-text-muted);
+    border-radius: var(--radius-control);
+    background: var(--color-surface-alt);
+    color: var(--color-text);
+    min-height: var(--control-height);
     display: inline-flex;
-    font-size: 0.875rem;
+    font-size: 0.85rem;
+    font-weight: 500;
     gap: 0.3rem;
     justify-content: center;
-    line-height: 1.5;
-    padding: 0.25rem 0.5rem;
+    line-height: 1.4;
+    padding: 6px 12px;
     white-space: nowrap;
     width: auto;
 }
@@ -985,9 +1145,9 @@ h1 {
 }
 
 .page-actions-menu .page-secondary-action.btn-primary {
-    background-color: var(--color-primary);
-    border-color: var(--color-primary);
-    color: #fff;
+    background-color: var(--color-primary-soft);
+    border-color: var(--color-primary-soft);
+    color: var(--color-primary);
 }
 
 .responsive-table-region {
@@ -1006,20 +1166,10 @@ h1 {
 }
 
 .demo-banner-inner {
-    animation: demoBannerScroll 22s linear infinite;
-    display: inline-block;
+    display: block;
     font-size: 0.82rem;
-    padding: 0.25rem 0;
-    white-space: nowrap;
-}
-
-.demo-banner-mobile {
-    display: none;
-}
-
-@keyframes demoBannerScroll {
-    0% { transform: translateX(100vw); }
-    100% { transform: translateX(-100%); }
+    padding: 8px 16px;
+    text-align: center;
 }
 
 @media (max-width: 767.98px) {
@@ -1119,7 +1269,8 @@ h1 {
     }
 
     .card {
-        border-radius: 8px;
+        --radius: 8px;
+        border-radius: var(--radius);
     }
 
     .card-body {
@@ -1298,14 +1449,6 @@ h1 {
         text-align: center;
         text-overflow: ellipsis;
         white-space: normal;
-    }
-
-    .demo-banner-desktop {
-        display: none;
-    }
-
-    .demo-banner-mobile {
-        display: inline;
     }
 
     .navbar.navbar-expand-md {

@@ -165,7 +165,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dialog) {
         dialog.style.display = 'flex';
         setTimeout(() => dialog.classList.add('show'), 10);
-        setTimeout(() => closeMessageDialog(), 5000);
+        // エラー・警告は読めるまで残し、成功通知だけ自動的に閉じる。
+        if (!dialog.querySelector('.error, .warning')) {
+            setTimeout(() => closeMessageDialog(), 5000);
+        }
     }
 });
 

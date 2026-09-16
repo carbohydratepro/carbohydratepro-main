@@ -2,7 +2,7 @@
 
 {% block title %}アカウント編集 | Life management{% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
   /* この画面ではアイコンをやや大きく表示（基本スタイルは styles.css で定義） */
   .account-avatar {
@@ -10,6 +10,8 @@
     height: 42px;
   }
 </style>
+{% endblock %}
+{% block content %}
 <div class="container py-4">
   <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
     <div>

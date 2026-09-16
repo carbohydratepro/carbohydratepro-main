@@ -15,16 +15,16 @@
 }
 
 .task-card {
-    transition: all 0.3s ease;
+    transition: border-color 0.15s ease;
     margin-bottom: 0.5rem;
 }
 
 .task-card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-color: var(--color-primary);
 }
 
 .task-card .card-body {
-    padding: 0.75rem;
+    padding: 16px;
 }
 
 .task-card .card-title {

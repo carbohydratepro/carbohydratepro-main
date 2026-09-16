@@ -2,7 +2,8 @@
 <!-- 取引一覧（グラフ絞り込み時の差し替え対象） -->
 {% if has_active_filters %}
 <div class="alert alert-info alert-sm py-2">
-    <i class="fas fa-filter"></i> 絞り込み結果: {{ transactions_count }}件
+    <i class="fas fa-filter" aria-hidden="true"></i> 絞り込み結果: {{ transactions_count }}件
+    <button type="button" class="btn btn-outline-primary btn-sm ml-2" data-clear-expense-filters>絞り込みを解除</button>
 </div>
 {% endif %}
 
@@ -19,7 +20,7 @@
             <div class="transaction-list-main">
                 <input type="checkbox" class="bulk-check" aria-label="この取引を選択">
                 <small class="text-muted mr-2" style="white-space:nowrap;">{{ transaction.date|date:"m/d" }}</small>
-                <span class="text-truncate" title="{{ transaction.purpose }}" style="font-size:0.9rem;">{{ transaction.purpose|truncatechars:25 }}</span>
+                <button type="button" class="btn btn-link transaction-edit" onclick="event.stopPropagation(); openEditModal({{ transaction.id }})" aria-label="{{ transaction.purpose }}を編集">{{ transaction.purpose }}</button>
                 {% if transaction.purpose_description %}
                 <small class="text-muted ml-1 d-none d-sm-inline">— {{ transaction.purpose_description|truncatechars:20 }}</small>
                 {% endif %}

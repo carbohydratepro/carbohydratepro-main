@@ -6,8 +6,12 @@
 {% block meta_robots %}{% if is_demo %}index, follow{% else %}noindex, nofollow{% endif %}{% endblock %}
 {% block og_title %}{% if is_demo %}タスク管理デモ | Life management{% else %}スケジュール | Life management{% endif %}{% endblock %}
 {% block og_description %}{% if is_demo %}タスク管理機能のデモ。カレンダー表示・ガントチャート・繰り返しタスクを体験できます。{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app/modal.css' %}">
+<link rel="stylesheet" href="{% static 'app/task.css' %}">
+{% endblock %}
 {% block content %}
-<div class="container mt-5">
+<div class="container mt-5 workspace-wide">
     <div class="page-heading-row">
         <h2 class="mb-0">スケジュール <button type="button" class="btn btn-link btn-sm p-0" aria-label="説明を表示" data-toggle="collapse" data-target="#scheduleDescription" aria-expanded="false"><i class="fas fa-info-circle text-info"></i></button></h2>
         <div class="page-actions">
@@ -227,8 +231,6 @@
     </div>
     {% endif %}
 
-    <link rel="stylesheet" href="{% static 'app/modal.css' %}">
-    <link rel="stylesheet" href="{% static 'app/task.css' %}">
     <script src="{% static 'app/task.js' %}"></script>
 
 <!-- 編集モーダル -->

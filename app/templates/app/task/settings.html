@@ -10,10 +10,10 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4 mb-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4><i class="fas fa-cog"></i> タスク設定</h4>
-        <a href="{% url 'task_list' %}" class="btn btn-secondary btn-sm">
+<div class="container settings-page mt-4 mb-5">
+    <div class="settings-page-header mb-4">
+        <h1 class="h4 mb-0">タスク設定</h1>
+        <a href="{% url 'task_list' %}" class="btn btn-outline-secondary btn-sm">
             <i class="fas fa-arrow-left"></i> タスク一覧に戻る
         </a>
     </div>
@@ -211,7 +211,7 @@
                                 <input type="hidden" name="label_id" value="{{ label.id }}">
                                 <button type="submit" name="set_default_label" class="btn btn-sm {% if label.is_default %}btn-primary{% else %}btn-outline-primary{% endif %}" aria-label="{{ label.name }}を既定にする" {% if label.is_default %}disabled{% endif %}><i class="fas fa-star"></i></button>
                             </form>
-                            <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="{{ label.name }}を編集" data-toggle="modal" data-target="#editLabelModal{{ label.id }}" onclick="event.stopPropagation();"><i class="fas fa-pencil-alt"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="{{ label.name }}を編集" data-toggle="modal" data-target="#editLabelModal{{ label.id }}"><i class="fas fa-pencil-alt"></i></button>
                         </td>
                     </tr>
 

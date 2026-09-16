@@ -1,5 +1,5 @@
 {% load static %}
-<!-- トップバー（全画面幅・白基調） -->
+<!-- トップバー（全画面幅・既存のダークカラーを維持） -->
 <header class="app-topbar">
   <a class="topbar-brand" href="{% if is_demo %}{% url 'demo_home' %}{% else %}{% url 'dashboard' %}{% endif %}">
     <img src="{% static 'app/rice-icon-mono.png' %}" alt="">
@@ -7,8 +7,8 @@
   </a>
   <div class="topbar-right">
     {% if is_demo %}
-      <a href="{% url 'signup' %}" class="btn btn-success btn-sm">
-        <i class="fas fa-user-plus"></i> サインアップ
+      <a href="{% url 'signup' %}" class="btn btn-outline-light btn-sm">
+        <i class="fas fa-user-plus" aria-hidden="true"></i> サインアップ
       </a>
     {% else %}
       {% include "registration/_account_menu.html" %}

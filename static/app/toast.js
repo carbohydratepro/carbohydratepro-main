@@ -9,12 +9,14 @@ const pendingCommits = new Set();
 // window.confirm はブラウザ操作をブロックし固着することがあるため、これに置き換える。
 function showConfirm(options) {
     var _a, _b;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const overlay = document.createElement('div');
     overlay.className = 'app-confirm-overlay';
     const dialog = document.createElement('div');
     dialog.className = 'app-confirm-dialog';
     dialog.setAttribute('role', 'alertdialog');
     dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-label', options.message);
     const text = document.createElement('p');
     text.className = 'app-confirm-message';
     text.textContent = options.message;
@@ -40,7 +42,10 @@ function showConfirm(options) {
             return;
         settled = true;
         document.removeEventListener('keydown', onKey);
+        document.removeEventListener('focusin', keepFocus);
         overlay.classList.remove('show');
+        if (previousFocus === null || previousFocus === void 0 ? void 0 : previousFocus.isConnected)
+            previousFocus.focus();
         setTimeout(() => overlay.remove(), 200);
         if (confirmed)
             options.onConfirm();
@@ -48,14 +53,25 @@ function showConfirm(options) {
             (_a = options.onCancel) === null || _a === void 0 ? void 0 : _a.call(options);
     };
     function onKey(e) {
-        if (e.key === 'Escape')
+        if (e.key === 'Escape') {
+            e.preventDefault();
             close(false);
+        }
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            (document.activeElement === cancelBtn ? confirmBtn : cancelBtn).focus();
+        }
+    }
+    function keepFocus(e) {
+        if (e.target instanceof Node && !dialog.contains(e.target))
+            cancelBtn.focus();
     }
     cancelBtn.addEventListener('click', () => close(false));
     confirmBtn.addEventListener('click', () => close(true));
     overlay.addEventListener('click', (e) => { if (e.target === overlay)
         close(false); });
     document.addEventListener('keydown', onKey);
+    document.addEventListener('focusin', keepFocus);
     cancelBtn.focus();
 }
 function ensureToastContainer() {

@@ -44,10 +44,11 @@
     <link rel="stylesheet" href="{% static 'app/footer.css' %}">
 
     {% block extra_css %}{% endblock %}
+    <link rel="stylesheet" href="{% static 'app/ui-components.css' %}">
    
     <!-- Optional JavaScript -->
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.6.0.js" integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk=" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     
@@ -59,6 +60,7 @@
 
   </head>
   <body class="has-bottomnav">
+    <a class="skip-link" href="#mainContent">本文へ移動</a>
     <!-- トップバー -->
     {% include "app/_topbar.html" %}
 
@@ -66,14 +68,7 @@
     <!-- デモバナー -->
     <div class="alert alert-warning mb-0 rounded-0 demo-banner-track" style="border-left:none;border-right:none;border-top:none;padding:0;">
       <div class="demo-banner-inner">
-        <span class="demo-banner-desktop">
-          <i class="fas fa-desktop mr-1"></i>
-          <strong>デモモード</strong> — サンプルデータによる閲覧専用です。
-          <a href="{% url 'signup' %}" class="alert-link">無料サインアップ</a> または
-          <a href="{% url 'login' %}" class="alert-link">ログイン</a> でフル機能をご利用いただけます。
-          &nbsp;&nbsp;&nbsp;
-        </span>
-        <span class="demo-banner-mobile">
+        <span>
           <strong>デモモード</strong> — 閲覧専用です。
           <a href="{% url 'signup' %}" class="alert-link">登録</a> / <a href="{% url 'login' %}" class="alert-link">ログイン</a>
         </span>
@@ -92,8 +87,9 @@
     {% endif %}
 
     <!-- 成功/エラーダイアログ -->
+    {% block page_messages %}
     {% if messages %}
-    <div id="messageDialog" class="message-dialog-overlay">
+    <div id="messageDialog" class="message-dialog-overlay ui-notices" aria-live="polite">
         <div class="message-dialog">
             {% for message in messages %}
             <div class="message-dialog-content {{ message.tags }}">
@@ -109,7 +105,7 @@
                     {% endif %}
                 </div>
                 <div class="message-text">{{ message }}</div>
-                <button class="message-close-btn" onclick="closeMessageDialog()">
+                <button type="button" class="message-close-btn" aria-label="通知を閉じる" onclick="closeMessageDialog()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -118,10 +114,11 @@
     </div>
     {% endif %}
 
+    {% endblock %}
     <!-- コンテンツ（サイドバー + メイン） -->
     <div class="app-shell">
       {% include "app/_sidebar.html" %}
-      <main class="app-main">
+      <main class="app-main" id="mainContent" tabindex="-1">
         {% block content %}{% endblock %}
       </main>
     </div>
@@ -148,10 +145,10 @@
               実際の機能を使うにはアカウントが必要です。
             </p>
             <div class="d-flex flex-column flex-sm-row justify-content-center">
-              <a href="{% url 'signup' %}" class="btn btn-success mb-2 mb-sm-0 mr-sm-2">
+              <a href="{% url 'signup' %}" class="btn btn-primary mb-2 mb-sm-0 mr-sm-2">
                 <i class="fas fa-user-plus"></i> 無料サインアップ
               </a>
-              <a href="{% url 'login' %}" class="btn btn-primary">
+              <a href="{% url 'login' %}" class="btn btn-outline-secondary">
                 <i class="fas fa-sign-in-alt"></i> ログイン
               </a>
             </div>

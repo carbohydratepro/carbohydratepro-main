@@ -8,10 +8,10 @@
 
 <!-- コンテンツ -->
 {% block content %}
-<div class="container">
+<div class="container auth-page">
   <div class="row justify-content-center">
-    <div class="col-md-6">
-      <div class="card mt-3 mb-3 shadow">
+    <div class="col-12">
+      <div class="card mt-3 mb-3 auth-card">
         <!-- カードヘッダー -->
         <div class="card-header">
           <h4>ログイン</h4>
@@ -39,10 +39,13 @@
                   class="form-control {% if field.errors %}is-invalid{% endif %}"
                   id="{{ field.id_for_label }}"
                   name="{{ field.name }}"
+                  {% if field.name == 'password' %}autocomplete="current-password"{% else %}autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false"{% endif %}
+                  {% if field.field.required %}required{% endif %}
+                  {% if field.errors %}aria-invalid="true" aria-describedby="{{ field.id_for_label }}-errors"{% endif %}
                   {% if field.value and field.field.widget.input_type != 'password' %}value="{{ field.value }}"{% endif %}
                 >
                 {% if field.errors %}
-                  <ul class="invalid-feedback list-unstyled mb-0">
+                  <ul id="{{ field.id_for_label }}-errors" class="invalid-feedback list-unstyled mb-0">
                     {% for error in field.errors %}
                       <li>{{ error }}</li>
                     {% endfor %}

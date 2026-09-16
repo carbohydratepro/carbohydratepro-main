@@ -1,7 +1,7 @@
 {% extends "registration/base.html" %}
 {% load static %}
 
-{% block content %}
+{% block extra_css %}
 <style>
 /* デモページ共通スタイル */
 .demo-banner {
@@ -95,6 +95,8 @@
   display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px;
 }
 </style>
+{% endblock %}
+{% block content %}
 
 <!-- ヒーローバナー -->
 <div class="demo-banner">

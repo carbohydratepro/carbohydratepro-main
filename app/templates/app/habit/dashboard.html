@@ -13,12 +13,13 @@
 /* ---- タブ ---- */
 .habit-tabs { display: flex; border-bottom: 2px solid #dee2e6; margin-bottom: 16px; }
 .habit-tab {
+  appearance: none; background: transparent; border: 0;
   flex: 1; text-align: center; padding: 8px 0;
   cursor: pointer; font-size: 0.9rem; color: #6c757d;
   border-bottom: 2px solid transparent; margin-bottom: -2px;
   transition: color 0.15s, border-color 0.15s;
 }
-.habit-tab.active { color: #764ba2; border-bottom-color: #764ba2; font-weight: 600; }
+.habit-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); font-weight: 600; }
 
 /* ---- パネルスライダー ---- */
 .habit-panels-wrap { overflow: hidden; transition: height 0.3s ease; }
@@ -55,7 +56,7 @@
 .habit-card-swipe-hint.right { right: 0; background: linear-gradient(to left, #28a74533, transparent); color: #28a745; }
 .habit-card-indicator { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .habit-card-body { flex: 1; min-width: 0; }
-.habit-card-title { font-weight: 500; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.habit-card-title { font-weight: 500; font-size: 0.95rem; overflow-wrap: anywhere; }
 .habit-card-meta { font-size: 0.72rem; color: #999; }
 .habit-card.done { background: #f8fff9; border-color: #c3e6cb; }
 .habit-card.done .habit-card-title { color: #155724; }
@@ -72,7 +73,7 @@
 .week-table th { padding: 4px 6px; text-align: center; color: #888; font-weight: normal; }
 .week-table td { padding: 4px 6px; text-align: center; }
 .week-day-header { cursor: pointer; }
-.week-day-header:hover { color: #764ba2; }
+.week-day-header:hover { color: var(--color-primary); }
 .week-dot { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 1px solid #dee2e6; background: #f8f9fa; vertical-align: middle; }
 .week-dot.done { border: none; }
 .week-goal-badge { font-size: 0.7rem; padding: 1px 5px; border-radius: 10px; }
@@ -129,15 +130,15 @@
 {% block content %}
 <div class="habit-page">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="mb-0"><i class="fas fa-seedling"></i> 習慣トラッカー</h5>
+    <h2 class="mb-0"><i class="fas fa-seedling" aria-hidden="true"></i> 習慣トラッカー</h2>
     <a href="{% url 'habit_list' %}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-list"></i> 習慣を管理</a>
   </div>
 
   <!-- タブ -->
-  <div class="habit-tabs" id="habitTabs">
-    <div class="habit-tab active" data-panel="0">日</div>
-    <div class="habit-tab" data-panel="1">週</div>
-    <div class="habit-tab" data-panel="2">年</div>
+  <div class="habit-tabs" id="habitTabs" role="tablist" aria-label="習慣の表示期間">
+    <button type="button" class="habit-tab active" id="habitTabDay" data-panel="0" role="tab" aria-selected="true" aria-controls="panelDay">日</button>
+    <button type="button" class="habit-tab" id="habitTabWeek" data-panel="1" role="tab" aria-selected="false" aria-controls="panelWeek" tabindex="-1">週</button>
+    <button type="button" class="habit-tab" id="habitTabYear" data-panel="2" role="tab" aria-selected="false" aria-controls="panelYear" tabindex="-1">年</button>
   </div>
 
   <!-- パネルスライダー -->
@@ -145,7 +146,7 @@
     <div class="habit-panels" id="habitPanels">
 
       <!-- 日ビュー -->
-      <div class="habit-panel" id="panelDay">
+      <div class="habit-panel" id="panelDay" role="tabpanel" aria-labelledby="habitTabDay">
         <!-- 日付ナビ -->
         <div class="date-nav">
           <label for="datePickerInput" style="font-size:0.82rem;color:#666;margin:0;">日付:</label>
@@ -225,7 +226,7 @@
       </div>
 
       <!-- 週ビュー -->
-      <div class="habit-panel" id="panelWeek">
+      <div class="habit-panel" id="panelWeek" role="tabpanel" aria-labelledby="habitTabWeek" inert aria-hidden="true">
         <div class="card mb-3">
           <div class="card-body p-2">
             <div class="week-grid">
@@ -264,7 +265,7 @@
       </div>
 
       <!-- 年ビュー -->
-      <div class="habit-panel" id="panelYear">
+      <div class="habit-panel" id="panelYear" role="tabpanel" aria-labelledby="habitTabYear" inert aria-hidden="true">
         <div class="card mb-3">
           <div class="card-body">
             <!-- 年選択ナビ -->

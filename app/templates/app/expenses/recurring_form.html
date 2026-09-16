@@ -1,5 +1,55 @@
 {% extends "app/base.html" %}
 
+{% block extra_css %}
+<style>
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    max-width: 400px;
+}
+
+.calendar-day {
+    position: relative;
+    padding: 8px;
+    text-align: center;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+}
+
+.calendar-day input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.calendar-day:hover {
+    background-color: var(--color-primary-soft);
+}
+
+.calendar-day input:checked + span {
+    color: white;
+}
+
+.calendar-day:has(input:checked) {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.day-of-week-btn {
+    min-width: 50px;
+}
+
+.day-of-week-btn.active {
+    background-color: var(--color-primary) !important;
+    color: white !important;
+}
+</style>
+{% endblock %}
 {% block content %}
 <div class="container mt-2">
     <h2 class="mb-3">{% if is_edit %}定期支払いの編集{% else %}定期支払いの新規登録{% endif %}</h2>
@@ -92,54 +142,6 @@
     </div>
 </div>
 
-<style>
-.calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-    max-width: 400px;
-}
-
-.calendar-day {
-    position: relative;
-    padding: 8px;
-    text-align: center;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: white;
-}
-
-.calendar-day input[type="checkbox"] {
-    position: absolute;
-    opacity: 0;
-    cursor: pointer;
-}
-
-.calendar-day:hover {
-    background-color: #e3f2fd;
-}
-
-.calendar-day input:checked + span {
-    color: white;
-}
-
-.calendar-day:has(input:checked) {
-    background-color: #2196F3;
-    border-color: #2196F3;
-    color: white;
-}
-
-.day-of-week-btn {
-    min-width: 50px;
-}
-
-.day-of-week-btn.active {
-    background-color: #007bff !important;
-    color: white !important;
-}
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

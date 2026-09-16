@@ -3,13 +3,13 @@
 <!-- コンテンツ -->
 {% block content %}
 <div class="container p-3">
-  <h1>マイページ</h1>
+  <h1 class="h3">マイページ</h1>
   <hr>
 
   <!-- アカウント情報 -->
   <div class="row">
-    <div class="col"><h4>■ 登録情報</h4></div>
-    <div class="col text-right"><a href="{% url 'edit' user.pk %}">変更</a></div>
+    <div class="col"><h2 class="h5">登録情報</h2></div>
+    <div class="col text-right"><a class="btn btn-outline-secondary" href="{% url 'edit' user.pk %}">変更</a></div>
   </div>
   <table class="table table-bordered">
     <tbody>
@@ -38,8 +38,8 @@
 
   <!-- パスワード -->
   <div class="row mt-4">
-    <div class="col"><h4>■ パスワード</h4></div>
-    <div class="col text-right"><a href="{% url 'password_change' %}">変更</a></div>
+    <div class="col"><h2 class="h5">パスワード</h2></div>
+    <div class="col text-right"><a class="btn btn-outline-secondary" href="{% url 'password_change' %}">変更</a></div>
   </div>
   <table class="table table-bordered">
     <tbody>
@@ -53,7 +53,7 @@
   {% if user.is_superuser or user.is_staff %}
   <!-- 権限 -->
     <div class="row mt-4">
-      <div class="col"><h4>■　権限</h4></div>
+      <div class="col"><h2 class="h5">権限</h2></div>
     </div>
     <table class="table table-bordered">
       <tbody>
@@ -67,7 +67,7 @@
 
   <!-- 各画面の設定 -->
   <div class="row mt-4">
-    <div class="col"><h4>■ 各画面の設定</h4></div>
+    <div class="col"><h2 class="h5">各画面の設定</h2></div>
   </div>
   <div class="row">
     <div class="col-md-4 mb-3">
@@ -101,7 +101,7 @@
 
   <!-- お問い合わせ -->
   <div class="row mt-4">
-    <div class="col"><h4>■ お問い合わせ</h4></div>
+    <div class="col"><h2 class="h5">お問い合わせ</h2></div>
   </div>
   <div class="card mb-4">
     <div class="card-body">

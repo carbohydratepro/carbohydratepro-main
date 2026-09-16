@@ -14,15 +14,18 @@
 .shopping-check-btn {
     border: none;
     background: none;
-    padding: 0;
+    padding: 6px;
+    min-width: var(--control-height);
+    min-height: var(--control-height);
+    border-radius: var(--radius-control);
     line-height: 1;
     flex-shrink: 0;
     font-size: 1.1rem;
 }
 
-.shopping-check-btn:focus {
-    outline: none;
-    box-shadow: none;
+.shopping-check-btn:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
 }
 
 .shopping-check-btn:hover {
@@ -52,13 +55,13 @@
         display: inline-flex;
         justify-content: center;
         margin-right: 0.6rem !important;
-        min-height: 44px;
-        min-width: 44px;
+        min-height: var(--control-height);
+        min-width: var(--control-height);
     }
 
     .shopping-one-time-row,
     .list-group-item[data-item-id] {
-        padding: 0.45rem 0.65rem !important;
+        padding: 12px 16px !important;
     }
 
     .card-header form .btn {

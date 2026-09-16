@@ -1,0 +1,32 @@
+/* Django管理画面は既存構造・機能・暗色モードを維持し、ブランドと操作寸法を合わせる。 */
+:root, html[data-theme="light"] {
+    --primary: #33518e;
+    --secondary: #343a40;
+    --accent: #fff;
+    --body-fg: #191c21;
+    --body-bg: #f5f6f8;
+    --body-quiet-color: #676e79;
+    --hairline-color: #e3e6ea;
+    --border-color: #e3e6ea;
+    --link-fg: #33518e;
+    --link-hover-color: #2a4376;
+    --button-bg: #33518e;
+    --button-hover-bg: #2a4376;
+    --default-button-bg: #33518e;
+    --default-button-hover-bg: #2a4376;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif; }
+#content h1 { font-size: 24px; font-weight: 700; }
+.module, .submit-row { border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
+.module h2, .module caption { padding: 12px 16px; }
+.button, input[type="submit"], input[type="button"], .submit-row a.deletelink {
+    box-sizing: border-box; min-height: 36px; padding: 8px 12px;
+    border-radius: 8px; font-size: 14px; font-weight: 500;
+}
+input, textarea, select { border-radius: 8px; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--link-fg); outline-offset: 3px;
+}
+@media (pointer: coarse) {
+    .button, input[type="submit"], input[type="button"], .submit-row a.deletelink { min-height: 40px; }
+}

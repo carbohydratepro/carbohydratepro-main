@@ -9,8 +9,10 @@
 {% block twitter_description %}家計簿・タスク管理・習慣トラッカー・メモ・買い物リストを一元管理できる無料のライフマネジメントツールです。{% endblock %}
 
 <!-- コンテンツ -->
-{% block content %}
+{% block extra_css %}
 <link rel="stylesheet" href="{% static 'app/top.css' %}">
+{% endblock %}
+{% block content %}
 
 <div class="container mt-4 mb-5">
 
@@ -25,7 +27,7 @@
     <a href="{% url 'login' %}" class="btn btn-primary btn-lg mr-2">
       <i class="fas fa-sign-in-alt"></i> ログイン
     </a>
-    <a href="{% url 'signup' %}" class="btn btn-success btn-lg">
+    <a href="{% url 'signup' %}" class="btn btn-primary">
       <i class="fas fa-user-plus"></i> サインアップ
     </a>
   </div>

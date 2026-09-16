@@ -1,0 +1,51 @@
+import { expect, test } from "../fixtures/base";
+import { getCredentialsOrSkip, login } from "../fixtures/auth";
+import { expectNoHorizontalOverflow, uniqueName } from "../fixtures/http";
+
+test.use({ serviceWorkers: "block" });
+test("E2E-MEMO-UI-001 メモの保存状態・エラー・操作メニューを確認する", async ({ page }) => {
+  // Spec: docs/e2e/release-test-spec.md#e2e-memo-ui-001
+  await login(page, getCredentialsOrSkip());
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/carbohydratepro/memos/");
+  const title = uniqueName("memo-prototype");
+  await page.getByRole("button", { name: /新規メモ/ }).click();
+  const modal = page.locator("#createMemoModal");
+  await modal.getByLabel("タイトル", { exact: true }).fill(title);
+  await modal.locator('[name="memo_type"]').selectOption({ label: "E2Eメモ" });
+  await modal.locator('[name="content"]').fill('<img src=x onerror="window.memoUnsafe=true"> 試作メモ');
+  await page.route("**/memos/create/", async route => {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    await route.fulfill({ json: { success: false, errors: { title: ["入力内容を確認してください（検証用）"] } } });
+  });
+  await modal.getByRole("button", { name: "登録", exact: true }).click();
+  await expect(modal.getByRole("button", { name: "保存中…", exact: true })).toBeDisabled();
+  await expect(modal.locator('[name="title"]')).toHaveAttribute("aria-invalid", "true");
+  await expect(modal.locator('[name="title"]')).toHaveValue(title);
+  await page.unroute("**/memos/create/");
+  await Promise.all([page.waitForEvent("load"), modal.getByRole("button", { name: "登録", exact: true }).click()]);
+  await expect(page.getByText("メモを保存しました。", { exact: true })).toBeVisible();
+  const card = page.locator(".memo-card", { hasText: title });
+  await card.locator(".memo-preview").click();
+  await expect(card.locator(".memo-full-content")).toContainText("<img src=x");
+  await expect(card.locator(".memo-full-content img")).toHaveCount(0);
+  await page.evaluate(() => document.body.dataset.preserved = "yes");
+  const favorite = page.getByRole("button", { name: `${title}のお気に入りを切り替え` });
+  await favorite.click();
+  await expect(favorite).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("body")).toHaveAttribute("data-preserved", "yes");
+  await page.getByRole("button", { name: `${title}の操作`, exact: true }).click();
+  await page.getByRole("button", { name: "編集する", exact: true }).click();
+  await expect(page.locator("#editMemoModal").getByRole("heading", { name: "メモ編集" })).toBeVisible();
+  await page.locator("#editMemoModal").getByRole("button", { name: "キャンセル" }).click();
+  await expect(page.locator("#editMemoModal")).toBeHidden();
+  await page.getByRole("button", { name: `${title}の操作`, exact: true }).click();
+  await page.getByRole("button", { name: "削除する", exact: true }).click();
+  const deletion = page.locator("#deleteMemoModal");
+  await expect(deletion).toContainText(title);
+  await expectNoHorizontalOverflow(page);
+  await Promise.all([page.waitForEvent("load"), deletion.getByRole("button", { name: "削除する", exact: true }).click()]);
+  await expect(page.locator(".memo-card", { hasText: title })).toHaveCount(0);
+  await expect(page.getByText("メモを削除しました。ごみ箱から元に戻せます。", { exact: true })).toBeVisible();
+  await expect(page.locator("#messageDialog")).toHaveCount(0);
+});

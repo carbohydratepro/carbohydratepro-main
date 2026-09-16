@@ -8,8 +8,9 @@
     /* オフライン時はCDNが使えないため、スタイルはすべてインラインで完結させる */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
-      background-color: #ffffff;
-      color: #333333;
+      box-sizing: border-box;
+      background-color: #f5f6f8;
+      color: #191c21;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -20,25 +21,28 @@
     .offline-card {
       max-width: 420px;
       text-align: center;
-      border: 1px solid #dee2e6;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e3e6ea;
+      border-radius: 12px;
+      background: #fff;
       padding: 32px 24px;
     }
     .offline-icon { font-size: 48px; margin-bottom: 12px; }
     h1 { font-size: 1.25rem; margin: 0 0 8px; }
     p { color: #6c757d; font-size: 0.9rem; line-height: 1.6; }
     button {
-      background-color: #007bff;
+      background-color: #33518e;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       color: #ffffff;
-      padding: 10px 24px;
-      font-size: 0.95rem;
+      padding: 6px 12px;
+      min-height: 36px;
+      font-size: 0.85rem;
       cursor: pointer;
       margin-top: 8px;
     }
-    button:hover { background-color: #0069d9; }
+    button:hover { background-color: #2a4376; }
+    button:focus-visible { outline: 2px solid #33518e; outline-offset: 3px; }
+    @media (pointer: coarse) { button { min-height: 40px; } }
   </style>
 </head>
 <body>

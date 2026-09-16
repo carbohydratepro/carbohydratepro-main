@@ -39,7 +39,7 @@
     <div class="col-sm-6 mb-3 mb-sm-0">
       <div class="card h-100 cooking-stat-card">
         <div class="card-body d-flex align-items-center">
-          <div class="cooking-stat-number mr-3">{{ total_count }}</div>
+          <output class="cooking-stat-number mr-3" aria-label="累計作成回数">{{ total_count }}</output>
           <div><strong>累計作成回数</strong><div class="small text-muted">{% if last_cooked_on %}最終 {{ last_cooked_on|date:'Y年m月d日' }}{% else %}まだ作っていません{% endif %}</div></div>
         </div>
       </div>
@@ -47,7 +47,7 @@
     <div class="col-sm-6">
       <form method="post" action="{% url 'cooking_record_today' dish.id %}" class="h-100">
         {% csrf_token %}
-        <button type="submit" class="btn btn-success btn-lg btn-block h-100 cooking-today-button">
+        <button type="submit" class="btn btn-primary btn-block cooking-today-button">
           <i class="fas fa-check-circle mr-2" aria-hidden="true"></i>今日作った
           <span class="d-block small font-weight-normal mt-1">今日の回数を1増やします</span>
         </button>

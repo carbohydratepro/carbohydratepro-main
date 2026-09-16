@@ -252,6 +252,48 @@ function moveCard(card, toCompleted) {
         (_b = card.querySelector('.done-icon')) === null || _b === void 0 ? void 0 : _b.remove();
         undoneList.appendChild(card);
     }
+    updateHabitCardButton(card);
+}
+const pendingHabitCards = new WeakSet();
+function updateHabitCardButton(card) {
+    var _a, _b;
+    const button = card.querySelector('.habit-complete-button');
+    if (!button)
+        return;
+    const completed = card.dataset['completed'] === '1';
+    const title = (_b = (_a = card.querySelector('.habit-card-title')) === null || _a === void 0 ? void 0 : _a.textContent) !== null && _b !== void 0 ? _b : '習慣';
+    button.textContent = completed ? '戻す' : '達成';
+    button.setAttribute('aria-label', `${title}を${completed ? '未達成に戻す' : '達成にする'}`);
+    button.setAttribute('aria-pressed', String(completed));
+}
+async function toggleHabitCard(card) {
+    var _a, _b, _c, _d;
+    if (pendingHabitCards.has(card))
+        return;
+    pendingHabitCards.add(card);
+    const button = card.querySelector('.habit-complete-button');
+    if (button)
+        button.disabled = true;
+    const dateStr = (_a = card.dataset['date']) !== null && _a !== void 0 ? _a : habitSelectedDate;
+    try {
+        const result = await doToggle((_b = card.dataset['habitId']) !== null && _b !== void 0 ? _b : '', dateStr, getCardCoefficient(card));
+        if (!result)
+            throw new Error('Habit update failed');
+        moveCard(card, result.completed);
+        applyHeatmapDelta(dateStr, result.score_delta, result.completed);
+        updateWeekCell((_c = card.dataset['habitId']) !== null && _c !== void 0 ? _c : '', dateStr, result.completed, (_d = card.dataset['color']) !== null && _d !== void 0 ? _d : '');
+        updateWrapHeight();
+    }
+    catch (error) {
+        if (error instanceof Error && error.message === 'demo')
+            return;
+        showToast('習慣を更新できませんでした。もう一度お試しください。', 'error');
+    }
+    finally {
+        pendingHabitCards.delete(card);
+        if (button)
+            button.disabled = false;
+    }
 }
 // ---- カードスワイプ ----
 const SWIPE_THRESHOLD = 60;
@@ -269,16 +311,25 @@ function isSliderInteraction(target) {
     return el.classList.contains('coeff-slider') || el.closest('.coeff-slider-wrap') !== null;
 }
 function attachCardSwipe(card) {
+    var _a;
+    const completeButton = document.createElement('button');
+    completeButton.type = 'button';
+    completeButton.className = 'btn btn-outline-primary btn-sm habit-complete-button';
+    completeButton.addEventListener('click', () => { void toggleHabitCard(card); });
+    (_a = card.querySelector('.habit-card-main')) === null || _a === void 0 ? void 0 : _a.appendChild(completeButton);
+    updateHabitCardButton(card);
     let startX = 0;
     let startY = 0;
     let isDragging = false;
+    let swipeAllowed = false;
     let isVertical = false; // 縦スクロール中フラグ
     let directionLocked = false; // 方向確定フラグ
     const leftHint = card.querySelector('.habit-card-swipe-hint.left');
     const rightHint = card.querySelector('.habit-card-swipe-hint.right');
     function onStart(x, y, target) {
         // スライダー操作中はスワイプ無効
-        if (isSliderInteraction(target))
+        swipeAllowed = !isSliderInteraction(target) && !(target instanceof Element && target.closest('button'));
+        if (!swipeAllowed)
             return false;
         startX = x;
         startY = y;
@@ -288,6 +339,8 @@ function attachCardSwipe(card) {
         return true;
     }
     function onMove(x, y) {
+        if (!swipeAllowed)
+            return;
         const dx = x - startX;
         const dy = y - startY;
         const absDx = Math.abs(dx);
@@ -320,7 +373,9 @@ function attachCardSwipe(card) {
             rightHint.style.opacity = dx > 0 ? String(ratio) : '0';
     }
     async function onEnd(x) {
-        var _a, _b, _c, _d, _e, _f, _g;
+        if (!swipeAllowed)
+            return;
+        swipeAllowed = false;
         const dx = x - startX;
         card.style.transform = '';
         if (leftHint)
@@ -333,24 +388,8 @@ function attachCardSwipe(card) {
         const completed = card.dataset['completed'] === '1';
         const shouldComplete = dx > SWIPE_THRESHOLD;
         const shouldUncomplete = dx < -SWIPE_THRESHOLD;
-        const coeff = getCardCoefficient(card);
-        const dateStr = (_a = card.dataset['date']) !== null && _a !== void 0 ? _a : habitSelectedDate;
-        if (shouldComplete && !completed) {
-            const res = await doToggle((_b = card.dataset['habitId']) !== null && _b !== void 0 ? _b : '', dateStr, coeff);
-            if (res) {
-                moveCard(card, true);
-                applyHeatmapDelta(dateStr, res.score_delta, true);
-                updateWeekCell((_c = card.dataset['habitId']) !== null && _c !== void 0 ? _c : '', dateStr, true, (_d = card.dataset['color']) !== null && _d !== void 0 ? _d : '');
-            }
-        }
-        else if (shouldUncomplete && completed) {
-            const res = await doToggle((_e = card.dataset['habitId']) !== null && _e !== void 0 ? _e : '', dateStr, coeff);
-            if (res) {
-                moveCard(card, false);
-                applyHeatmapDelta(dateStr, res.score_delta, false);
-                updateWeekCell((_f = card.dataset['habitId']) !== null && _f !== void 0 ? _f : '', dateStr, false, (_g = card.dataset['color']) !== null && _g !== void 0 ? _g : '');
-            }
-        }
+        if ((shouldComplete && !completed) || (shouldUncomplete && completed))
+            await toggleHabitCard(card);
     }
     card.addEventListener('touchstart', (e) => {
         onStart(e.touches[0].clientX, e.touches[0].clientY, e.target);
@@ -406,6 +445,12 @@ function switchPanel(index) {
         panels.style.transform = `translateX(-${index * 100}%)`;
     document.querySelectorAll('.habit-tab').forEach((tab, i) => {
         tab.classList.toggle('active', i === index);
+        tab.setAttribute('aria-selected', String(i === index));
+        tab.tabIndex = i === index ? 0 : -1;
+    });
+    document.querySelectorAll('.habit-panel').forEach((panel, i) => {
+        panel.toggleAttribute('inert', i !== index);
+        panel.setAttribute('aria-hidden', String(i !== index));
     });
     // パネル切り替え後に高さを更新
     setTimeout(updateWrapHeight, 50);
@@ -497,8 +542,8 @@ function buildCard(item, dateStr) {
     <div class="habit-card-main">
       <div class="habit-card-indicator" style="background:${color};"></div>
       <div class="habit-card-body">
-        <div class="habit-card-title">${String(item['title'])}</div>
-        <div class="habit-card-meta">${String(item['frequency'])}</div>
+        <div class="habit-card-title"></div>
+        <div class="habit-card-meta"></div>
       </div>
       ${completed ? '<i class="fas fa-check done-icon"></i>' : ''}
     </div>
@@ -507,6 +552,12 @@ function buildCard(item, dateStr) {
       <input type="range" class="coeff-slider" min="1" max="10" step="1" value="${displayCoeff}" data-positive="${isPositive}">
     </div>
   `;
+    const title = card.querySelector('.habit-card-title');
+    const meta = card.querySelector('.habit-card-meta');
+    if (title)
+        title.textContent = String(item['title']);
+    if (meta)
+        meta.textContent = String(item['frequency']);
     return card;
 }
 // ---- 年ビュー ----
@@ -711,6 +762,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // タブ
     document.querySelectorAll('.habit-tab').forEach((tab, i) => {
         tab.addEventListener('click', () => switchPanel(i));
+        tab.addEventListener('keydown', event => {
+            var _a;
+            const indices = { ArrowRight: (i + 1) % PANEL_COUNT, ArrowLeft: (i + PANEL_COUNT - 1) % PANEL_COUNT, Home: 0, End: PANEL_COUNT - 1 };
+            const next = indices[event.key];
+            if (next === undefined)
+                return;
+            event.preventDefault();
+            switchPanel(next);
+            (_a = document.querySelectorAll('.habit-tab')[next]) === null || _a === void 0 ? void 0 : _a.focus();
+        });
     });
     attachPanelSwipe();
     // 日付 picker

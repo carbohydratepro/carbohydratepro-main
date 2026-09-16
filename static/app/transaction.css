@@ -1,4 +1,19 @@
 /* 取引管理用CSS */
+.transaction-edit {
+    color: var(--color-text);
+    font-size: 0.95rem;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    padding: 0;
+}
+
+.chart-filter-options summary { cursor: pointer; padding: 8px 0; color: var(--color-primary); }
+.chart-filter-buttons { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0; }
+.chart-filter-buttons [aria-pressed="true"] { background: var(--color-primary); color: white; }
+
 .card-sm {
     margin-bottom: 0.5rem;
 }

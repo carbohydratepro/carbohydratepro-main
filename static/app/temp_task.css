@@ -46,14 +46,14 @@
 }
 
 .set-tab.active {
-    background: #007bff;
-    border-color: #007bff;
+    background: var(--color-primary);
+    border-color: var(--color-primary);
     color: #fff;
     font-weight: 600;
 }
 
 .set-tab-input {
-    border: 1px solid #007bff;
+    border: 1px solid var(--color-primary);
     border-radius: 20px;
     padding: 3px 12px;
     font-size: 0.85rem;
@@ -63,10 +63,10 @@
 
 .set-add-btn {
     background: none;
-    border: 1px dashed #aaa;
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    width: var(--control-height);
+    height: var(--control-height);
     font-size: 0.8rem;
     color: #888;
     cursor: pointer;
@@ -78,9 +78,9 @@
 }
 
 .set-add-btn:hover {
-    background: #e8f0fe;
-    color: #007bff;
-    border-color: #007bff;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
 }
 
 .temp-task-title {
@@ -167,16 +167,17 @@
 }
 
 .kanban-input:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
 
 .kanban-add-btn {
-    padding: 6px 10px;
-    background-color: #007bff;
+    padding: 6px 12px;
+    min-height: var(--control-height);
+    background-color: var(--color-primary);
     color: white;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-control);
     cursor: pointer;
     font-size: 0.875rem;
     flex-shrink: 0;
@@ -184,7 +185,7 @@
 }
 
 .kanban-add-btn:hover {
-    background-color: #0056b3;
+    background-color: var(--color-primary-dark);
 }
 
 /* タスクリストエリア */
@@ -523,9 +524,9 @@
     }
 
     .set-add-btn {
-        height: 40px;
-        min-width: 40px;
-        width: 40px;
+        height: var(--control-height);
+        min-width: var(--control-height);
+        width: var(--control-height);
     }
 
     .kanban-hint {
@@ -543,10 +544,6 @@
     .kanban-input {
         font-size: 0.8rem;
         padding: 5px 8px;
-    }
-
-    .kanban-add-btn {
-        padding: 5px 9px;
     }
 
     .kanban-task-card {

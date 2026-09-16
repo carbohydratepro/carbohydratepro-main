@@ -38,7 +38,7 @@ function syncExpenseFilterForm(url) {
             input.checked = selected.has(input.value);
         });
     });
-    ['major_category', 'transaction_type', 'date', 'target_date', 'view_mode'].forEach(name => {
+    ['search', 'major_category', 'transaction_type', 'date', 'target_date', 'view_mode'].forEach(name => {
         var _a;
         const field = form.elements.namedItem(name);
         if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
@@ -59,6 +59,9 @@ async function updateExpenseList(url) {
     const controller = new AbortController();
     expenseListAbortController = controller;
     listRegion.setAttribute('aria-busy', 'true');
+    const status = document.getElementById('expenseListStatus');
+    if (status)
+        status.textContent = '記録一覧を更新しています…';
     try {
         const response = await fetch(url.toString(), {
             headers: {
@@ -71,17 +74,24 @@ async function updateExpenseList(url) {
             throw new Error(`ステータス: ${response.status}`);
         }
         const html = await response.text();
+        if (expenseListAbortController !== controller)
+            return;
         listRegion.innerHTML = html;
         syncExpenseFilterForm(url);
         window.history.replaceState(null, '', url.toString());
         initLongPressDelete(listRegion);
         initTransactionDoubleClick(listRegion);
+        if (status)
+            status.textContent = '記録一覧を更新しました。グラフは変更していません。';
+        syncExpenseChartFilterButtons(url);
     }
     catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError')
             return;
         console.error('Expense list filter error:', error);
         showToast('取引一覧の絞り込みに失敗しました。', 'error');
+        if (status)
+            status.textContent = '更新できませんでした。表示中の記録は保持しています。';
     }
     finally {
         if (expenseListAbortController === controller) {
@@ -104,6 +114,66 @@ function chartFilterHandler(name, data) {
         const value = (_d = (_c = (_b = data.filterValues) === null || _b === void 0 ? void 0 : _b[index]) !== null && _c !== void 0 ? _c : data.labels[index]) !== null && _d !== void 0 ? _d : '';
         filterExpenseList(name, value);
     };
+}
+function syncExpenseChartFilterButtons(url) {
+    document.querySelectorAll('[data-chart-filter]').forEach(button => {
+        var _a, _b;
+        const name = (_a = button.dataset['chartFilter']) !== null && _a !== void 0 ? _a : '';
+        const value = (_b = button.dataset['filterValue']) !== null && _b !== void 0 ? _b : '';
+        const excluded = name === 'category' && value.startsWith('exclude:')
+            ? value.slice('exclude:'.length).split(',').filter(Boolean).sort() : [];
+        const actualExcluded = url.searchParams.getAll('exclude_category').sort();
+        const selected = excluded.length > 0
+            ? !url.searchParams.has('category') && JSON.stringify(excluded) === JSON.stringify(actualExcluded)
+            : url.searchParams.getAll(name).includes(value);
+        button.setAttribute('aria-pressed', String(selected));
+    });
+}
+function initializeExpenseChartFilterButtons() {
+    var _a;
+    const region = document.getElementById('expenseChartFilters');
+    if (!region)
+        return;
+    const groups = [
+        ['カテゴリ', 'category', typeof categoryData === 'undefined' ? undefined : categoryData],
+        ['費用タイプ', 'major_category', typeof majorCategoryData === 'undefined' ? undefined : majorCategoryData],
+    ];
+    groups.forEach(([label, name, data]) => {
+        if (!(data === null || data === void 0 ? void 0 : data.labels.length))
+            return;
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = `${label}を選ぶ`;
+        details.appendChild(summary);
+        const buttons = document.createElement('div');
+        buttons.className = 'chart-filter-buttons';
+        data.labels.forEach((text, index) => {
+            var _a, _b;
+            const value = (_b = (_a = data.filterValues) === null || _a === void 0 ? void 0 : _a[index]) !== null && _b !== void 0 ? _b : text;
+            if (!value || value === 'データなし')
+                return;
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn btn-outline-primary btn-sm';
+            button.textContent = text;
+            button.dataset['chartFilter'] = name;
+            button.dataset['filterValue'] = value;
+            button.addEventListener('click', () => filterExpenseList(name, value));
+            buttons.appendChild(button);
+        });
+        if (buttons.childElementCount) {
+            details.appendChild(buttons);
+            region.appendChild(details);
+        }
+    });
+    syncExpenseChartFilterButtons(new URL(window.location.href));
+    (_a = document.getElementById('transactionListRegion')) === null || _a === void 0 ? void 0 : _a.addEventListener('click', event => {
+        if (!(event.target instanceof Element) || !event.target.closest('[data-clear-expense-filters]'))
+            return;
+        const url = new URL(window.location.href);
+        ['search', 'category', 'exclude_category', 'payment_method', 'exclude_payment_method', 'major_category', 'transaction_type', 'date', 'page'].forEach(key => url.searchParams.delete(key));
+        void updateExpenseList(url);
+    });
 }
 // エラーメッセージを表示する関数
 function displayFormErrors(errors) {
@@ -241,7 +311,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // 自然な目盛りを生成する関数
 function getNiceScale(min, max, tickCount = 5) {
-    const range = max - min;
+    min = Number.isFinite(min) ? Math.min(min, 0) : 0;
+    max = Number.isFinite(max) ? Math.max(max, 0) : 1;
+    const range = max - min || 1;
     const roughStep = range / tickCount;
     const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
     const normalizedStep = roughStep / magnitude;
@@ -264,19 +336,6 @@ function getNiceScale(min, max, tickCount = 5) {
         step: niceStep,
     };
 }
-// 折れ線グラフのアニメーション表示
-function animateLineChart(chart, originalData, delay = 30) {
-    let currentIndex = 0;
-    const addNextPoint = () => {
-        if (currentIndex < originalData.length) {
-            chart.data.datasets[0].data.push(originalData[currentIndex]);
-            chart.update('none');
-            currentIndex++;
-            setTimeout(addNextPoint, delay);
-        }
-    };
-    setTimeout(addNextPoint, 10);
-}
 // 折れ線グラフの共通オプション生成
 function createLineChartConfig(balanceData, maxTicksLimitX, maxTicksLimitY, hoverRadius) {
     return {
@@ -286,7 +345,7 @@ function createLineChartConfig(balanceData, maxTicksLimitX, maxTicksLimitY, hove
             datasets: [
                 {
                     label: balanceData.datasets[0].label,
-                    data: [],
+                    data: [...balanceData.datasets[0].data],
                     fill: balanceData.datasets[0].fill,
                     borderColor: balanceData.datasets[0].borderColor,
                     backgroundColor: balanceData.datasets[0].backgroundColor || 'rgba(54, 162, 235, 0.2)',
@@ -310,7 +369,7 @@ function createLineChartConfig(balanceData, maxTicksLimitX, maxTicksLimitY, hove
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: { duration: 2000, easing: 'easeInOutQuart' },
+            animation: false,
             interaction: {
                 mode: 'index',
                 intersect: false,
@@ -349,25 +408,23 @@ function createLineChartConfig(balanceData, maxTicksLimitX, maxTicksLimitY, hove
         },
     };
 }
-// 折れ線グラフの初期化とアニメーション開始
+// 折れ線グラフは全日分を一度に描画する
 function initializeLineChart(canvasId, balanceData, maxTicksX, maxTicksY, hoverRadius, tickCount) {
-    const canvas = document.getElementById(canvasId);
+    const canvas = getPendingExpenseCanvas(canvasId);
     if (!canvas)
         return;
     const config = createLineChartConfig(balanceData, maxTicksX, maxTicksY, hoverRadius);
     const ctx = canvas.getContext('2d');
     if (!ctx)
         return;
-    const chart = registerExpenseChart(new Chart(ctx, config));
     const originalData = balanceData.datasets[0].data;
     const minValue = Math.min(...originalData);
     const maxValue = Math.max(...originalData);
     const scale = getNiceScale(minValue, maxValue, tickCount);
-    chart.options.scales.y.min = Math.min(scale.min - scale.step, 0);
-    chart.options.scales.y.max = scale.max + scale.step;
-    chart.options.scales.y.ticks.stepSize = scale.step;
-    chart.update('none');
-    animateLineChart(chart, originalData);
+    config.options.scales.y.min = Math.min(scale.min - scale.step, 0);
+    config.options.scales.y.max = scale.max + scale.step;
+    config.options.scales.y.ticks.stepSize = scale.step;
+    registerExpenseChart(ctx, config);
 }
 // 土日色付け状態（localStorage で永続化）
 let weekendColorEnabled = localStorage.getItem('weekendColorEnabled') === 'true';
@@ -399,18 +456,38 @@ function toggleWeekendColor() {
 // 棒グラフのチャートインスタンスを保持
 const activeBarCharts = [];
 const activeExpenseCharts = [];
-function registerExpenseChart(chart) {
+function registerExpenseChart(ctx, config) {
+    const chart = new Chart(ctx, Object.assign(Object.assign({}, config), { options: Object.assign(Object.assign({}, config.options), { animation: false }) }));
     activeExpenseCharts.push(chart);
     return chart;
+}
+// CSSで隠れているPC/スマホ用・折りたたみ内のグラフは表示時まで生成しない。
+// 既存インスタンスは保持し、絞り込みや再展開ではデータを作り直さない。
+function getPendingExpenseCanvas(id) {
+    const canvas = document.getElementById(id);
+    if (!(canvas instanceof HTMLCanvasElement) || !canvas.getClientRects().length || Chart.getChart(canvas)) {
+        return null;
+    }
+    return canvas;
+}
+function initializeVisibleExpenseCharts() {
+    if (document.getElementById('monthlyBarChart'))
+        initializeYearlyCharts();
+    else
+        initializeExpenseCharts();
 }
 function initializeExpenseChartCollapses() {
     document.querySelectorAll('.expense-chart-collapse').forEach(panel => {
         $(panel).on('shown.bs.collapse', () => {
+            initializeVisibleExpenseCharts();
             activeExpenseCharts.forEach(chart => {
                 if (panel.contains(chart.canvas))
                     chart.resize();
             });
         });
+    });
+    window.matchMedia('(min-width: 768px)').addEventListener('change', () => {
+        initializeVisibleExpenseCharts();
     });
 }
 let expenseComparisonChart = null;
@@ -422,7 +499,7 @@ function initializeExpenseComparisonChart() {
     const ctx = canvas === null || canvas === void 0 ? void 0 : canvas.getContext('2d');
     if (!ctx)
         return;
-    expenseComparisonChart = registerExpenseChart(new Chart(ctx, {
+    expenseComparisonChart = registerExpenseChart(ctx, {
         type: 'bar',
         data: comparisonData,
         options: {
@@ -447,7 +524,7 @@ function initializeExpenseComparisonChart() {
                 y: { beginAtZero: true },
             },
         },
-    }));
+    });
 }
 function setExpenseComparisonVisible(visible) {
     const panel = document.getElementById('expenseComparisonPanel');
@@ -457,8 +534,8 @@ function setExpenseComparisonVisible(visible) {
         return;
     panel.hidden = !visible;
     button.setAttribute('aria-expanded', String(visible));
-    button.classList.toggle('btn-info', visible);
-    button.classList.toggle('btn-outline-info', !visible);
+    button.classList.toggle('btn-primary', visible);
+    button.classList.toggle('btn-outline-primary', !visible);
     if (label)
         label.textContent = visible ? '比較を閉じる' : '先月・全期間平均と比較';
     if (visible)
@@ -483,11 +560,11 @@ function initializeExpenseCharts() {
         return;
     }
     // カテゴリ円グラフ
-    const ctxPie = document.getElementById('categoryPieChart');
+    const ctxPie = getPendingExpenseCanvas('categoryPieChart');
     if (ctxPie) {
         const pieCtx = ctxPie.getContext('2d');
         if (pieCtx) {
-            registerExpenseChart(new Chart(pieCtx, {
+            registerExpenseChart(pieCtx, {
                 type: 'pie',
                 data: categoryData,
                 options: {
@@ -499,14 +576,14 @@ function initializeExpenseCharts() {
                     },
                     onClick: chartFilterHandler('category', categoryData),
                 },
-            }));
+            });
         }
     }
-    const ctxPiePC = document.getElementById('categoryPieChartPC');
+    const ctxPiePC = getPendingExpenseCanvas('categoryPieChartPC');
     if (ctxPiePC) {
         const piePCCtx = ctxPiePC.getContext('2d');
         if (piePCCtx) {
-            registerExpenseChart(new Chart(piePCCtx, {
+            registerExpenseChart(piePCCtx, {
                 type: 'pie',
                 data: categoryData,
                 options: {
@@ -518,7 +595,7 @@ function initializeExpenseCharts() {
                     },
                     onClick: chartFilterHandler('category', categoryData),
                 },
-            }));
+            });
         }
     }
     // 棒グラフ用データを土日色付け状態に応じて準備
@@ -548,20 +625,20 @@ function initializeExpenseCharts() {
         },
     });
     // PC用棒グラフ
-    const ctxBar = document.getElementById('expenseBarChart');
+    const ctxBar = getPendingExpenseCanvas('expenseBarChart');
     if (ctxBar) {
         const barCtx = ctxBar.getContext('2d');
         if (barCtx) {
-            const chart = registerExpenseChart(new Chart(barCtx, createBarConfig(expenseDataWithColors, 10, 5)));
+            const chart = registerExpenseChart(barCtx, createBarConfig(expenseDataWithColors, 10, 5));
             activeBarCharts.push(chart);
         }
     }
     // モバイル用棒グラフ
-    const ctxBarMobile = document.getElementById('expenseBarChartMobile');
+    const ctxBarMobile = getPendingExpenseCanvas('expenseBarChartMobile');
     if (ctxBarMobile) {
         const barMobileCtx = ctxBarMobile.getContext('2d');
         if (barMobileCtx) {
-            const chart = registerExpenseChart(new Chart(barMobileCtx, createBarConfig(expenseDataWithColors, 8, 4)));
+            const chart = registerExpenseChart(barMobileCtx, createBarConfig(expenseDataWithColors, 8, 4));
             activeBarCharts.push(chart);
         }
     }
@@ -580,18 +657,18 @@ function initializeExpenseCharts() {
         },
     };
     // モバイル用メインカテゴリ
-    const ctxMajorCategory = document.getElementById('majorCategoryChart');
+    const ctxMajorCategory = getPendingExpenseCanvas('majorCategoryChart');
     if (ctxMajorCategory) {
         const majorCtx = ctxMajorCategory.getContext('2d');
         if (majorCtx)
-            registerExpenseChart(new Chart(majorCtx, majorCategoryConfig));
+            registerExpenseChart(majorCtx, majorCategoryConfig);
     }
     // PC用メインカテゴリ
-    const ctxMajorCategoryPC = document.getElementById('majorCategoryChartPC');
+    const ctxMajorCategoryPC = getPendingExpenseCanvas('majorCategoryChartPC');
     if (ctxMajorCategoryPC) {
         const majorPCCtx = ctxMajorCategoryPC.getContext('2d');
         if (majorPCCtx)
-            registerExpenseChart(new Chart(majorPCCtx, majorCategoryConfig));
+            registerExpenseChart(majorPCCtx, majorCategoryConfig);
     }
     // PC用折れ線グラフ
     initializeLineChart('balanceLineChart', balanceData, 10, 5, 6, 5);
@@ -603,14 +680,14 @@ function initializeYearlyCharts() {
     var _a;
     if (typeof monthlyData === 'undefined')
         return;
-    const canvas = document.getElementById('monthlyBarChart');
+    const canvas = getPendingExpenseCanvas('monthlyBarChart');
     if (!canvas)
         return;
     const ctx = canvas.getContext('2d');
     if (!ctx)
         return;
     const year = (_a = canvas.dataset['year']) !== null && _a !== void 0 ? _a : '';
-    registerExpenseChart(new Chart(ctx, {
+    registerExpenseChart(ctx, {
         type: 'bar',
         data: monthlyData,
         options: {
@@ -650,7 +727,7 @@ function initializeYearlyCharts() {
                 },
             },
         },
-    }));
+    });
 }
 // フィルター変更時の処理（filterFormはonchange="this.form.submit()"で処理するため不要）
 function initializeExpenseFilters() {
@@ -693,15 +770,11 @@ function initTransactionDoubleClick(container = document) {
 }
 // ページ読み込み後にグラフとフィルターを初期化
 document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('monthlyBarChart')) {
-        initializeYearlyCharts();
-    }
-    else {
-        initializeExpenseCharts();
-    }
+    initializeVisibleExpenseCharts();
     initializeExpenseFilters();
     initializeExpenseComparisonToggle();
     initializeExpenseChartCollapses();
+    initializeExpenseChartFilterButtons();
     initLongPressDelete();
     initTransactionDoubleClick();
 });

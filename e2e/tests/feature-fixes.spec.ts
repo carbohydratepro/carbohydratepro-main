@@ -15,7 +15,8 @@ test.describe("2026-07-26 機能修正", () => {
   test("E2E-FIXES-001 詳細絞り込みと週の開始曜日を操作できる", async ({ page }) => {
     // Spec: docs/e2e/release-test-spec.md#e2e-fixes-001
     await page.goto("/carbohydratepro/home/");
-    await expect(page.getByText("今日のひとこと")).toBeVisible();
+    await page.getByText("今日のひとこと・天気", { exact: true }).click();
+    await expect(page.getByText("今日のひとこと", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "天気を表示" })).toBeVisible();
 
     await page.goto("/carbohydratepro/expenses/");
@@ -44,7 +45,8 @@ test.describe("2026-07-26 機能修正", () => {
     await submitAndWaitForNavigation(page, modal.getByRole("button", { name: /^登録$/ }));
 
     await expect(page.locator(".summary-money-value").first()).toHaveCSS("text-align", "center");
-    const categoryChart = page.locator("#categoryPieChart");
+    const categoryChart = page.locator("#categoryPieChartPC");
+    await expect(categoryChart).toBeVisible();
     await expect(categoryChart).toBeAttached();
     await categoryChart.evaluate((canvas) => canvas.setAttribute("data-e2e-preserved", "true"));
     const filterResponse = page.waitForResponse((response) =>

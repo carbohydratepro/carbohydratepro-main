@@ -26,7 +26,6 @@ function toggleMemoExpand(memoId) {
 let markdownEnabled = false;
 let memoMdRenderer = null;
 function renderMemoContent(fullContentEl) {
-    var _a;
     if (!fullContentEl)
         return;
     let raw = '';
@@ -46,12 +45,13 @@ function renderMemoContent(fullContentEl) {
                 memoMdRenderer = { render: window.memoMarkdownRender };
             }
         }
-        const rendered = memoMdRenderer ? memoMdRenderer.render(raw) : raw;
-        fullContentEl.innerHTML = rendered;
+        if (memoMdRenderer)
+            fullContentEl.innerHTML = memoMdRenderer.render(raw);
+        else
+            fullContentEl.textContent = raw;
     }
     else {
         fullContentEl.textContent = raw;
-        fullContentEl.innerHTML = ((_a = fullContentEl.textContent) !== null && _a !== void 0 ? _a : '').replace(/\n/g, '<br>');
     }
 }
 function setMarkdownMode(enabled) {
@@ -82,6 +82,9 @@ function setMarkdownMode(enabled) {
 // お気に入りの切り替え
 function toggleFavorite(memoId, button) {
     var _a;
+    if (!(button instanceof HTMLButtonElement) || button.disabled)
+        return;
+    button.disabled = true;
     fetch(`/carbohydratepro/memos/toggle-favorite/${memoId}/`, {
         method: 'POST',
         headers: {
@@ -89,9 +92,11 @@ function toggleFavorite(memoId, button) {
             'Content-Type': 'application/json',
         },
     })
-        .then(response => response.json())
+        .then(response => { if (!response.ok)
+        throw new Error('request'); return response.json(); })
         .then(data => {
         if (data.success) {
+            button.setAttribute('aria-pressed', String(data.is_favorite));
             const icon = button.querySelector('i');
             if (data.is_favorite) {
                 if (icon)
@@ -105,104 +110,150 @@ function toggleFavorite(memoId, button) {
                 button.setAttribute('data-favorite', 'false');
                 button.setAttribute('title', 'お気に入り');
             }
-            setTimeout(() => location.reload(), 500);
+            showToast(data.is_favorite ? 'お気に入りに追加しました。' : 'お気に入りを解除しました。', 'success');
+            if (!data.is_favorite && new URL(location.href).searchParams.get('favorite') === 'true')
+                location.reload();
+        }
+        else {
+            throw new Error('request');
         }
     })
-        .catch(error => console.error('Error:', error));
+        .catch(error => { if (!(error instanceof Error && error.message === 'demo'))
+        showToast('変更できませんでした。もう一度お試しください。', 'error'); })
+        .then(() => { button.disabled = false; });
 }
 // フォームデータをURLSearchParams形式に変換
 function serializeMemoForm(form) {
     return new URLSearchParams(new FormData(form)).toString();
 }
-// 編集モーダル関連
-async function openEditMemoModal(memoId) {
+// 試作: 共通の読み込み・保存状態と、入力を失わないエラー表示。
+let memoOpening = false;
+async function openMemoEditor(url, modalId) {
+    var _a, _b, _c;
+    if (memoOpening)
+        return;
+    memoOpening = true;
+    const active = document.activeElement;
+    const opener = (_b = (_a = active === null || active === void 0 ? void 0 : active.closest('.memo-item-actions')) === null || _a === void 0 ? void 0 : _a.querySelector('[data-toggle="dropdown"]')) !== null && _b !== void 0 ? _b : active;
     try {
-        const response = await fetch(`/carbohydratepro/memos/edit/${memoId}/`, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        });
-        if (!response.ok)
-            throw new Error(`ステータス: ${response.status}`);
+        const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!response.ok || response.redirected)
+            throw new Error('load');
         const html = await response.text();
-        const modalDialog = document.querySelector('#editMemoModal .modal-dialog');
-        if (modalDialog)
-            modalDialog.innerHTML = html;
-        $('#editMemoModal').modal('show');
-        const form = document.getElementById('editMemoForm');
-        if (form instanceof HTMLFormElement) {
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                try {
-                    const res = await fetch(form.action, {
-                        method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: serializeMemoForm(form),
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        $('#editMemoModal').modal('hide');
-                        location.reload();
-                    }
-                    else {
-                        alert('エラーが発生しました。入力内容を確認してください。');
-                    }
-                }
-                catch (_a) {
-                    alert('保存に失敗しました。');
-                }
+        const dialog = document.querySelector(modalId + ' .modal-dialog');
+        if (!dialog)
+            return;
+        dialog.innerHTML = html;
+        const form = dialog.querySelector('form');
+        if (!form)
+            return;
+        const title = dialog.querySelector('.modal-title');
+        if (title)
+            title.id = modalId.slice(1) + 'Label';
+        const notice = document.createElement('div');
+        notice.className = 'alert alert-danger d-none';
+        notice.setAttribute('role', 'alert');
+        (_c = form.querySelector('.modal-body')) === null || _c === void 0 ? void 0 : _c.prepend(notice);
+        $(modalId).one('shown.bs.modal', () => {
+            var _a;
+            (_a = form.querySelector('[name="title"]')) === null || _a === void 0 ? void 0 : _a.focus();
+        });
+        $(modalId).one('hidden.bs.modal', () => {
+            if (opener instanceof HTMLElement && opener.isConnected)
+                opener.focus();
+        });
+        $(modalId).modal('show');
+        form.addEventListener('submit', async (event) => {
+            var _a, _b, _c;
+            event.preventDefault();
+            if (form.dataset.saving === 'true')
+                return;
+            form.dataset.saving = 'true';
+            form.setAttribute('aria-busy', 'true');
+            notice.classList.add('d-none');
+            form.querySelectorAll('.memo-field-error').forEach(el => el.remove());
+            form.querySelectorAll('[aria-invalid]').forEach(el => {
+                el.removeAttribute('aria-invalid');
+                el.removeAttribute('aria-describedby');
             });
-        }
+            const submit = form.querySelector('[type="submit"]');
+            const label = (_a = submit === null || submit === void 0 ? void 0 : submit.textContent) !== null && _a !== void 0 ? _a : '保存';
+            const body = serializeMemoForm(form);
+            // 保存中は閉じる・編集を止めて、結果と画面の食い違いを防ぐ。
+            const controls = Array.from(dialog.querySelectorAll('input, button, select, textarea'));
+            const enabled = controls.filter(el => !el.disabled);
+            enabled.forEach(el => { el.disabled = true; });
+            if (submit)
+                submit.textContent = '保存中…';
+            const preventClose = (e) => { if (form.dataset.saving === 'true')
+                e.preventDefault(); };
+            $(modalId).on('hide.bs.modal', preventClose);
+            let saved = false;
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body,
+                });
+                if (!response.ok || response.redirected)
+                    throw new Error('save');
+                const data = await response.json();
+                if (data.success) {
+                    saved = true;
+                    try {
+                        sessionStorage.setItem('memoSavedNotice', '1');
+                    }
+                    catch ( /* 保存自体は成功済み */_d) { /* 保存自体は成功済み */ }
+                    location.reload();
+                }
+                else {
+                    notice.textContent = '入力内容を確認してください。';
+                    notice.classList.remove('d-none');
+                    Object.entries((_b = data.errors) !== null && _b !== void 0 ? _b : {}).forEach(([name, errors]) => {
+                        var _a;
+                        const field = form.elements.namedItem(name);
+                        if (!(field instanceof HTMLElement))
+                            return;
+                        const error = document.createElement('div');
+                        error.className = 'memo-field-error text-danger small mt-1';
+                        error.id = modalId.slice(1) + '-' + name + '-error';
+                        error.textContent = errors.join(' ');
+                        field.setAttribute('aria-invalid', 'true');
+                        field.setAttribute('aria-describedby', error.id);
+                        (_a = field.closest('.form-group')) === null || _a === void 0 ? void 0 : _a.append(error);
+                    });
+                }
+            }
+            catch (_e) {
+                notice.textContent = '保存結果を確認できませんでした。入力内容は残しています。再送前に別タブの一覧で保存済みか確認してください。';
+                notice.classList.remove('d-none');
+            }
+            finally {
+                if (!saved) {
+                    form.dataset.saving = 'false';
+                    form.removeAttribute('aria-busy');
+                    enabled.forEach(el => { el.disabled = false; });
+                    if (submit)
+                        submit.textContent = label;
+                    (_c = form.querySelector('[aria-invalid="true"]')) === null || _c === void 0 ? void 0 : _c.focus();
+                }
+                $(modalId).off('hide.bs.modal', preventClose);
+            }
+        });
     }
-    catch (_a) {
-        alert('データの読み込みに失敗しました。');
+    catch (error) {
+        if (!(error instanceof Error && error.message === 'demo'))
+            showToast('メモを読み込めませんでした。もう一度お試しください。', 'error');
+    }
+    finally {
+        memoOpening = false;
     }
 }
-// 新規作成モーダル関連
+async function openEditMemoModal(memoId) {
+    await openMemoEditor('/carbohydratepro/memos/edit/' + memoId + '/', '#editMemoModal');
+}
 async function openCreateMemoModal() {
-    try {
-        const response = await fetch('/carbohydratepro/memos/create/', {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        });
-        if (!response.ok)
-            throw new Error(`ステータス: ${response.status}`);
-        const html = await response.text();
-        const modalDialog = document.querySelector('#createMemoModal .modal-dialog');
-        if (modalDialog)
-            modalDialog.innerHTML = html;
-        $('#createMemoModal').modal('show');
-        const form = document.getElementById('createMemoForm');
-        if (form instanceof HTMLFormElement) {
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                try {
-                    const res = await fetch(form.action, {
-                        method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: serializeMemoForm(form),
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        $('#createMemoModal').modal('hide');
-                        location.reload();
-                    }
-                    else {
-                        alert('エラーが発生しました。入力内容を確認してください。');
-                    }
-                }
-                catch (_a) {
-                    alert('保存に失敗しました。');
-                }
-            });
-        }
-    }
-    catch (_a) {
-        alert('データの読み込みに失敗しました。');
-    }
+    await openMemoEditor('/carbohydratepro/memos/create/', '#createMemoModal');
 }
 // フィルター関連のイベント処理
 function initializeMemoFilters() {
@@ -280,6 +331,27 @@ function initMemoDoubleClick() {
 }
 // ページ読み込み時にフィルターを初期化
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-memo-notice]').forEach(notice => {
+        var _a;
+        showToast((_a = notice.textContent) !== null && _a !== void 0 ? _a : '', notice.dataset.noticeType === 'error' ? 'error' : 'success');
+        notice.remove();
+    });
+    if (sessionStorage.getItem('memoSavedNotice') === '1') {
+        sessionStorage.removeItem('memoSavedNotice');
+        showToast('メモを保存しました。', 'success');
+    }
+    document.addEventListener('click', event => {
+        var _a, _b;
+        const target = event.target instanceof Element ? event.target.closest('[data-memo-delete-url]') : null;
+        if (!target)
+            return;
+        const form = document.getElementById('deleteMemoForm');
+        if (form instanceof HTMLFormElement)
+            form.action = (_a = target.dataset.memoDeleteUrl) !== null && _a !== void 0 ? _a : '';
+        const name = document.getElementById('deleteMemoName');
+        if (name)
+            name.textContent = (_b = target.dataset.memoTitle) !== null && _b !== void 0 ? _b : '';
+    });
     initializeMemoFilters();
     const saved = localStorage.getItem('memoMarkdownEnabled');
     setMarkdownMode(saved === '1');

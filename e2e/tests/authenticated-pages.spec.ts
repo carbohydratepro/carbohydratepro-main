@@ -49,4 +49,24 @@ test.describe("認証後ページ表示", () => {
     await expect(page).toHaveURL(/search=e2e/);
     await expect(page.locator("body")).toContainText("買い物");
   });
+
+  test("E2E-UI-012 設定と料理フォームはスマホ幅で操作できる", async ({ page }) => {
+    // Spec: docs/e2e/release-test-spec.md#e2e-ui-012
+    for (const width of [320, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const path of ["expenses/settings/", "tasks/settings/", "memos/settings/", "cooking/new/"]) {
+        await page.goto(`/carbohydratepro/${path}`);
+        await expectNoHorizontalOverflow(page);
+        await expectVisibleControlsHaveNames(page);
+      }
+    }
+    await page.goto("/carbohydratepro/memos/settings/");
+    await page.getByRole("button", { name: "E2Eメモを編集", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "種別を編集", exact: true })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await page.goto("/carbohydratepro/expenses/settings/");
+    await page.getByRole("button", { name: "E2E現金を編集", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "支払方法の編集", exact: true })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
 });

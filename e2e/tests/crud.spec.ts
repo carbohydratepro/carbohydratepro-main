@@ -24,7 +24,7 @@ test.describe("主要CRUDとAPI", () => {
     const memoType = await firstSelectValue(page, "/carbohydratepro/memos/create/", "memo_type");
 
     await page.goto("/carbohydratepro/memos/");
-    await page.getByRole("button", { name: /新規メモ作成/ }).click();
+    await page.getByRole("button", { name: /新規メモ/ }).click();
     const modal = page.locator("#createMemoModal");
     await expect(modal.getByRole("heading", { name: "メモ新規作成" })).toBeVisible();
     await modal.locator('[name="title"]').fill(title);
@@ -75,7 +75,7 @@ test.describe("主要CRUDとAPI", () => {
     const date = todayIsoDate();
 
     await page.goto("/carbohydratepro/tasks/");
-    await page.getByRole("button", { name: /新規タスク登録/ }).click();
+    await page.getByRole("button", { name: /新規タスク/ }).click();
     const modal = page.locator("#createTaskModal");
     await expect(modal.getByRole("heading", { name: "タスク新規登録" })).toBeVisible();
     await modal.locator('[name="title"]').fill(title);

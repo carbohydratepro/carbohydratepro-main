@@ -27,6 +27,7 @@ const pendingCommits = new Set<() => void>();
 // アプリ内の確認ダイアログ（window.confirm の代替）。
 // window.confirm はブラウザ操作をブロックし固着することがあるため、これに置き換える。
 function showConfirm(options: ConfirmOptions): void {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const overlay = document.createElement('div');
     overlay.className = 'app-confirm-overlay';
 
@@ -34,6 +35,7 @@ function showConfirm(options: ConfirmOptions): void {
     dialog.className = 'app-confirm-dialog';
     dialog.setAttribute('role', 'alertdialog');
     dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-label', options.message);
 
     const text = document.createElement('p');
     text.className = 'app-confirm-message';
@@ -63,20 +65,31 @@ function showConfirm(options: ConfirmOptions): void {
         if (settled) return;
         settled = true;
         document.removeEventListener('keydown', onKey);
+        document.removeEventListener('focusin', keepFocus);
         overlay.classList.remove('show');
+        if (previousFocus?.isConnected) previousFocus.focus();
         setTimeout(() => overlay.remove(), 200);
         if (confirmed) options.onConfirm();
         else options.onCancel?.();
     };
 
     function onKey(e: KeyboardEvent): void {
-        if (e.key === 'Escape') close(false);
+        if (e.key === 'Escape') { e.preventDefault(); close(false); }
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            (document.activeElement === cancelBtn ? confirmBtn : cancelBtn).focus();
+        }
+    }
+
+    function keepFocus(e: FocusEvent): void {
+        if (e.target instanceof Node && !dialog.contains(e.target)) cancelBtn.focus();
     }
 
     cancelBtn.addEventListener('click', () => close(false));
     confirmBtn.addEventListener('click', () => close(true));
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(false); });
     document.addEventListener('keydown', onKey);
+    document.addEventListener('focusin', keepFocus);
     cancelBtn.focus();
 }
 

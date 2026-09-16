@@ -40,7 +40,7 @@ interface ChartTooltipContext {
 interface ChartOptions {
   responsive?: boolean;
   maintainAspectRatio?: boolean;
-  animation?: { duration?: number; easing?: string };
+  animation?: false | { duration?: number; easing?: string };
   interaction?: {
     mode?: 'index' | 'nearest' | 'point' | 'dataset' | 'x' | 'y';
     intersect?: boolean;
@@ -99,6 +99,7 @@ interface ChartScaleContext {
 }
 
 declare class Chart {
+  static getChart(canvas: HTMLCanvasElement): Chart | undefined;
   canvas: HTMLCanvasElement;
   data: ChartData;
   options: ChartOptions;

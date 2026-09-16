@@ -1,0 +1,165 @@
+/* 全画面の部品契約。構造・データ色は各機能、操作の外観はここで管理する。
+   ページCSSの後に読み込み、ヘッダーと下部ナビは対象に含めない。 */
+.app-main > .container { background: transparent; border-color: transparent; }
+.app-main .card.shadow-sm, .app-main .card.shadow { box-shadow: none !important; }
+.app-main .card,
+.app-main .form-card,
+.app-main .history-card,
+.app-main .habit-card,
+.app-main .habit-mgmt-item,
+.app-main .memo-card-demo,
+.app-main .summary-card,
+.app-main .kanban-task-card {
+    border-radius: var(--radius);
+    box-shadow: none;
+}
+.app-main .card-body,
+.app-main .form-card,
+.app-main .history-card { padding: 18px; }
+.app-main .form-card, .app-main .history-card {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+.app-main .card-header, .app-main .card-footer {
+    padding: 12px 18px;
+    border-color: var(--color-border);
+}
+/* 色付きの旧見出しだけを中立化。本文の警告・カテゴリ色は維持する。 */
+.app-main .card-header, .modal .modal-header {
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+}
+.app-main .card-header .text-white, .modal .modal-header .text-white {
+    color: var(--color-text) !important;
+}
+.app-main .card-header :is(h2, h3, h4, h5, h6),
+.app-main .card-title { font-size: 1.05rem; font-weight: 600; }
+.app-main :is(h1.h2, h1.h3, h1.h4, h2.mb-0) { font-size: 1.5rem; }
+.app-main :is(h2.h4, h2.h5, h2.h6, h3.h5) { font-size: 1.05rem; }
+.app-main .page-heading-row,
+.app-main .settings-page-header { gap: 12px; margin-bottom: 20px; }
+.app-main .page-heading-row > :is(h1, h2, h3, h4, h5),
+.app-main .settings-page-header > :is(h1, h2, h3, h4, h5) { font-size: 1.5rem; font-weight: 700; }
+.app-main input[type="range"], .app-main input[type="checkbox"], .app-main input[type="radio"] { accent-color: var(--color-primary); }
+.app-main .habit-card, .app-main .habit-mgmt-item {
+    padding: 12px 16px;
+    margin-bottom: 8px;
+}
+.app-main .habit-card-meta, .app-main .swipe-hint,
+.app-main .form-text { color: var(--color-text-muted); font-size: 0.8rem; }
+.app-main .contact-container { margin: 0 auto; padding: 20px 16px; }
+.app-main .contact-header { text-align: left; margin-bottom: 20px; }
+.app-main .contact-header h2 { font-size: 1.5rem; }
+.app-main .history-header { border-bottom: 1px solid var(--color-border); }
+.app-main .history-item {
+    background: var(--color-surface-alt);
+    border-left: 2px solid var(--color-border);
+    border-radius: var(--radius-control);
+}
+.app-main .info-box { background: var(--color-primary-soft); border-color: var(--color-primary); }
+.app-main .info-box p { color: var(--color-primary-dark); }
+.app-main .no-history { background: var(--color-surface-alt); color: var(--color-text-muted); }
+
+/* フォーム。checkbox/range/colorやカレンダーの密な日付セルは拡大しない。 */
+.app-main .form-group > label, .modal .form-group > label {
+    font-size: 0.9rem; font-weight: 500; color: var(--color-text); margin-bottom: 6px;
+}
+.app-main .form-group, .modal .form-group { margin-bottom: 18px; }
+.app-main .form-control, .modal .form-control,
+.app-main .custom-select, .modal .custom-select,
+.app-main .date-picker-input, .app-main .kanban-input {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    min-height: var(--control-height);
+    color: var(--color-text);
+    font-size: 1rem;
+    padding: 6px 10px;
+}
+.app-main .form-control:focus, .modal .form-control:focus,
+.app-main .custom-select:focus, .app-main .date-picker-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+.app-main .form-control.is-invalid, .modal .form-control.is-invalid,
+.app-main [aria-invalid="true"], .modal [aria-invalid="true"] { border-color: var(--color-danger); }
+.app-main .errorlist, .modal .errorlist {
+    padding: 0; margin: 6px 0; list-style: none; color: var(--color-danger); font-size: 0.85rem;
+}
+.app-main .btn, .modal .btn, .app-confirm-dialog .btn {
+    min-height: var(--control-height); border-radius: var(--radius-control);
+    padding: 6px 12px; font-size: 0.85rem; font-weight: 500; line-height: 1.4;
+}
+.app-main .btn:disabled, .modal .btn:disabled { cursor: not-allowed; }
+.app-main .btn-group > .btn { border-radius: 0; }
+.app-main .btn-group > .btn:first-child { border-radius: var(--radius-control) 0 0 var(--radius-control); }
+.app-main .btn-group > .btn:last-child { border-radius: 0 var(--radius-control) var(--radius-control) 0; }
+.app-main .btn-group > .btn:only-child { border-radius: var(--radius-control); }
+.app-main .input-group-append > .btn { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.app-main .btn-outline-primary.active { background: var(--color-primary); color: white; }
+.app-confirm-dialog .btn-secondary { background: var(--color-surface-alt); border-color: var(--color-border); color: var(--color-text); }
+
+/* タブは共通の淡い選択背景。各画面の既存イベントとARIA契約を維持する。 */
+.app-main .habit-tabs, .app-main .nav-tabs,
+.app-main .color-picker-tabs { border-bottom: 1px solid var(--color-border); gap: 6px; }
+.app-main .habit-tab, .app-main .nav-tabs .nav-link,
+.app-main .demo-nav .nav-link, .app-main .set-tab,
+.modal .color-picker-tab {
+    min-height: var(--control-height); padding: 6px 12px;
+    border: 1px solid transparent; border-radius: var(--radius-control);
+    color: var(--color-text-muted); background: transparent;
+    font-size: 0.85rem; font-weight: 500; margin-bottom: 0;
+}
+.app-main .habit-tab.active, .app-main .nav-tabs .nav-link.active,
+.app-main .demo-nav .nav-link.active, .app-main .set-tab.active,
+.modal .color-picker-tab.active {
+    background: var(--color-primary-soft); color: var(--color-primary); border-color: var(--color-primary-soft);
+}
+.app-main .habit-tab:hover, .app-main .nav-tabs .nav-link:hover,
+.app-main .set-tab:hover, .modal .color-picker-tab:hover { color: var(--color-primary); }
+.app-main .heatmap-cell.today { outline-color: var(--color-primary); }
+.modal .color-template-item.selected { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-soft); }
+
+/* モーダルと確認ダイアログを同じ面・余白へ。 */
+.modal .modal-content, .app-confirm-dialog {
+    border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface);
+}
+.modal .modal-header { padding: 16px 20px; align-items: center; }
+.modal .modal-title { font-size: 1.1rem; font-weight: 600; }
+.modal .modal-body { padding: 20px; }
+.modal .modal-footer { padding: 16px 20px; gap: 8px; }
+.modal .close { min-width: var(--control-height); min-height: var(--control-height); color: var(--color-text-muted); }
+.app-confirm-dialog { padding: 20px; }
+.app-confirm-actions { gap: 8px; }
+
+/* 成功・エラー通知は操作を覆う背景をなくす。エラーは明示的に閉じるまで残す。 */
+.ui-notices.message-dialog-overlay {
+    background: transparent; pointer-events: none; align-items: flex-start;
+    justify-content: flex-end; padding: calc(var(--topbar-height) + 12px) 16px 16px;
+}
+.ui-notices .message-dialog {
+    pointer-events: auto; min-width: 0; width: 420px; max-width: 100%;
+    margin: 0; border: 1px solid var(--color-border); border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+}
+.ui-notices .message-dialog-content { padding: 16px; gap: 12px; }
+.ui-notices .message-icon { font-size: 1.2rem; }
+.ui-notices .message-text { font-size: 0.9rem; }
+.ui-notices .message-close-btn { min-width: var(--control-height); min-height: var(--control-height); }
+
+/* 料理・運営管理・デモも同じ面とアクセントを使う。 */
+.app-main .cooking-notebook { background: var(--color-surface-alt); border: 1px solid var(--color-border); border-radius: var(--radius); box-shadow: none; padding: 18px; }
+.app-main .cooking-notebook-binding { display: none; }
+.app-main .cooking-notebook-body { background: var(--color-surface); border-radius: var(--radius-control); }
+.app-main .cooking-favorite { color: var(--color-primary); border-radius: var(--radius-control); }
+.app-main .page-card { border: 1px solid var(--color-border); }
+.app-main .demo-banner { background: var(--color-primary-soft); color: var(--color-text); text-align: left; }
+.app-main .demo-banner h1 { color: var(--color-text); }
+.app-main .list-group-item { border-color: var(--color-border); padding: 14px 18px; }
+.app-main .page-link { color: var(--color-primary); border-color: var(--color-border); min-height: var(--control-height); }
+.app-main .page-item.active .page-link { background: var(--color-primary); border-color: var(--color-primary); color: white; }
+
+@media (max-width: 575.98px) {
+    .app-main .card-body, .app-main .form-card, .app-main .history-card { padding: 16px; }
+    .modal .modal-body { padding: 16px; }
+    .app-main .habit-page, .app-main .habit-list-page { padding: 16px 12px; }
+}

@@ -6,8 +6,14 @@
 {% block meta_robots %}{% if is_demo %}index, follow{% else %}noindex, nofollow{% endif %}{% endblock %}
 {% block og_title %}{% if is_demo %}メモデモ | Life management{% else %}メモ | Life management{% endif %}{% endblock %}
 {% block og_description %}{% if is_demo %}メモ機能のデモ。Markdown対応のメモ作成、種別管理、お気に入り機能を体験できます。{% endif %}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app/modal.css' %}">
+<link rel="stylesheet" href="{% static 'app/memo.css' %}">
+{% endblock %}
+{% block page_messages %}{% endblock %}
 {% block content %}
-<div class="container mt-2" data-bulk-container data-bulk-url="{% url 'bulk_delete_memos' %}">
+{% for message in messages %}<span hidden data-memo-notice data-notice-type="{{ message.tags }}">{{ message }}</span>{% endfor %}
+<div class="container mt-2 workspace-list memo-workspace" data-bulk-container data-bulk-url="{% url 'bulk_delete_memos' %}">
     <div class="page-heading-row">
         <h2>メモ <button type="button" class="btn btn-link btn-sm p-0" aria-label="説明を表示" data-toggle="collapse" data-target="#memoDescription" aria-expanded="false"><i class="fas fa-info-circle text-info"></i></button></h2>
         <div class="page-actions">
@@ -108,9 +114,9 @@
                  data-item-id="{{ memo.id }}"
                  data-bulk-id="{{ memo.id }}">
                 <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
-                <div class="card-body py-2 px-3">
+                <div class="card-body">
                     <!-- 1行目: タイトル（左寄せ）と更新日（右寄せ） -->
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex justify-content-between memo-card-heading">
                         <input type="checkbox" class="bulk-check" aria-label="このメモを選択">
                         <h6 class="card-title mb-0 flex-grow-1 mr-2">{{ memo.title|truncatechars:30|highlight:search_query }}</h6>
                         <span class="text-muted small" style="white-space: nowrap;">
@@ -119,17 +125,26 @@
                     </div>
 
                     <!-- 2行目: ラベル（左寄せ）とお気に入りボタン（右寄せ） -->
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex justify-content-between align-items-center memo-card-meta">
                         <div>
                             <span class="badge" style="background-color: {{ memo.memo_type.color }}; color: #fff;">{{ memo.memo_type.name }}</span>
                         </div>
-                        <div class="d-flex" style="white-space: nowrap;">
-                            <button class="btn btn-sm btn-outline-warning py-0 px-1 mr-1"
+                        <div class="memo-card-controls">
+                            <button class="btn btn-outline-secondary"
                                     onclick="event.stopPropagation(); toggleFavorite({{ memo.id }}, this)"
                                     data-favorite="{{ memo.is_favorite|yesno:'true,false' }}"
+                                    aria-pressed="{{ memo.is_favorite|yesno:'true,false' }}"
+                                    aria-label="{{ memo.title }}のお気に入りを切り替え"
                                     title="{% if memo.is_favorite %}お気に入り解除{% else %}お気に入り{% endif %}">
                                 <i class="{% if memo.is_favorite %}fas{% else %}far{% endif %} fa-star"></i>
                             </button>
+                            <div class="dropdown memo-item-actions">
+                                <button type="button" class="btn btn-outline-secondary" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" aria-label="{{ memo.title }}の操作"><i class="fas fa-ellipsis-h" aria-hidden="true"></i></button>
+                                <div class="dropdown-menu dropdown-menu-right">
+                                    <button type="button" class="dropdown-item" onclick="openEditMemoModal('{{ memo.id }}')">編集する</button>
+                                    <button type="button" class="dropdown-item text-danger" data-toggle="modal" data-target="#deleteMemoModal" data-memo-delete-url="{% url 'delete_memo' memo.id %}" data-memo-title="{{ memo.title }}">削除する</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -205,9 +220,16 @@
 
 </div>
 
-<p class="text-muted small text-center mt-2"><i class="fas fa-info-circle"></i> 長押し（0.5秒）で削除、ダブルタップでタイトル行を編集</p>
-<link rel="stylesheet" href="{% static 'app/modal.css' %}">
-<link rel="stylesheet" href="{% static 'app/memo.css' %}">
+<p class="text-muted small text-center mt-2">各メモの「…」から編集・削除できます。長押し・ダブルタップも使えます。</p>
+<div class="modal fade" id="deleteMemoModal" tabindex="-1" role="dialog" aria-labelledby="deleteMemoTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
+    <div class="modal-header"><h5 id="deleteMemoTitle" class="modal-title">メモを削除しますか？</h5><button type="button" class="close" data-dismiss="modal" aria-label="閉じる">&times;</button></div>
+    <form method="post" id="deleteMemoForm">{% csrf_token %}
+      <div class="modal-body"><p id="deleteMemoName"></p><p class="text-muted mb-0">削除後もごみ箱から元に戻せます。</p></div>
+      <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">キャンセル</button><button type="submit" class="btn btn-danger">削除する</button></div>
+    </form>
+  </div></div>
+</div>
 <script src="{% static 'app/markdown-lite.js' %}"></script>
 <script src="{% static 'app/memo.js' %}"></script>
 

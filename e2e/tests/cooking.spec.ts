@@ -27,7 +27,7 @@ test.describe("料理記録", () => {
     await expect(page.getByText("弱火で煮込む")).toBeVisible();
 
     await submitAndWaitForNavigation(page, page.getByRole("button", { name: /今日作った/ }));
-    await expect(page.getByText("累計作成回数").locator("..")).toContainText("1");
+    await expect(page.getByRole("status", { name: "累計作成回数" })).toHaveText("1");
 
     await page.goto(`/carbohydratepro/cooking/?search=${encodeURIComponent(title)}`);
     await expect(page.getByText(title, { exact: true })).toBeVisible();

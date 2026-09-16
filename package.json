@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/build-vendor.mjs",
     "typecheck:e2e": "tsc -p tsconfig.e2e.json --noEmit",
     "check": "npm run build && npm run typecheck:e2e",
     "watch": "tsc --watch",
@@ -12,6 +12,7 @@
     "@playwright/test": "^1.60.0",
     "@types/jquery": "^3.5.32",
     "@types/node": "^25.9.3",
+    "chart.js": "4.5.1",
     "typescript": "^5.7.3"
   }
 }

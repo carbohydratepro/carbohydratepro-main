@@ -6,6 +6,7 @@ interface MarkdownRenderer {
 
 interface MemoModalResponse {
   success: boolean;
+  errors?: Record<string, string[]>;
 }
 
 // メモの展開/折りたたみ
@@ -48,11 +49,10 @@ function renderMemoContent(fullContentEl: HTMLElement): void {
                 memoMdRenderer = { render: window.memoMarkdownRender };
             }
         }
-        const rendered = memoMdRenderer ? memoMdRenderer.render(raw) : raw;
-        fullContentEl.innerHTML = rendered;
+        if (memoMdRenderer) fullContentEl.innerHTML = memoMdRenderer.render(raw);
+        else fullContentEl.textContent = raw;
     } else {
         fullContentEl.textContent = raw;
-        fullContentEl.innerHTML = (fullContentEl.textContent ?? '').replace(/\n/g, '<br>');
     }
 }
 
@@ -83,6 +83,8 @@ function setMarkdownMode(enabled: boolean): void {
 
 // お気に入りの切り替え
 function toggleFavorite(memoId: string, button: HTMLElement): void {
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return;
+    button.disabled = true;
     fetch(`/carbohydratepro/memos/toggle-favorite/${memoId}/`, {
         method: 'POST',
         headers: {
@@ -90,9 +92,10 @@ function toggleFavorite(memoId: string, button: HTMLElement): void {
             'Content-Type': 'application/json',
         },
     })
-    .then(response => response.json())
+    .then(response => { if (!response.ok) throw new Error('request'); return response.json(); })
     .then(data => {
         if (data.success) {
+            button.setAttribute('aria-pressed', String(data.is_favorite));
             const icon = button.querySelector('i');
             if (data.is_favorite) {
                 if (icon) icon.className = 'fas fa-star';
@@ -103,10 +106,14 @@ function toggleFavorite(memoId: string, button: HTMLElement): void {
                 button.setAttribute('data-favorite', 'false');
                 button.setAttribute('title', 'お気に入り');
             }
-            setTimeout(() => location.reload(), 500);
+            showToast(data.is_favorite ? 'お気に入りに追加しました。' : 'お気に入りを解除しました。', 'success');
+            if (!data.is_favorite && new URL(location.href).searchParams.get('favorite') === 'true') location.reload();
+        } else {
+            throw new Error('request');
         }
     })
-    .catch(error => console.error('Error:', error));
+    .catch(error => { if (!(error instanceof Error && error.message === 'demo')) showToast('変更できませんでした。もう一度お試しください。', 'error'); })
+    .then(() => { button.disabled = false; });
 }
 
 // フォームデータをURLSearchParams形式に変換
@@ -114,90 +121,112 @@ function serializeMemoForm(form: HTMLFormElement): string {
     return new URLSearchParams(new FormData(form) as unknown as Record<string, string>).toString();
 }
 
-// 編集モーダル関連
-async function openEditMemoModal(memoId: string): Promise<void> {
+// 試作: 共通の読み込み・保存状態と、入力を失わないエラー表示。
+let memoOpening = false;
+
+async function openMemoEditor(url: string, modalId: string): Promise<void> {
+    if (memoOpening) return;
+    memoOpening = true;
+    const active = document.activeElement;
+    const opener = active?.closest('.memo-item-actions')?.querySelector('[data-toggle="dropdown"]') ?? active;
     try {
-        const response = await fetch(`/carbohydratepro/memos/edit/${memoId}/`, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        });
-        if (!response.ok) throw new Error(`ステータス: ${response.status}`);
+        const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!response.ok || response.redirected) throw new Error('load');
         const html = await response.text();
-
-        const modalDialog = document.querySelector<HTMLElement>('#editMemoModal .modal-dialog');
-        if (modalDialog) modalDialog.innerHTML = html;
-        $('#editMemoModal').modal('show');
-
-        const form = document.getElementById('editMemoForm');
-        if (form instanceof HTMLFormElement) {
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                try {
-                    const res = await fetch(form.action, {
-                        method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: serializeMemoForm(form),
-                    });
-                    const data: MemoModalResponse = await res.json();
-                    if (data.success) {
-                        $('#editMemoModal').modal('hide');
-                        location.reload();
-                    } else {
-                        alert('エラーが発生しました。入力内容を確認してください。');
-                    }
-                } catch {
-                    alert('保存に失敗しました。');
-                }
+        const dialog = document.querySelector<HTMLElement>(modalId + ' .modal-dialog');
+        if (!dialog) return;
+        dialog.innerHTML = html;
+        const form = dialog.querySelector('form');
+        if (!form) return;
+        const title = dialog.querySelector<HTMLElement>('.modal-title');
+        if (title) title.id = modalId.slice(1) + 'Label';
+        const notice = document.createElement('div');
+        notice.className = 'alert alert-danger d-none';
+        notice.setAttribute('role', 'alert');
+        form.querySelector('.modal-body')?.prepend(notice);
+        $(modalId).one('shown.bs.modal', () => {
+            form.querySelector<HTMLInputElement>('[name="title"]')?.focus();
+        });
+        $(modalId).one('hidden.bs.modal', () => {
+            if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+        });
+        $(modalId).modal('show');
+        form.addEventListener('submit', async event => {
+            event.preventDefault();
+            if (form.dataset.saving === 'true') return;
+            form.dataset.saving = 'true';
+            form.setAttribute('aria-busy', 'true');
+            notice.classList.add('d-none');
+            form.querySelectorAll('.memo-field-error').forEach(el => el.remove());
+            form.querySelectorAll('[aria-invalid]').forEach(el => {
+                el.removeAttribute('aria-invalid');
+                el.removeAttribute('aria-describedby');
             });
-        }
-    } catch {
-        alert('データの読み込みに失敗しました。');
+            const submit = form.querySelector<HTMLButtonElement>('[type="submit"]');
+            const label = submit?.textContent ?? '保存';
+            const body = serializeMemoForm(form);
+            // 保存中は閉じる・編集を止めて、結果と画面の食い違いを防ぐ。
+            const controls = Array.from(dialog.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement | HTMLTextAreaElement>('input, button, select, textarea'));
+            const enabled = controls.filter(el => !el.disabled);
+            enabled.forEach(el => { el.disabled = true; });
+            if (submit) submit.textContent = '保存中…';
+            const preventClose = (e: JQuery.Event): void => { if (form.dataset.saving === 'true') e.preventDefault(); };
+            $(modalId).on('hide.bs.modal', preventClose);
+            let saved = false;
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body,
+                });
+                if (!response.ok || response.redirected) throw new Error('save');
+                const data: MemoModalResponse = await response.json();
+                if (data.success) {
+                    saved = true;
+                    try { sessionStorage.setItem('memoSavedNotice', '1'); } catch { /* 保存自体は成功済み */ }
+                    location.reload();
+                } else {
+                    notice.textContent = '入力内容を確認してください。';
+                    notice.classList.remove('d-none');
+                    Object.entries(data.errors ?? {}).forEach(([name, errors]) => {
+                        const field = form.elements.namedItem(name);
+                        if (!(field instanceof HTMLElement)) return;
+                        const error = document.createElement('div');
+                        error.className = 'memo-field-error text-danger small mt-1';
+                        error.id = modalId.slice(1) + '-' + name + '-error';
+                        error.textContent = errors.join(' ');
+                        field.setAttribute('aria-invalid', 'true');
+                        field.setAttribute('aria-describedby', error.id);
+                        field.closest('.form-group')?.append(error);
+                    });
+                }
+            } catch {
+                notice.textContent = '保存結果を確認できませんでした。入力内容は残しています。再送前に別タブの一覧で保存済みか確認してください。';
+                notice.classList.remove('d-none');
+            } finally {
+                if (!saved) {
+                    form.dataset.saving = 'false';
+                    form.removeAttribute('aria-busy');
+                    enabled.forEach(el => { el.disabled = false; });
+                    if (submit) submit.textContent = label;
+                    form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+                }
+                $(modalId).off('hide.bs.modal', preventClose);
+            }
+        });
+    } catch (error) {
+        if (!(error instanceof Error && error.message === 'demo')) showToast('メモを読み込めませんでした。もう一度お試しください。', 'error');
+    } finally {
+        memoOpening = false;
     }
 }
 
-// 新規作成モーダル関連
+async function openEditMemoModal(memoId: string): Promise<void> {
+    await openMemoEditor('/carbohydratepro/memos/edit/' + memoId + '/', '#editMemoModal');
+}
+
 async function openCreateMemoModal(): Promise<void> {
-    try {
-        const response = await fetch('/carbohydratepro/memos/create/', {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        });
-        if (!response.ok) throw new Error(`ステータス: ${response.status}`);
-        const html = await response.text();
-
-        const modalDialog = document.querySelector<HTMLElement>('#createMemoModal .modal-dialog');
-        if (modalDialog) modalDialog.innerHTML = html;
-        $('#createMemoModal').modal('show');
-
-        const form = document.getElementById('createMemoForm');
-        if (form instanceof HTMLFormElement) {
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                try {
-                    const res = await fetch(form.action, {
-                        method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: serializeMemoForm(form),
-                    });
-                    const data: MemoModalResponse = await res.json();
-                    if (data.success) {
-                        $('#createMemoModal').modal('hide');
-                        location.reload();
-                    } else {
-                        alert('エラーが発生しました。入力内容を確認してください。');
-                    }
-                } catch {
-                    alert('保存に失敗しました。');
-                }
-            });
-        }
-    } catch {
-        alert('データの読み込みに失敗しました。');
-    }
+    await openMemoEditor('/carbohydratepro/memos/create/', '#createMemoModal');
 }
 
 // フィルター関連のイベント処理
@@ -271,6 +300,22 @@ function initMemoDoubleClick(): void {
 
 // ページ読み込み時にフィルターを初期化
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll<HTMLElement>('[data-memo-notice]').forEach(notice => {
+        showToast(notice.textContent ?? '', notice.dataset.noticeType === 'error' ? 'error' : 'success');
+        notice.remove();
+    });
+    if (sessionStorage.getItem('memoSavedNotice') === '1') {
+        sessionStorage.removeItem('memoSavedNotice');
+        showToast('メモを保存しました。', 'success');
+    }
+    document.addEventListener('click', event => {
+        const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-memo-delete-url]') : null;
+        if (!target) return;
+        const form = document.getElementById('deleteMemoForm');
+        if (form instanceof HTMLFormElement) form.action = target.dataset.memoDeleteUrl ?? '';
+        const name = document.getElementById('deleteMemoName');
+        if (name) name.textContent = target.dataset.memoTitle ?? '';
+    });
     initializeMemoFilters();
     const saved = localStorage.getItem('memoMarkdownEnabled');
     setMarkdownMode(saved === '1');

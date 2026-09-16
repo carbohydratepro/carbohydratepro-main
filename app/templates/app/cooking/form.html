@@ -173,7 +173,7 @@
     </section>
 
     <section class="card mb-4">
-      <div class="card-header"><i class="fas fa-sticky-note mr-1" aria-hidden="true"></i>{{ form.notes.label }}</div>
+      <div class="card-header"><label class="mb-0" for="{{ form.notes.id_for_label }}"><i class="fas fa-sticky-note mr-1" aria-hidden="true"></i>{{ form.notes.label }}</label></div>
       <div class="card-body">
         {{ form.notes }}
         {% for error in form.notes.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}

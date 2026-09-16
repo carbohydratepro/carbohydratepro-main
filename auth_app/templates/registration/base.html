@@ -29,6 +29,8 @@
 
     <!-- 共通スタイル（Bootstrapを上書きするため必ずBootstrapより後に読み込む） -->
     <link rel="stylesheet" href="{% static 'app/styles.css' %}">
+    {% block extra_css %}{% endblock %}
+    <link rel="stylesheet" href="{% static 'app/ui-components.css' %}">
 
     <!-- PWA -->
     <link rel="manifest" href="{% static 'app/manifest.webmanifest' %}">
@@ -45,6 +47,7 @@
 
   </head>
   <body {% if user.is_authenticated %}class="has-bottomnav"{% endif %}>
+    <a class="skip-link" href="#mainContent">本文へ移動</a>
     <!-- ナビゲーション（ログイン済みはアプリシェル、未ログインは従来のトップナビ） -->
     {% if user.is_authenticated %}
       {% include "app/_topbar.html" %}
@@ -57,7 +60,7 @@
       {% if user.is_authenticated %}
         {% include "app/_sidebar.html" %}
       {% endif %}
-      <main class="app-main">
+      <main class="app-main" id="mainContent" tabindex="-1">
         {% block content %}{% endblock %}
       </main>
     </div>

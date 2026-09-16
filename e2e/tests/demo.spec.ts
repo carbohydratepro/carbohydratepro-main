@@ -53,7 +53,8 @@ test.describe("デモモード", () => {
     await expect(page.locator("#expenseComparisonChart")).toBeAttached();
     await expect(page.getByText("記録のある3か月")).toBeVisible();
 
-    const categoryChart = page.locator("#categoryPieChart");
+    const categoryChart = page.locator("#categoryPieChartPC");
+    await expect(categoryChart).toBeVisible();
     await categoryChart.evaluate((canvas) => canvas.setAttribute("data-e2e-preserved", "true"));
     const filterResponse = page.waitForResponse((response) =>
       response.url().includes("/demo/expenses/")

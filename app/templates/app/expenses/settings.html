@@ -1,9 +1,14 @@
 {% extends "app/base.html" %}
 {% load app_filters %}
 
+{% block title %}家計簿設定 | Life management{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
-    <h2 class="mb-4">設定</h2>
+<div class="container settings-page mt-4 mb-5">
+    <div class="settings-page-header mb-4">
+        <h1 class="h4 mb-0">家計簿設定</h1>
+        <a href="{% url 'expense_list' %}" class="btn btn-outline-secondary btn-sm">家計簿に戻る</a>
+    </div>
 
     <!-- 支払方法のテーブル -->
 
@@ -35,8 +40,7 @@
                 <td class="lp-actions-cell">
                     <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                     <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="{{ payment.name }}を編集"
-                            data-toggle="modal" data-target="#editPaymentModal{{ payment.id }}"
-                            onclick="event.stopPropagation();">
+                            data-toggle="modal" data-target="#editPaymentModal{{ payment.id }}">
                         <i class="fas fa-pencil-alt"></i>
                     </button>
                 </td>
@@ -167,8 +171,7 @@
                 <td class="lp-actions-cell">
                     <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                     <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="{{ purpose.name }}を編集"
-                            data-toggle="modal" data-target="#editPurposeModal{{ purpose.id }}"
-                            onclick="event.stopPropagation();">
+                            data-toggle="modal" data-target="#editPurposeModal{{ purpose.id }}">
                         <i class="fas fa-pencil-alt"></i>
                     </button>
                 </td>

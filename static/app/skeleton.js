@@ -1,12 +1,13 @@
 "use strict";
 // 画面遷移時のスケルトンスクリーン（全ページ共通で読み込む）
-// ページ遷移を伴うクリック・フォーム送信を検知した瞬間にコンテンツ領域を
-// スケルトンで覆い、次のページが届くまで白画面の代わりに表示する。
+// 速い遷移ではちらつかせず、待ち時間がある場合だけ表示する。
 (() => {
     // 遷移が発生しなかった場合の保険（JSエラー等でナビゲーションが中断したとき用）
     const SKELETON_TIMEOUT_MS = 10000;
+    const SKELETON_DELAY_MS = 180;
     let overlay = null;
     let hideTimer;
+    let showTimer;
     const buildOverlay = () => {
         const el = document.createElement('div');
         el.className = 'skeleton-overlay';
@@ -27,18 +28,25 @@
     };
     const hideSkeleton = () => {
         window.clearTimeout(hideTimer);
+        window.clearTimeout(showTimer);
+        showTimer = undefined;
         if (overlay) {
             overlay.classList.remove('show');
         }
     };
     const showSkeleton = () => {
-        if (!overlay) {
-            overlay = buildOverlay();
-            document.body.appendChild(overlay);
-        }
-        overlay.classList.add('show');
-        window.clearTimeout(hideTimer);
-        hideTimer = window.setTimeout(hideSkeleton, SKELETON_TIMEOUT_MS);
+        if (showTimer !== undefined || (overlay === null || overlay === void 0 ? void 0 : overlay.classList.contains('show')))
+            return;
+        showTimer = window.setTimeout(() => {
+            showTimer = undefined;
+            if (!overlay) {
+                overlay = buildOverlay();
+                document.body.appendChild(overlay);
+            }
+            overlay.classList.add('show');
+            window.clearTimeout(hideTimer);
+            hideTimer = window.setTimeout(hideSkeleton, SKELETON_TIMEOUT_MS);
+        }, SKELETON_DELAY_MS);
     };
     document.addEventListener('click', (event) => {
         var _a;

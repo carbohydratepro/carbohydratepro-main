@@ -108,6 +108,36 @@
 .app-main .date-selection-form { flex: 0 1 auto; max-width: 100%; }
 .app-main .date-nav { flex-wrap: wrap; }
 .modal .datetime-row .form-control { height: var(--control-height); }
+
+/* iOSの日付入力は外側のpaddingが100%幅・高さに加算される場合がある。
+   input自体には余白を付けず、表示値の内側へ移す。ネイティブの型は維持。 */
+@supports (-webkit-touch-callout: none) {
+    .app-main input.form-control:is([type="date"], [type="month"], [type="time"], [type="datetime-local"]),
+    .modal input.form-control:is([type="date"], [type="month"], [type="time"], [type="datetime-local"]),
+    .app-main input.date-picker-input {
+        -webkit-appearance: none;
+        appearance: none;
+        display: inline-flex;
+        align-items: center;
+        padding: 0;
+        height: calc(1.5em + 0.75rem + 2px);
+        text-align: left;
+    }
+    .app-main input::-webkit-date-and-time-value,
+    .modal input::-webkit-date-and-time-value {
+        box-sizing: border-box;
+        min-width: 0;
+        min-height: 1.5em;
+        margin: 0;
+        padding: 0 10px;
+        text-align: left;
+    }
+    .modal .datetime-row input.form-control,
+    .app-main input.form-control.date-filter-control,
+    .app-main input.date-filter-control {
+        height: var(--control-height);
+    }
+}
 .app-main .btn, .modal .btn, .app-confirm-dialog .btn {
     min-height: var(--control-height); border-radius: var(--radius-control);
     padding: 6px 12px; font-size: 0.85rem; font-weight: 500; line-height: 1.4;

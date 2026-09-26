@@ -63,14 +63,14 @@
             <input type="hidden" name="view_mode" value="{{ view_mode }}">
             {% if view_mode == 'year' %}
             {% localize off %}
-            <select id="target_date" name="target_date" class="form-control form-control-sm" onchange="this.form.submit()">
+            <select id="target_date" name="target_date" class="date-filter-control form-control form-control-sm" onchange="this.form.submit()">
                 {% for y in year_range %}
                 <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}年</option>
                 {% endfor %}
             </select>
             {% endlocalize %}
             {% else %}
-            <input type="month" id="target_date" name="target_date" aria-label="対象月" class="form-control form-control-sm"
+            <input type="month" id="target_date" name="target_date" aria-label="対象月" class="date-filter-control form-control form-control-sm"
                    value="{{ default_target_date }}" onchange="this.form.submit()">
             {% endif %}
         </form>

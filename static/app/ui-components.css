@@ -85,6 +85,29 @@
 .app-main .errorlist, .modal .errorlist {
     padding: 0; margin: 6px 0; list-style: none; color: var(--color-danger); font-size: 0.85rem;
 }
+
+/* 日付はブラウザ固有の最小幅に任せず、用途ごとに統一する。 */
+.app-main input.form-control:is([type="date"], [type="month"], [type="time"], [type="datetime-local"]),
+.modal input.form-control:is([type="date"], [type="month"], [type="time"], [type="datetime-local"]) {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    min-height: var(--control-height);
+}
+.app-main input.form-control.date-filter-control,
+.app-main select.form-control.date-filter-control,
+.app-main .date-nav .date-filter-control {
+    box-sizing: border-box;
+    width: 12rem;
+    max-width: 100%;
+    min-width: 0;
+    flex: 0 1 12rem;
+    height: var(--control-height);
+}
+.app-main .date-selection-form { flex: 0 1 auto; max-width: 100%; }
+.app-main .date-nav { flex-wrap: wrap; }
+.modal .datetime-row .form-control { height: var(--control-height); }
 .app-main .btn, .modal .btn, .app-confirm-dialog .btn {
     min-height: var(--control-height); border-radius: var(--radius-control);
     padding: 6px 12px; font-size: 0.85rem; font-weight: 500; line-height: 1.4;

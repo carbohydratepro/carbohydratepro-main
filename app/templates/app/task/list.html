@@ -15,7 +15,7 @@
     <div class="page-heading-row">
         <h2 class="mb-0">スケジュール <button type="button" class="btn btn-link btn-sm p-0" aria-label="説明を表示" data-toggle="collapse" data-target="#scheduleDescription" aria-expanded="false"><i class="fas fa-info-circle text-info"></i></button></h2>
         <div class="page-actions">
-            <button onclick="openCreateTaskModal()" class="btn btn-primary btn-sm">
+            <button type="button" onclick="openCreateTaskModal()" class="btn btn-primary btn-sm" aria-label="新規タスク">
                 <i class="fas fa-plus"></i> <span class="mobile-action-label">新規タスク</span>
             </button>
             <div class="dropdown page-actions-menu">
@@ -54,12 +54,12 @@
                 <form method="GET" class="form-inline date-selection-form" id="dateSelectionForm">
                     {% if view_mode == 'day' %}
                     <label for="target_date" class="mr-2 mb-0 d-none d-sm-inline">日選択:</label>
-                    <input type="date" id="target_date" name="target_date" class="form-control form-control-sm"
+                    <input type="date" id="target_date" name="target_date" class="date-filter-control form-control form-control-sm"
                            value="{{ target_date }}" onchange="this.form.submit()">
                     <input type="hidden" name="view_mode" value="day">
                     {% else %}
                     <label for="target_date" class="mr-2 mb-0 d-none d-sm-inline">月選択:</label>
-                    <input type="month" id="target_date" name="target_date" class="form-control form-control-sm"
+                    <input type="month" id="target_date" name="target_date" class="date-filter-control form-control form-control-sm"
                            value="{{ default_target_date }}" onchange="this.form.submit()">
                     <input type="hidden" name="view_mode" value="month">
                     {% endif %}

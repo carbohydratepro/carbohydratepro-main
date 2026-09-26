@@ -516,10 +516,10 @@
 
 /* 日時横並びレイアウト */
 .datetime-row {
-    display: flex;
-    flex-wrap: nowrap;
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr) 7.5rem;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
 }
 
 .datetime-label {
@@ -532,11 +532,7 @@
 
 .datetime-row input[type="date"] {
     min-width: 0;
-    width: 130px;
-    flex-shrink: 1;
-    font-size: 0.8rem;
-    padding: 3px 4px;
-    height: auto;
+    width: 100%;
 }
 
 .datetime-row .time-field {
@@ -544,37 +540,21 @@
 }
 
 .time-picker-wrapper {
-    gap: 2px !important;
+    gap: 4px;
 }
 
 .time-hour-select,
 .time-minute-select {
-    width: 52px !important;
-    font-size: 0.8rem !important;
-    padding: 3px 2px !important;
-    height: auto !important;
+    width: 3.5rem;
+    min-width: 0;
+    height: var(--control-height);
     text-align: center;
 }
 
-/* スマホでも横並びを維持 */
-@media (max-width: 576px) {
-    .datetime-row input[type="date"] {
-        width: 112px;
-        font-size: 0.75rem;
-        padding: 2px 3px;
-    }
-
-    .time-hour-select,
-    .time-minute-select {
-        width: 44px !important;
-        font-size: 0.75rem !important;
-        padding: 2px 1px !important;
-    }
-
-    .datetime-label {
-        font-size: 0.8rem;
-        min-width: 26px;
-    }
+/* 狭い画面では日付を潰さず、時刻を次の行へ揃える。 */
+@media (max-width: 480px) {
+    .datetime-row { grid-template-columns: 2rem minmax(0, 1fr); }
+    .datetime-row .time-field { grid-column: 2; }
 }
 
 /* コンパクトなモバイル月表示 */

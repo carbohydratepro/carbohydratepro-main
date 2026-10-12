@@ -7,28 +7,207 @@ const SET_STORAGE_KEY = 'tempTaskCurrentSetId';
 // ドラッグ状態管理
 let draggedLocalId = null;
 let dragSourceEl = null;
-const touch = {
-    localId: null,
-    startX: 0,
-    startY: 0,
-    cloneEl: null,
-    sourceEl: null,
-    isDragging: false,
-};
-// ダブルタップ検出用
-let lastTapTime = 0;
-let lastTapLocalId = null;
 // 長押し検出用
 let longPressTimerId = null;
 let deletePendingLocalId = null;
 let deleteModeAutoTimeoutId = null;
-const DRAG_THRESHOLD = 8; // px
 const LONG_PRESS_DURATION = 500; // ms
 const DELETE_MODE_TIMEOUT = 3000; // ms: 操作がなければ自動キャンセル
 // =========================================================
 // ローカル状態管理
 // =========================================================
 let tasks = [];
+let boardLoading = true;
+let boardLoadVersion = 0;
+let boardMutation = false;
+let boardSelectedTask = null;
+let boardRenameSet = false;
+let boardReturnFocus = null;
+function boardFeedback(message) {
+    const status = document.getElementById('boardFeedback');
+    if (status)
+        status.textContent = message;
+}
+function boardCanLeave() {
+    if (boardMutation || tasks.some(t => t.savedState !== 'saved')) {
+        showToast('保存中、または未保存のタスクがあります。保存を完了してから操作してください。', 'info');
+        return false;
+    }
+    return true;
+}
+function boardRefreshControls() {
+    document.getElementById('boardSaveRetry').hidden = !tasks.some(t => t.savedState === 'error');
+    document.querySelectorAll('.kanban-input, .kanban-add-btn').forEach(el => {
+        el.disabled = boardLoading || boardMutation || currentSetId === null || !document.getElementById('boardRetry').hidden;
+    });
+    document.querySelectorAll('.set-tab, .set-add-btn').forEach(el => {
+        el.disabled = boardMutation || tasks.some(t => t.savedState !== 'saved');
+    });
+    document.querySelectorAll('.kanban-task-card').forEach(card => {
+        const task = getTaskByLocalId(card.dataset.localId || '');
+        card.querySelectorAll('.board-card-action').forEach(button => { button.disabled = boardMutation || (task === null || task === void 0 ? void 0 : task.savedState) !== 'saved'; });
+    });
+}
+function openBoardSheet(id) {
+    boardReturnFocus = document.activeElement;
+    document.getElementById(id).showModal();
+    document.body.classList.add('board-sheet-open');
+}
+function openBoardTaskEditor(localId) {
+    const task = getTaskByLocalId(localId);
+    if (!task || task.savedState !== 'saved' || boardMutation)
+        return;
+    boardSelectedTask = localId;
+    document.getElementById('boardTaskTitle').value = task.title;
+    document.getElementById('boardTaskStatus').value = task.status;
+    document.getElementById('boardTaskError').textContent = '';
+    openBoardSheet('boardTaskSheet');
+}
+function openBoardSetEditor(rename) {
+    if (!boardCanLeave() || boardLoading)
+        return;
+    boardRenameSet = rename;
+    const current = sets.find(s => s.id === currentSetId);
+    if (rename && !current)
+        return;
+    document.getElementById('boardSetSheetTitle').textContent = rename ? 'セット名を変更' : 'セットを追加';
+    document.getElementById('boardSetName').value = rename ? current.name : '';
+    document.getElementById('boardSetError').textContent = '';
+    openBoardSheet('boardSetSheet');
+}
+function deleteCurrentBoardSet() {
+    if (!boardCanLeave() || boardLoading)
+        return;
+    const current = sets.find(s => s.id === currentSetId);
+    if (sets.length <= 1) {
+        showToast('最後のセットは削除できません。', 'info');
+        return;
+    }
+    if (current)
+        confirmDeleteSet(current.id, current.name);
+}
+function boardSheetBusy(sheet, busy) {
+    boardMutation = busy;
+    sheet.setAttribute('aria-busy', String(busy));
+    sheet.querySelectorAll('button, input, textarea, select').forEach(el => { el.disabled = busy; });
+    boardRefreshControls();
+}
+function initializeBoardExperience() {
+    document.getElementById('tempTaskContainer').dataset.activeStatus = 'todo';
+    document.querySelectorAll('[data-board-status]').forEach(button => {
+        button.addEventListener('click', () => {
+            document.getElementById('tempTaskContainer').dataset.activeStatus = button.dataset.boardStatus;
+            document.querySelectorAll('[data-board-status]').forEach(peer => peer.setAttribute('aria-pressed', String(peer === button)));
+        });
+    });
+    document.querySelectorAll('.kanban-input').forEach(input => { input.maxLength = 200; input.enterKeyHint = 'done'; });
+    document.querySelectorAll('.board-sheet').forEach(sheet => {
+        sheet.addEventListener('cancel', event => { if (boardMutation)
+            event.preventDefault(); });
+        sheet.addEventListener('close', () => {
+            var _a;
+            document.body.classList.remove('board-sheet-open');
+            if (boardReturnFocus === null || boardReturnFocus === void 0 ? void 0 : boardReturnFocus.isConnected)
+                boardReturnFocus.focus();
+            else
+                (_a = document.querySelector('[data-board-status][aria-pressed="true"]')) === null || _a === void 0 ? void 0 : _a.focus();
+        });
+        sheet.querySelectorAll('[data-close-board-sheet]').forEach(button => button.addEventListener('click', () => { if (!boardMutation)
+            sheet.close(); }));
+    });
+    document.getElementById('boardRetry').addEventListener('click', () => {
+        void (async () => {
+            if (currentSetId === null)
+                await initSets();
+            if (currentSetId !== null)
+                await loadFromServer();
+        })();
+    });
+    document.getElementById('boardSaveRetry').addEventListener('click', () => { void retryFailedTasks(); });
+    window.addEventListener('beforeunload', event => {
+        if (boardMutation || tasks.some(t => t.savedState !== 'saved')) {
+            event.preventDefault();
+            event.returnValue = '';
+        }
+    });
+    document.getElementById('boardTaskForm').addEventListener('submit', event => {
+        event.preventDefault();
+        void (async () => {
+            const task = boardSelectedTask ? getTaskByLocalId(boardSelectedTask) : undefined;
+            if (!task || task.serverId === null || boardMutation)
+                return;
+            const title = document.getElementById('boardTaskTitle').value.trim();
+            const status = document.getElementById('boardTaskStatus').value;
+            if (!title) {
+                document.getElementById('boardTaskError').textContent = 'タスク名を入力してください。';
+                return;
+            }
+            const sheet = document.getElementById('boardTaskSheet');
+            boardSheetBusy(sheet, true);
+            try {
+                const saved = await apiUpdateTask(task.serverId, { title, status });
+                task.title = saved.title;
+                task.status = saved.status;
+                renderAll();
+                sheet.close();
+                boardFeedback('保存しました。');
+            }
+            catch (error) {
+                if (error instanceof Error && error.message === 'demo')
+                    sheet.close();
+                else
+                    document.getElementById('boardTaskError').textContent = '保存できませんでした。入力は保持しています。もう一度保存してください。';
+            }
+            finally {
+                boardSheetBusy(sheet, false);
+            }
+        })();
+    });
+    document.getElementById('boardTaskDelete').addEventListener('click', () => {
+        if (boardMutation || !boardSelectedTask)
+            return;
+        document.getElementById('boardTaskSheet').close();
+        deleteTask(boardSelectedTask);
+    });
+    document.getElementById('boardSetForm').addEventListener('submit', event => {
+        event.preventDefault();
+        void (async () => {
+            if (boardMutation)
+                return;
+            const name = document.getElementById('boardSetName').value.trim();
+            if (!name)
+                return;
+            const sheet = document.getElementById('boardSetSheet');
+            boardSheetBusy(sheet, true);
+            try {
+                if (boardRenameSet && currentSetId !== null) {
+                    await apiUpdateSet(currentSetId, name);
+                    sets.find(s => s.id === currentSetId).name = name;
+                }
+                else {
+                    const set = await apiCreateSet(name);
+                    sets.push(set);
+                    currentSetId = set.id;
+                    localStorage.setItem(SET_STORAGE_KEY, String(set.id));
+                    tasks = [];
+                    renderAll();
+                }
+                renderSetTabs();
+                sheet.close();
+                boardFeedback('セットを保存しました。');
+            }
+            catch (error) {
+                if (error instanceof Error && error.message === 'demo')
+                    sheet.close();
+                else
+                    document.getElementById('boardSetError').textContent = '保存できませんでした。もう一度お試しください。';
+            }
+            finally {
+                boardSheetBusy(sheet, false);
+            }
+        })();
+    });
+}
 function generateLocalId() {
     return 'local_' + Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
@@ -169,73 +348,12 @@ function renderSetTabs() {
         tab.className = 'set-tab' + (s.id === currentSetId ? ' active' : '');
         tab.dataset.setId = String(s.id);
         tab.textContent = s.name;
-        tab.title = 'ダブルクリックでリネーム、長押しで削除';
+        tab.setAttribute('aria-pressed', String(s.id === currentSetId));
         tab.addEventListener('click', () => {
             if (s.id !== currentSetId)
                 void switchSet(s.id);
         });
-        // ダブルクリックでリネーム
-        tab.addEventListener('dblclick', (e) => {
-            e.stopPropagation();
-            startRenameSet(tab, s.id, s.name);
-        });
-        // 長押しで削除（複数セットある場合のみ）
-        let lpTimer = null;
-        tab.addEventListener('mousedown', () => {
-            if (sets.length <= 1)
-                return;
-            lpTimer = setTimeout(() => { void confirmDeleteSet(s.id, s.name); }, 700);
-        });
-        tab.addEventListener('mouseup', () => { if (lpTimer)
-            clearTimeout(lpTimer); });
-        tab.addEventListener('mouseleave', () => { if (lpTimer)
-            clearTimeout(lpTimer); });
-        tab.addEventListener('touchstart', () => {
-            if (sets.length <= 1)
-                return;
-            lpTimer = setTimeout(() => { void confirmDeleteSet(s.id, s.name); }, 700);
-        }, { passive: true });
-        tab.addEventListener('touchend', () => { if (lpTimer)
-            clearTimeout(lpTimer); });
         container.appendChild(tab);
-    });
-}
-function startRenameSet(tab, setId, currentName) {
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'set-tab-input';
-    input.value = currentName;
-    input.maxLength = 50;
-    tab.replaceWith(input);
-    input.focus();
-    input.select();
-    const commit = () => {
-        const newName = input.value.trim();
-        if (newName && newName !== currentName) {
-            void (async () => {
-                try {
-                    await apiUpdateSet(setId, newName);
-                    const s = sets.find(x => x.id === setId);
-                    if (s)
-                        s.name = newName;
-                }
-                catch ( /* ignore */_a) { /* ignore */ }
-                renderSetTabs();
-            })();
-        }
-        else {
-            renderSetTabs();
-        }
-    };
-    input.addEventListener('blur', commit);
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            input.blur();
-        }
-        if (e.key === 'Escape') {
-            input.value = currentName;
-            input.blur();
-        }
     });
 }
 function confirmDeleteSet(setId, name) {
@@ -250,6 +368,10 @@ function confirmDeleteSet(setId, name) {
 }
 async function deleteSet(setId) {
     var _a, _b;
+    if (!boardCanLeave())
+        return;
+    boardMutation = true;
+    boardRefreshControls();
     try {
         await apiDeleteSet(setId);
         sets = sets.filter(s => s.id !== setId);
@@ -268,8 +390,14 @@ async function deleteSet(setId) {
     catch (err) {
         showToast(err instanceof Error ? err.message : 'セット削除に失敗しました', 'error');
     }
+    finally {
+        boardMutation = false;
+        boardRefreshControls();
+    }
 }
 async function switchSet(setId) {
+    if (!boardCanLeave())
+        return;
     currentSetId = setId;
     localStorage.setItem(SET_STORAGE_KEY, String(setId));
     renderSetTabs();
@@ -278,26 +406,22 @@ async function switchSet(setId) {
     await loadFromServer();
 }
 async function promptAddSet() {
-    const name = prompt('新しいセット名を入力してください（50文字以内）', '');
-    if (!name || !name.trim())
-        return;
-    try {
-        const newSet = await apiCreateSet(name.trim());
-        sets.push(newSet);
-        await switchSet(newSet.id);
-    }
-    catch (_a) {
-        alert('セットの作成に失敗しました');
-    }
+    openBoardSetEditor(false);
 }
 // =========================================================
 // タスク操作（楽観的UI更新 + 非同期保存）
 // =========================================================
 async function addTask(status) {
+    if (boardLoading || currentSetId === null)
+        return;
     const input = document.getElementById(`input-${status}`);
     if (!input)
         return;
     const title = input.value.trim();
+    if (title.length > 200) {
+        showToast('タスク名は200文字以内で入力してください。', 'error');
+        return;
+    }
     if (!title) {
         input.focus();
         return;
@@ -324,93 +448,77 @@ async function addTask(status) {
             updateCardSavedState(localId);
         }
     }
-    catch (_a) {
+    catch (error) {
         const task = getTaskByLocalId(localId);
         if (task) {
+            if (error instanceof Error && error.message === 'demo') {
+                tasks = tasks.filter(t => t.localId !== localId);
+                renderAll();
+                return;
+            }
             task.savedState = 'error';
             updateCardSavedState(localId);
+            boardFeedback('保存できませんでした。この画面を開いたまま再試行してください。');
         }
     }
 }
-function deleteTask(localId) {
+async function deleteTask(localId) {
     const index = tasks.findIndex(t => t.localId === localId);
     if (index === -1)
         return;
     const task = tasks[index];
+    if (task.savedState !== 'saved' || boardMutation)
+        return;
+    const setId = currentSetId;
+    boardMutation = true;
+    boardRefreshControls();
+    let receipt;
+    try {
+        if (task.serverId === null)
+            return;
+        receipt = await apiDeleteTask(task.serverId);
+    }
+    catch (error) {
+        if (!(error instanceof Error && error.message === 'demo'))
+            showToast('削除できませんでした。タスクは残しています。', 'error');
+        return;
+    }
+    finally {
+        boardMutation = false;
+        boardRefreshControls();
+    }
     // UIから消し、サーバー側では削除履歴へ保存する。Undoでは同じデータを復元する。
     tasks.splice(index, 1);
     renderAll();
-    const deletion = task.serverId !== null ? apiDeleteTask(task.serverId) : null;
-    void (deletion === null || deletion === void 0 ? void 0 : deletion.catch(() => {
-        showToast('削除に失敗しました。再読み込みすると元の状態を確認できます。', 'error');
-    }));
     const shortTitle = task.title.length > 20 ? task.title.slice(0, 20) + '…' : task.title;
     showUndoToast({
         message: `「${shortTitle}」を削除しました`,
-        onUndo: () => { void restoreDeletedTask(task, index, deletion); },
+        onUndo: () => {
+            void (async () => {
+                try {
+                    const response = await apiFetch(receipt.restore_url, { method: 'POST' });
+                    if (!response.ok)
+                        throw new Error('restore');
+                    if (currentSetId === setId) {
+                        tasks.splice(Math.min(index, tasks.length), 0, task);
+                        renderAll();
+                    }
+                    showToast('元に戻しました。', 'success');
+                }
+                catch (_a) {
+                    showToast('復元できませんでした。ごみ箱から復元してください。', 'error');
+                }
+            })();
+        },
         onCommit: () => { },
     });
 }
 // 削除履歴から同じIDのタスクを復元する（Undo用）
-async function restoreDeletedTask(original, index, deletion) {
-    const restored = Object.assign(Object.assign({}, original), { savedState: deletion === null ? original.savedState : 'saving' });
-    const insertAt = Math.min(index, tasks.length);
-    tasks.splice(insertAt, 0, restored);
-    renderAll();
-    if (deletion === null)
-        return;
-    try {
-        const receipt = await deletion;
-        const response = await apiFetch(receipt.restore_url, { method: 'POST' });
-        if (!response.ok)
-            throw new Error('タスク復元失敗');
-        const saved = await response.json();
-        const t = getTaskByLocalId(restored.localId);
-        if (t) {
-            t.serverId = saved.id;
-            t.savedState = 'saved';
-            updateCardSavedState(t.localId);
-        }
-    }
-    catch (_a) {
-        const t = getTaskByLocalId(restored.localId);
-        if (t) {
-            t.savedState = 'error';
-            updateCardSavedState(t.localId);
-        }
-    }
-}
-async function updateTask(localId, newTitle) {
-    const task = getTaskByLocalId(localId);
-    if (!task || !newTitle || newTitle === task.title) {
-        renderAll();
-        return;
-    }
-    task.title = newTitle;
-    task.savedState = 'saving';
-    renderAll();
-    if (task.serverId !== null) {
-        try {
-            await apiUpdateTask(task.serverId, { title: newTitle });
-            const t = getTaskByLocalId(localId);
-            if (t) {
-                t.savedState = 'saved';
-                updateCardSavedState(localId);
-            }
-        }
-        catch (_a) {
-            const t = getTaskByLocalId(localId);
-            if (t) {
-                t.savedState = 'error';
-                updateCardSavedState(localId);
-            }
-        }
-    }
-}
 async function moveTask(localId, newStatus) {
     const task = getTaskByLocalId(localId);
-    if (!task || task.status === newStatus)
+    if (!task || task.status === newStatus || task.savedState !== 'saved' || boardMutation)
         return;
+    const oldStatus = task.status;
     task.status = newStatus;
     task.savedState = 'saving';
     renderAll();
@@ -423,9 +531,15 @@ async function moveTask(localId, newStatus) {
                 updateCardSavedState(localId);
             }
         }
-        catch (_a) {
+        catch (error) {
             const t = getTaskByLocalId(localId);
             if (t) {
+                if (error instanceof Error && error.message === 'demo') {
+                    t.status = oldStatus;
+                    t.savedState = 'saved';
+                    renderAll();
+                    return;
+                }
                 t.savedState = 'error';
                 updateCardSavedState(localId);
             }
@@ -433,6 +547,8 @@ async function moveTask(localId, newStatus) {
     }
 }
 function clearAllTasks() {
+    if (!boardCanLeave())
+        return;
     if (tasks.length === 0)
         return;
     showConfirm({
@@ -443,24 +559,37 @@ function clearAllTasks() {
     });
 }
 async function runClearAllTasks() {
-    const hasServerTasks = tasks.some(t => t.serverId !== null);
-    tasks = [];
-    renderAll();
-    if (hasServerTasks) {
-        try {
-            await apiClearTasks();
-        }
-        catch (_a) {
-            // 失敗は無視
-        }
+    if (!boardCanLeave())
+        return;
+    boardMutation = true;
+    boardRefreshControls();
+    try {
+        await apiClearTasks();
+        tasks = [];
+        renderAll();
+        showToast('削除しました。ごみ箱から元に戻せます。', 'success');
+    }
+    catch (_a) {
+        showToast('削除できませんでした。タスクは残しています。', 'error');
+    }
+    finally {
+        boardMutation = false;
+        boardRefreshControls();
     }
 }
 // =========================================================
 // 初期ロード（サーバーからデータ取得）
 // =========================================================
 async function loadFromServer() {
+    const requestId = ++boardLoadVersion;
+    boardLoading = true;
+    document.getElementById('boardRetry').hidden = true;
+    boardFeedback('読み込んでいます…');
+    boardRefreshControls();
     try {
         const serverTasks = await apiGetTasks();
+        if (requestId !== boardLoadVersion)
+            return;
         tasks = serverTasks.map(st => ({
             localId: generateLocalId(),
             serverId: st.id,
@@ -470,10 +599,20 @@ async function loadFromServer() {
             savedState: 'saved',
         }));
         renderAll();
+        boardFeedback('');
     }
     catch (_a) {
-        tasks = [];
-        renderAll();
+        if (requestId !== boardLoadVersion)
+            return;
+        boardFeedback('読み込めませんでした。通信を確認して再試行してください。');
+        document.getElementById('boardRetry').hidden = false;
+        return;
+    }
+    finally {
+        if (requestId === boardLoadVersion) {
+            boardLoading = false;
+            boardRefreshControls();
+        }
     }
 }
 async function initSets() {
@@ -482,6 +621,11 @@ async function initSets() {
     }
     catch (_a) {
         sets = [];
+        boardLoading = false;
+        boardFeedback('セットを読み込めませんでした。通信を確認して再試行してください。');
+        document.getElementById('boardRetry').hidden = false;
+        boardRefreshControls();
+        return;
     }
     // localStorage から前回のセットIDを復元
     const saved = localStorage.getItem(SET_STORAGE_KEY);
@@ -510,13 +654,40 @@ function renderColumn(status) {
     const columnTasks = tasks.filter(t => t.status === status);
     container.innerHTML = '';
     columnTasks.forEach(task => container.appendChild(createTaskCard(task)));
+    if (!columnTasks.length) {
+        const empty = document.createElement('p');
+        empty.className = 'board-empty';
+        empty.textContent = status === 'done' ? '完了したタスクがここに並びます' : 'まだタスクはありません';
+        container.appendChild(empty);
+    }
+    const filterCount = document.getElementById(`filter-count-${status}`);
+    if (filterCount)
+        filterCount.textContent = String(columnTasks.length);
     if (countEl)
         countEl.textContent = String(columnTasks.length);
 }
 function renderAll() {
+    var _a;
+    const focused = document.activeElement;
+    const focusedCard = focused === null || focused === void 0 ? void 0 : focused.closest('.kanban-task-card');
+    const focusedId = focusedCard === null || focusedCard === void 0 ? void 0 : focusedCard.dataset.localId;
+    const wasComplete = focused === null || focused === void 0 ? void 0 : focused.classList.contains('board-complete');
     renderColumn('todo');
     renderColumn('doing');
     renderColumn('done');
+    const done = tasks.filter(t => t.status === 'done').length;
+    document.getElementById('boardProgressText').textContent = tasks.length ? `${tasks.length}件のうち ${done}件が完了` : '頭の中の「やること」を、ここに。';
+    const progress = document.getElementById('boardProgress');
+    progress.max = tasks.length || 1;
+    progress.value = done;
+    boardRefreshControls();
+    if (focusedId) {
+        const replacement = document.querySelector(`[data-local-id="${CSS.escape(focusedId)}"] ${wasComplete ? '.board-complete' : '.kanban-task-text'}`);
+        const fallback = window.innerWidth < 768
+            ? document.querySelector('[data-board-status][aria-pressed="true"]')
+            : document.getElementById('input-todo');
+        (_a = ((replacement === null || replacement === void 0 ? void 0 : replacement.getClientRects().length) ? replacement : fallback)) === null || _a === void 0 ? void 0 : _a.focus({ preventScroll: true });
+    }
 }
 function updateCardSavedState(localId) {
     const card = document.querySelector(`[data-local-id="${CSS.escape(localId)}"]`);
@@ -548,6 +719,9 @@ function updateCardSavedState(localId) {
     else {
         dot === null || dot === void 0 ? void 0 : dot.remove();
     }
+    card.querySelectorAll('.board-card-action').forEach(button => { button.disabled = task.savedState !== 'saved'; });
+    card.draggable = task.savedState === 'saved' && !window.matchMedia('(pointer: coarse)').matches;
+    boardRefreshControls();
 }
 function createTaskCard(task) {
     const card = document.createElement('div');
@@ -557,17 +731,22 @@ function createTaskCard(task) {
     if (task.savedState === 'error')
         card.classList.add('save-error');
     card.dataset.localId = task.localId;
-    card.draggable = true;
+    card.draggable = task.savedState === 'saved' && !window.matchMedia('(pointer: coarse)').matches;
     const unsavedIndicator = task.savedState !== 'saved'
         ? `<span class="kanban-task-unsaved-dot" title="${task.savedState === 'error' ? '保存失敗' : '保存中...'}"></span>`
         : '';
     card.innerHTML = `
-        <span class="kanban-task-text">${escapeHtml(task.title)}</span>
+        <button type="button" class="board-card-action board-complete" aria-label="${task.status === 'done' ? '未完了に戻す' : '完了にする'}" ${task.savedState !== 'saved' ? 'disabled' : ''}><i class="${task.status === 'done' ? 'fas fa-check-circle' : 'far fa-circle'}" aria-hidden="true"></i></button>
+        <button type="button" class="board-card-action kanban-task-text" ${task.savedState !== 'saved' ? 'disabled' : ''}>${escapeHtml(task.title)}</button>
         ${unsavedIndicator}
         <button type="button" class="kanban-task-delete-overlay" aria-label="「${escapeHtml(task.title)}」を削除" title="削除">
             <i class="fas fa-trash-alt" aria-hidden="true"></i> 削除
         </button>
     `;
+    card.querySelector('.kanban-task-text').addEventListener('click', () => openBoardTaskEditor(task.localId));
+    card.querySelector('.board-complete').addEventListener('click', () => {
+        void moveTask(task.localId, task.status === 'done' ? 'todo' : 'done').then(() => boardFeedback(task.savedState === 'saved' ? '状態を更新しました。' : '保存できませんでした。再試行してください。'));
+    });
     // 削除オーバーレイ（長押し後に表示）のクリックで削除
     const deleteOverlay = card.querySelector('.kanban-task-delete-overlay');
     if (deleteOverlay) {
@@ -582,19 +761,19 @@ function createTaskCard(task) {
     }
     // ダブルクリックで編集（PC）
     card.addEventListener('dblclick', (e) => {
-        if (e.target.closest('.kanban-task-delete-overlay'))
+        if (e.target.closest('button, input, textarea'))
             return;
         if (deletePendingLocalId === task.localId) {
             deactivateDeleteMode();
             return;
         }
-        startEdit(task, card);
+        openBoardTaskEditor(task.localId);
     });
     // PC: 長押し検出（mousedown/mouseup/mouseleave）
     card.addEventListener('mousedown', (e) => {
         if (e.button !== 0)
             return;
-        if (e.target.closest('.kanban-task-delete-overlay'))
+        if (e.target.closest('button, input, textarea') || window.matchMedia('(pointer: coarse)').matches)
             return;
         if (deletePendingLocalId) {
             deactivateDeleteMode();
@@ -610,12 +789,7 @@ function createTaskCard(task) {
         handleDragStart(e);
     });
     card.addEventListener('dragend', handleDragEnd);
-    // モバイル: タッチイベント
-    card.addEventListener('touchstart', handleTouchStart, { passive: false });
-    card.addEventListener('touchmove', handleTouchMove, { passive: false });
-    card.addEventListener('touchend', (e) => {
-        handleTouchEnd(e, task, card);
-    }, { passive: false });
+    // タッチはブラウザのスクロール・ズームへ委ねる。操作は明示的なボタンから。
     return card;
 }
 // =========================================================
@@ -673,52 +847,6 @@ function handleOutsideClickForDeleteMode(e) {
 }
 // =========================================================
 // インライン編集
-// =========================================================
-function startEdit(task, card) {
-    const textEl = card.querySelector('.kanban-task-text');
-    if (!textEl)
-        return;
-    card.draggable = false;
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = task.title;
-    input.className = 'kanban-task-edit-input';
-    let committed = false;
-    function commit() {
-        if (committed)
-            return;
-        committed = true;
-        const newTitle = input.value.trim();
-        if (newTitle && newTitle !== task.title) {
-            void updateTask(task.localId, newTitle);
-        }
-        else {
-            renderAll();
-        }
-    }
-    function cancel() {
-        if (committed)
-            return;
-        committed = true;
-        renderAll();
-    }
-    input.addEventListener('blur', commit);
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            commit();
-        }
-        else if (e.key === 'Escape') {
-            e.preventDefault();
-            cancel();
-        }
-    });
-    textEl.replaceWith(input);
-    input.focus();
-    input.select();
-}
-// =========================================================
-// PC ドラッグ & ドロップ（デスクトップ: カラム直接ドロップ）
 // =========================================================
 function showDeleteZone() {
     const zone = document.getElementById('kanbanDeleteZone');
@@ -782,6 +910,10 @@ function initializeColumnDropZones() {
     });
 }
 function handleDragStart(e) {
+    if (!isDesktopLayout() || window.matchMedia('(pointer: coarse)').matches || !boardCanLeave()) {
+        e.preventDefault();
+        return;
+    }
     dragSourceEl = e.currentTarget;
     draggedLocalId = dragSourceEl.dataset.localId || null;
     dragSourceEl.classList.add('dragging');
@@ -793,9 +925,6 @@ function handleDragStart(e) {
         if (isDesktopLayout()) {
             showDeleteZone();
         }
-        else {
-            showDragOverlay();
-        }
     });
 }
 function handleDragEnd(_e) {
@@ -803,187 +932,14 @@ function handleDragEnd(_e) {
         dragSourceEl.classList.remove('dragging');
     dragSourceEl = null;
     draggedLocalId = null;
-    hideDragOverlay();
     hideDeleteZone();
     document.querySelectorAll('.kanban-tasks').forEach(c => c.classList.remove('drag-over'));
 }
 // =========================================================
 // ドラッグオーバーレイ（モバイル用5ゾーン）
 // =========================================================
-function showDragOverlay() {
-    const overlay = document.getElementById('dragOverlay');
-    if (overlay)
-        overlay.classList.add('active');
-}
-function hideDragOverlay() {
-    const overlay = document.getElementById('dragOverlay');
-    if (overlay) {
-        overlay.classList.remove('active');
-        overlay.querySelectorAll('.drag-zone').forEach(z => z.classList.remove('drag-zone-hover'));
-    }
-}
-function executeDragAction(action, localId) {
-    switch (action) {
-        case 'todo':
-        case 'doing':
-        case 'done':
-            void moveTask(localId, action);
-            break;
-        case 'delete':
-            void deleteTask(localId);
-            break;
-        default:
-            renderAll();
-    }
-}
-function initializeDragOverlay() {
-    const overlay = document.getElementById('dragOverlay');
-    if (!overlay)
-        return;
-    overlay.querySelectorAll('.drag-zone').forEach(zone => {
-        zone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            if (e.dataTransfer)
-                e.dataTransfer.dropEffect = 'move';
-            overlay.querySelectorAll('.drag-zone').forEach(z => z.classList.remove('drag-zone-hover'));
-            zone.classList.add('drag-zone-hover');
-        });
-        zone.addEventListener('dragleave', (e) => {
-            if (zone.contains(e.relatedTarget))
-                return;
-            zone.classList.remove('drag-zone-hover');
-        });
-        zone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const action = zone.dataset.action || '';
-            if (draggedLocalId) {
-                executeDragAction(action, draggedLocalId);
-            }
-            hideDragOverlay();
-        });
-    });
-}
-// =========================================================
-// モバイル タッチドラッグ
-// =========================================================
-function handleTouchStart(e) {
-    // 削除オーバーレイのタッチはカードハンドラに流さない
-    if (e.target.closest('.kanban-task-delete-overlay'))
-        return;
-    // 削除モード中は一旦キャンセル
-    if (deletePendingLocalId) {
-        deactivateDeleteMode();
-        return;
-    }
-    const t = e.touches[0];
-    const card = e.currentTarget;
-    touch.localId = card.dataset.localId || null;
-    touch.startX = t.clientX;
-    touch.startY = t.clientY;
-    touch.sourceEl = card;
-    touch.isDragging = false;
-    touch.cloneEl = null;
-    e.preventDefault();
-    // 長押しタイマー開始
-    if (touch.localId) {
-        startLongPressTimer(touch.localId);
-    }
-}
-function handleTouchMove(e) {
-    if (!touch.localId || !touch.sourceEl)
-        return;
-    const t = e.touches[0];
-    const dx = t.clientX - touch.startX;
-    const dy = t.clientY - touch.startY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (!touch.isDragging) {
-        if (dist < DRAG_THRESHOLD)
-            return;
-        // ドラッグ開始 → 長押しキャンセル
-        cancelLongPressTimer();
-        touch.isDragging = true;
-        const card = touch.sourceEl;
-        const rect = card.getBoundingClientRect();
-        const clone = card.cloneNode(true);
-        clone.className = card.className + ' touch-clone';
-        clone.style.width = rect.width + 'px';
-        clone.style.top = rect.top + 'px';
-        clone.style.left = rect.left + 'px';
-        document.body.appendChild(clone);
-        touch.cloneEl = clone;
-        card.style.opacity = '0.3';
-        showDragOverlay();
-    }
-    e.preventDefault();
-    if (!touch.cloneEl || !touch.sourceEl)
-        return;
-    const rect = touch.sourceEl.getBoundingClientRect();
-    touch.cloneEl.style.left = (rect.left + (t.clientX - touch.startX)) + 'px';
-    touch.cloneEl.style.top = (rect.top + (t.clientY - touch.startY)) + 'px';
-    const overlay = document.getElementById('dragOverlay');
-    if (overlay && overlay.classList.contains('active')) {
-        overlay.querySelectorAll('.drag-zone').forEach(z => z.classList.remove('drag-zone-hover'));
-        touch.cloneEl.style.display = 'none';
-        const elBelow = document.elementFromPoint(t.clientX, t.clientY);
-        touch.cloneEl.style.display = '';
-        const zone = elBelow && elBelow.closest('.drag-zone');
-        if (zone)
-            zone.classList.add('drag-zone-hover');
-    }
-}
-function handleTouchEnd(e, task, card) {
-    cancelLongPressTimer();
-    if (!touch.localId)
-        return;
-    if (touch.isDragging) {
-        if (touch.cloneEl) {
-            document.body.removeChild(touch.cloneEl);
-            touch.cloneEl = null;
-        }
-        if (touch.sourceEl) {
-            touch.sourceEl.style.opacity = '';
-            touch.sourceEl = null;
-        }
-        const t = e.changedTouches[0];
-        const elBelow = document.elementFromPoint(t.clientX, t.clientY);
-        const zone = elBelow && elBelow.closest('.drag-zone');
-        if (zone && touch.localId) {
-            executeDragAction(zone.dataset.action || '', touch.localId);
-        }
-        else {
-            renderAll();
-        }
-        hideDragOverlay();
-        touch.localId = null;
-        touch.isDragging = false;
-    }
-    else {
-        // 長押し中（delete-pending）の場合はダブルタップを無視
-        if (deletePendingLocalId === task.localId) {
-            touch.localId = null;
-            touch.sourceEl = null;
-            return;
-        }
-        // ダブルタップ検出
-        const now = Date.now();
-        if (now - lastTapTime < 300 && lastTapLocalId === task.localId) {
-            startEdit(task, card);
-            lastTapTime = 0;
-            lastTapLocalId = null;
-        }
-        else {
-            lastTapTime = now;
-            lastTapLocalId = task.localId;
-        }
-        touch.localId = null;
-        touch.sourceEl = null;
-    }
-}
-// =========================================================
-// 入力イベント
-// =========================================================
 function handleInputKeypress(e) {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.isComposing) {
         e.preventDefault();
         const input = e.currentTarget;
         void addTask(input.dataset.status || '');
@@ -1029,6 +985,7 @@ async function retryFailedTasks() {
             }
         }
     }
+    boardFeedback(tasks.some(t => t.savedState === 'error') ? '保存できませんでした。通信を確認して再試行してください。' : '保存しました。');
 }
 // =========================================================
 // 初期化
@@ -1039,13 +996,14 @@ function initializeInputs() {
     });
 }
 document.addEventListener('DOMContentLoaded', () => {
-    initializeDragOverlay();
+    initializeBoardExperience();
     initializeDeleteZone();
     initializeColumnDropZones();
     initializeInputs();
     void (async () => {
         await initSets();
-        await loadFromServer();
+        if (currentSetId !== null)
+            await loadFromServer();
     })();
     // Escape キーで削除モードキャンセル
     document.addEventListener('keydown', (e) => {

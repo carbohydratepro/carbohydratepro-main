@@ -24,6 +24,9 @@
                 <i class="fas fa-ellipsis-h" aria-hidden="true"></i>
             </button>
             <div class="dropdown-menu dropdown-menu-right">
+                <button type="button" class="dropdown-item" onclick="openBoardSetEditor(true)">セット名を変更</button>
+                <button type="button" class="dropdown-item text-danger" onclick="deleteCurrentBoardSet()">このセットを削除</button>
+                <div class="dropdown-divider"></div>
                 <button type="button" class="dropdown-item page-secondary-action text-danger" onclick="clearAllTasks()">
                     <i class="fas fa-trash"></i> 全削除
                 </button>
@@ -33,10 +36,23 @@
     <!-- セット切り替えタブ -->
     <div class="set-tabs-wrapper">
         <div class="set-tabs" id="setTabs"></div>
-        <button class="set-add-btn" onclick="promptAddSet()" title="セットを追加">
+        <button class="set-add-btn" onclick="promptAddSet()" title="セットを追加" aria-label="セットを追加">
             <i class="fas fa-plus"></i>
         </button>
     </div>
+
+    <div class="board-overview">
+        <p id="boardProgressText">タスクを読み込んでいます…</p>
+        <progress id="boardProgress" value="0" max="1" aria-label="タスクの完了率"></progress>
+    </div>
+    <div class="board-status-switch" role="group" aria-label="表示する状態">
+        <button type="button" data-board-status="todo" aria-pressed="true">やること <span id="filter-count-todo">0</span></button>
+        <button type="button" data-board-status="doing" aria-pressed="false">進行中 <span id="filter-count-doing">0</span></button>
+        <button type="button" data-board-status="done" aria-pressed="false">完了 <span id="filter-count-done">0</span></button>
+    </div>
+    <div id="boardFeedback" role="status" aria-live="polite" class="board-feedback"></div>
+    <button type="button" id="boardRetry" class="btn btn-outline-primary btn-sm" hidden>もう一度読み込む</button>
+    <button type="button" id="boardSaveRetry" class="btn btn-outline-primary btn-sm" hidden>保存を再試行</button>
 
     <div class="kanban-board" id="kanbanBoard">
         <!-- やること (Todo) -->
@@ -60,7 +76,7 @@
         <!-- やってる (In Progress) -->
         <div class="kanban-column" id="col-doing" data-status="doing">
             <div class="kanban-column-header doing-header">
-                <span class="column-title">やってる</span>
+                <span class="column-title">進行中</span>
                 <span class="task-count" id="count-doing">0</span>
             </div>
             <div class="kanban-add-form">
@@ -78,7 +94,7 @@
         <!-- できた (Done) -->
         <div class="kanban-column" id="col-done" data-status="done">
             <div class="kanban-column-header done-header">
-                <span class="column-title">できた</span>
+                <span class="column-title">完了</span>
                 <span class="task-count" id="count-done">0</span>
             </div>
             <div class="kanban-add-form">
@@ -102,37 +118,29 @@
 
     <p class="kanban-hint">
         <i class="fas fa-info-circle"></i>
-        ドラッグで移動・削除。長押し（0.5秒）でカードを削除できます。ダブルクリック/タップで編集。
+        タスク名で編集、チェックで完了。PCではドラッグでも移動できます。
     </p>
 </div>
 
-<!-- ドラッグオーバーレイ（5ゾーン） -->
-<div class="drag-overlay" id="dragOverlay">
-    <div class="drag-zones-row">
-        <div class="drag-zone todo-zone" data-action="todo">
-            <i class="fas fa-circle"></i>
-            <span>未着手</span>
-        </div>
-        <div class="drag-zone doing-zone" data-action="doing">
-            <i class="fas fa-spinner"></i>
-            <span>進行中</span>
-        </div>
-        <div class="drag-zone done-zone" data-action="done">
-            <i class="fas fa-check-circle"></i>
-            <span>終了</span>
-        </div>
-    </div>
-    <div class="drag-zones-row">
-        <div class="drag-zone delete-zone" data-action="delete">
-            <i class="fas fa-trash"></i>
-            <span>削除</span>
-        </div>
-        <div class="drag-zone cancel-zone" data-action="cancel">
-            <i class="fas fa-times-circle"></i>
-            <span>キャンセル</span>
-        </div>
-    </div>
-</div>
+<dialog id="boardTaskSheet" class="board-sheet" aria-labelledby="boardTaskSheetTitle">
+    <form id="boardTaskForm">
+        <div class="board-sheet-heading"><h3 id="boardTaskSheetTitle">タスクを編集</h3><button type="button" data-close-board-sheet aria-label="編集を閉じる">×</button></div>
+        <label for="boardTaskTitle">タスク名</label>
+        <textarea id="boardTaskTitle" rows="3" maxlength="200" required></textarea>
+        <label for="boardTaskStatus">状態</label>
+        <select id="boardTaskStatus"><option value="todo">やること</option><option value="doing">進行中</option><option value="done">完了</option></select>
+        <p id="boardTaskError" class="board-sheet-error" role="alert"></p>
+        <div class="board-sheet-actions"><button type="button" id="boardTaskDelete" class="btn btn-outline-danger">削除</button><button type="submit" class="btn btn-primary">保存</button></div>
+    </form>
+</dialog>
+<dialog id="boardSetSheet" class="board-sheet" aria-labelledby="boardSetSheetTitle">
+    <form id="boardSetForm">
+        <div class="board-sheet-heading"><h3 id="boardSetSheetTitle">セットを追加</h3><button type="button" data-close-board-sheet aria-label="セット編集を閉じる">×</button></div>
+        <label for="boardSetName">セット名</label><input id="boardSetName" maxlength="50" required autocomplete="off">
+        <p id="boardSetError" class="board-sheet-error" role="alert"></p>
+        <div class="board-sheet-actions"><button type="button" data-close-board-sheet class="btn btn-outline-secondary">キャンセル</button><button type="submit" class="btn btn-primary">保存</button></div>
+    </form>
+</dialog>
 
-<script src="{% static 'app/temp_task.js' %}"></script>
+<script src="{% static 'app/temp_task.js' %}" defer></script>
 {% endblock %}

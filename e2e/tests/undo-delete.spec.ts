@@ -64,6 +64,8 @@ test.describe("削除のUndoトースト", () => {
     await addCard(page, uniqueName("clear-card"));
     await expect(page.locator("#kanbanBoard .kanban-task-card")).not.toHaveCount(0);
 
+    const moreActions = page.getByRole("button", { name: "一時タスクのその他の操作" });
+    if (await moreActions.isVisible()) await moreActions.click();
     await page.getByRole("button", { name: /全削除/ }).click();
     // ネイティブconfirmではなくアプリ内ダイアログが出る
     const dialog = page.locator(".app-confirm-dialog");
@@ -77,6 +79,7 @@ test.describe("削除のUndoトースト", () => {
     await expect(page.locator("#kanbanBoard .kanban-task-card")).not.toHaveCount(0);
 
     // 確定するとすべて消える
+    if (await moreActions.isVisible()) await moreActions.click();
     await page.getByRole("button", { name: /全削除/ }).click();
     await page.locator(".app-confirm-dialog").getByRole("button", { name: "すべて削除" }).click();
     await expect(page.locator("#kanbanBoard .kanban-task-card")).toHaveCount(0);

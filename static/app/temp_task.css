@@ -215,9 +215,62 @@
     align-items: center;
     transition: box-shadow 0.2s, transform 0.15s, opacity 0.15s;
     user-select: none;
-    touch-action: none;
+    touch-action: pan-y pinch-zoom;
     border-left: 3px solid transparent;
     overflow: hidden;
+}
+
+/* スマホは「状態を選ぶ → 1列で操作」。カード上でも通常のスクロールを優先する。 */
+.temp-task-container .board-overview { margin: 18px 0; }
+.board-overview p { margin: 0 0 8px; color: var(--color-text-muted); font-size: .85rem; }
+.board-overview progress { display: block; width: 100%; height: 4px; border: 0; border-radius: 4px; overflow: hidden; accent-color: var(--color-primary); }
+.board-overview progress::-webkit-progress-bar { background: var(--color-border); }
+.board-overview progress::-webkit-progress-value { background: var(--color-primary); }
+.board-status-switch { display: none; }
+.board-feedback { font-size: .85rem; color: var(--color-text-muted); margin: 8px 0; }
+.board-feedback:empty { display: none; }
+.board-empty { text-align: center; padding: 24px 8px; color: var(--color-text-muted); font-size: .85rem; }
+.temp-task-container .kanban-task-card { border: 1px solid var(--color-border); border-radius: 12px; padding: 6px; gap: 4px; box-shadow: 0 2px 6px rgb(25 40 60 / 3%); }
+.temp-task-container .board-card-action { border: 0; background: transparent; color: var(--color-text); min-height: 44px; cursor: pointer; border-radius: 8px; }
+.temp-task-container .board-complete { flex: 0 0 44px; font-size: 1.25rem; color: var(--color-primary); }
+.temp-task-container .kanban-task-text { text-align: left; font: inherit; font-size: .95rem; padding: 8px; margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.temp-task-container .board-card-action:hover { background: var(--color-primary-soft); }
+.temp-task-container button:focus-visible, .board-sheet button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.temp-task-container button:disabled { opacity: .55; cursor: wait; }
+#tasks-done .kanban-task-text { color: var(--color-text-muted); text-decoration: line-through; }
+.board-sheet { width: min(480px, calc(100% - 32px)); max-height: calc(100dvh - 32px); border: 1px solid var(--color-border); border-radius: 20px; padding: 24px; color: var(--color-text); box-shadow: 0 20px 80px rgb(0 0 0 / 20%); overscroll-behavior: contain; }
+.board-sheet::backdrop { background: rgb(15 23 42 / 45%); }
+.board-sheet-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.board-sheet-heading h3 { font-size: 1.1rem; margin: 0; }
+.board-sheet-heading button { background: transparent; border: 0; border-radius: 8px; width: 44px; height: 44px; font-size: 1.6rem; color: inherit; }
+.board-sheet label { display: block; margin: 16px 0 6px; font-size: .85rem; font-weight: 600; }
+.board-sheet input, .board-sheet textarea, .board-sheet select { box-sizing: border-box; width: 100%; min-height: 44px; border: 1px solid var(--color-border); border-radius: 10px; background: white; padding: 10px 12px; font: inherit; font-size: 1rem; color: inherit; }
+.board-sheet textarea { resize: vertical; }
+.board-sheet-actions { display: flex; justify-content: space-between; gap: 16px; margin-top: 24px; }
+.board-sheet-actions .btn { min-height: 44px; padding: 8px 20px; border-radius: 10px; }
+.board-sheet-error { color: #b42318; font-size: .85rem; margin-top: 12px; }
+body.board-sheet-open { overflow: hidden; }
+@media (max-width: 767px) {
+    .temp-task-container { padding: 12px 0; }
+    .temp-task-container .set-tabs-wrapper { overflow: visible; }
+    .temp-task-container .set-tabs { flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: thin; padding: 2px; }
+    .temp-task-container .set-tab { flex-shrink: 0; max-width: 220px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+    .board-status-switch { display: flex; gap: 4px; padding: 4px; background: #eef1f6; border-radius: 12px; margin-bottom: 16px; }
+    .board-status-switch button { flex: 1; min-width: 0; border: 0; border-radius: 9px; background: transparent; color: var(--color-text-muted); min-height: 44px; font-size: .8rem; font-weight: 600; padding: 6px 2px; }
+    .board-status-switch button[aria-pressed="true"] { background: white; color: var(--color-primary); box-shadow: 0 2px 5px rgb(20 35 60 / 8%); }
+    .board-status-switch span { font-size: .75rem; margin-left: 2px; }
+    .temp-task-container .kanban-column { display: none; padding: 0; background: transparent; min-height: 0; }
+    .temp-task-container[data-active-status="todo"] #col-todo,
+    .temp-task-container[data-active-status="doing"] #col-doing,
+    .temp-task-container[data-active-status="done"] #col-done { display: block; }
+    .temp-task-container .kanban-column-header { display: none; }
+    .temp-task-container .kanban-input { font-size: 1rem; min-height: 44px; padding: 10px 12px; border-radius: 10px; }
+    .temp-task-container .kanban-add-btn { min-width: 44px; border-radius: 10px; }
+    .temp-task-container .kanban-task-card { margin-bottom: 10px; cursor: default; }
+    .board-sheet { margin: auto 0 0; width: 100%; max-width: none; max-height: calc(100dvh - 16px); border-radius: 20px 20px 0 0; padding: 20px 20px max(24px, env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .temp-task-container *, .board-sheet * { animation: none !important; transition: none !important; }
 }
 
 #tasks-todo .kanban-task-card {
@@ -327,16 +380,6 @@
     margin-right: 6px;
 }
 
-/* クローン（タッチドラッグ用） */
-.touch-clone {
-    position: fixed;
-    pointer-events: none;
-    z-index: 9999;
-    opacity: 0.75;
-    transform: rotate(2deg) scale(1.03);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
-    border-radius: 7px;
-}
 
 /* デスクトップ用削除ゾーン（ドラッグ中のみ表示） */
 .kanban-delete-zone {
@@ -365,92 +408,6 @@
     border-style: solid;
 }
 
-/* ドラッグオーバーレイ（モバイル用） */
-.drag-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 2000;
-    background: rgba(0, 0, 0, 0.65);
-    padding: 20px;
-    flex-direction: column;
-    gap: 14px;
-    align-items: stretch;
-    justify-content: center;
-}
-
-.drag-overlay.active {
-    display: flex;
-}
-
-.drag-zones-row {
-    display: flex;
-    gap: 14px;
-    flex: 1;
-    max-height: 42vh;
-}
-
-.drag-zone {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    border-radius: 14px;
-    cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.15s, background-color 0.15s, border-color 0.15s;
-    color: white;
-    gap: 10px;
-    font-size: 1rem;
-    font-weight: 700;
-    user-select: none;
-    border: 2px solid transparent;
-}
-
-.drag-zone .fas {
-    font-size: 2rem;
-}
-
-.drag-zone.todo-zone {
-    background: rgba(108, 117, 125, 0.8);
-    border-color: #6c757d;
-}
-
-.drag-zone.doing-zone {
-    background: rgba(0, 123, 255, 0.8);
-    border-color: #007bff;
-}
-
-.drag-zone.done-zone {
-    background: rgba(40, 167, 69, 0.8);
-    border-color: #28a745;
-}
-
-.drag-zone.delete-zone {
-    /* 誤タップを減らすため削除ゾーンは小さめにし、ハザード縞で破壊的操作と明示する */
-    flex: 0 0 38%;
-    background-color: rgba(220, 53, 69, 0.85);
-    background-image: repeating-linear-gradient(
-        45deg,
-        rgba(0, 0, 0, 0.14) 0,
-        rgba(0, 0, 0, 0.14) 10px,
-        transparent 10px,
-        transparent 20px
-    );
-    border-color: #dc3545;
-}
-
-.drag-zone.cancel-zone {
-    background: rgba(52, 58, 64, 0.8);
-    border-color: #343a40;
-}
-
-.drag-zone.drag-zone-hover {
-    transform: scale(1.06);
-    box-shadow: 0 0 24px rgba(255, 255, 255, 0.5);
-    background-color: rgba(255, 255, 255, 0.25);
-    border-color: white;
-}
 
 /* ヒントテキスト */
 .kanban-hint {

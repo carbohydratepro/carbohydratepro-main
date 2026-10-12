@@ -2,6 +2,12 @@
 
 ## 現在の作業
 
+2026-10-12、WSL連携有効化後にDocker接続復旧。開発4サービスを起動し、ID桁区切り修正のPostgreSQL関連289件・Playwright18件・npm run checkが成功。家計簿編集→保存→再取得、設定・料理・予算・習慣・スマホ導線を検証。一時E2Eユーザー削除済み。初回のDjango指定は存在しないtest_habitを含めて失敗しtest_listsへ訂正、設定E2Eはセルの部分一致が複数要素に一致したため完全一致へ修正して全件再実行成功。本番は3621cd3、main、既存static/.gitkeepのみ、空き33GBを読み取り確認。今回修正のコミット・pushと本番実行の最終承認待ち。既存AGENTS.md変更は対象外。
+
+2026-10-12、家計簿一覧の編集取得失敗を調査。USE_THOUSAND_SEPARATOR=TrueによりID 1234がonclickの`openEditModal(1,234)`やdata-item-id="1,234"として出力されることを再現。IDだけunlocalizeする修正を14テンプレートへ水平展開（家計簿・予定・メモ・買い物・習慣・料理履歴・問い合わせ・設定）。BoundFieldのstep_form.idは変更しない。追加回帰6件が一時SQLite（モデルから直接テスト表作成・migration未検証）で成功。家計簿既存テストを含む103件の試行は79件成功、定期支払いのPostgreSQL ArrayField関連24件はSQLite非対応でエラー。Docker Composeが使えないため本来のPostgreSQL/E2E確認は未実施。E2E家計簿CRUDに編集・再取得を追加し型検証成功。コミット・push・本番反映なし。既存AGENTS.md/前回デプロイ記録は保持。
+
+2026-09-27、実行直前の承認を得てiPhone日付補正 `3621cd3` を本番反映完了（origin/mainへpush済み）。クリーンな作業ツリー `/tmp/carbohydratepro-release-3621cd3` から実行。4サービス稼働、migration追加なし、Django check・Nginx構文正常。公開ログイン・家計簿/予定/習慣デモHTTP200、配信ui-components.cssのSHA256がローカルと一致。定例処理で古い未使用イメージ約1.4GBを削除し空き約33GB。AGENTS.mdの既存変更と本番static/.gitkeepは保持。実機Safariでの表示はユーザー確認待ち。この反映記録は未コミット。
+
 2026-09-27、ユーザー提供画像（申告iOS 26.6.2）で家計簿「取引新規登録」の日付だけ幅・高さが超過していることを確認。iOS向け共通CSSで外側paddingを表示値の内側へ移し、高さを明示。開発反映済み。npm run check成功、取引フォームの空/入力済み・320/390/430/1440px・通常/iOS向けCSS強制適用を回帰検証。強制適用はChromiumでの寸法検証であり、実機Safariの問題解消は未確認。今回の追加修正は未コミット・未push・本番未反映（本番はee8a822）。
 
 2026-09-27、実行直前承認後に日付フォーム修正 `ee8a822` を本番反映完了。4サービス稼働、migration追加なし、Django check・Nginx構文正常、task.css/ui-components.cssのSHA256はローカルと一致。公開ログイン・家計簿/予定/習慣デモはHTTP200で、新しい日付クラスとハッシュCSSの配信を確認。古いビルドキャッシュ392MBを整理し、本番の空きは約31GB。AGENTS.mdの既存変更・本番static/.gitkeepは保持。この完了記録は未コミット。

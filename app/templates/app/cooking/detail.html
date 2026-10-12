@@ -1,4 +1,5 @@
 {% extends "app/base.html" %}
+{% load l10n %}
 {% load static %}
 
 {% block title %}{{ dish.title }} | 料理記録 | Life management{% endblock %}
@@ -145,28 +146,28 @@
         <div class="cooking-history-list">
           {% for history in histories %}
             <div class="border rounded p-3 mb-2">
-              <form id="history-update-{{ history.id }}" method="post" action="{% url 'cooking_history_update' dish.id history.id %}">
+              <form id="history-update-{{ history.id|unlocalize }}" method="post" action="{% url 'cooking_history_update' dish.id history.id %}">
                 {% csrf_token %}
                 <div class="form-row align-items-end">
                   <div class="col-sm-3 mb-2">
-                    <label class="small" for="history-date-{{ history.id }}">作った日</label>
-                    <input id="history-date-{{ history.id }}" type="date" name="cooked_on" class="form-control" value="{{ history.cooked_on|date:'Y-m-d' }}" required>
+                    <label class="small" for="history-date-{{ history.id|unlocalize }}">作った日</label>
+                    <input id="history-date-{{ history.id|unlocalize }}" type="date" name="cooked_on" class="form-control" value="{{ history.cooked_on|date:'Y-m-d' }}" required>
                   </div>
                   <div class="col-sm-2 mb-2">
-                    <label class="small" for="history-count-{{ history.id }}">回数</label>
-                    <input id="history-count-{{ history.id }}" type="number" name="count" class="form-control" min="1" max="999" value="{{ history.count }}" required>
+                    <label class="small" for="history-count-{{ history.id|unlocalize }}">回数</label>
+                    <input id="history-count-{{ history.id|unlocalize }}" type="number" name="count" class="form-control" min="1" max="999" value="{{ history.count }}" required>
                   </div>
                   <div class="col-sm-4 mb-2">
-                    <label class="small" for="history-note-{{ history.id }}">メモ</label>
-                    <input id="history-note-{{ history.id }}" type="text" name="note" class="form-control" maxlength="200" value="{{ history.note }}">
+                    <label class="small" for="history-note-{{ history.id|unlocalize }}">メモ</label>
+                    <input id="history-note-{{ history.id|unlocalize }}" type="text" name="note" class="form-control" maxlength="200" value="{{ history.note }}">
                   </div>
                   <div class="col-sm-3 mb-2 d-flex">
                     <button type="submit" class="btn btn-outline-primary flex-fill mr-2">保存</button>
-                    <button type="submit" form="history-delete-{{ history.id }}" class="btn btn-outline-danger" aria-label="{{ history.cooked_on|date:'Y年m月d日' }}の履歴を削除"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                    <button type="submit" form="history-delete-{{ history.id|unlocalize }}" class="btn btn-outline-danger" aria-label="{{ history.cooked_on|date:'Y年m月d日' }}の履歴を削除"><i class="fas fa-trash" aria-hidden="true"></i></button>
                   </div>
                 </div>
               </form>
-              <form id="history-delete-{{ history.id }}" method="post" action="{% url 'cooking_history_delete' dish.id history.id %}">{% csrf_token %}</form>
+              <form id="history-delete-{{ history.id|unlocalize }}" method="post" action="{% url 'cooking_history_delete' dish.id history.id %}">{% csrf_token %}</form>
             </div>
           {% endfor %}
         </div>

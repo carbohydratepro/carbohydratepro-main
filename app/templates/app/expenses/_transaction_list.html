@@ -1,4 +1,5 @@
 {% load app_filters %}
+{% load l10n %}
 <!-- 取引一覧（グラフ絞り込み時の差し替え対象） -->
 {% if has_active_filters %}
 <div class="alert alert-info alert-sm py-2">
@@ -11,16 +12,16 @@
     {% for transaction in transactions_page %}
     <li class="list-group-item px-2 py-2 lp-delete-item bulk-item"
         data-delete-url="{% url 'delete_expenses' transaction.id %}"
-        data-item-id="{{ transaction.id }}"
-        data-bulk-id="{{ transaction.id }}"
-        onclick="openEditModal({{ transaction.id }})"
+        data-item-id="{{ transaction.id|unlocalize }}"
+        data-bulk-id="{{ transaction.id|unlocalize }}"
+        onclick="openEditModal({{ transaction.id|unlocalize }})"
         style="cursor:pointer;">
         <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
         <div class="transaction-list-row">
             <div class="transaction-list-main">
                 <input type="checkbox" class="bulk-check" aria-label="この取引を選択">
                 <small class="text-muted mr-2" style="white-space:nowrap;">{{ transaction.date|date:"m/d" }}</small>
-                <button type="button" class="btn btn-link transaction-edit" onclick="event.stopPropagation(); openEditModal({{ transaction.id }})" aria-label="{{ transaction.purpose }}を編集">{{ transaction.purpose }}</button>
+                <button type="button" class="btn btn-link transaction-edit" onclick="event.stopPropagation(); openEditModal({{ transaction.id|unlocalize }})" aria-label="{{ transaction.purpose }}を編集">{{ transaction.purpose }}</button>
                 {% if transaction.purpose_description %}
                 <small class="text-muted ml-1 d-none d-sm-inline">— {{ transaction.purpose_description|truncatechars:20 }}</small>
                 {% endif %}

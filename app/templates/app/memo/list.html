@@ -1,4 +1,5 @@
 {% extends "app/base.html" %}
+{% load l10n %}
 {% load static %}
 {% load app_filters %}
 {% block title %}{% if is_demo %}メモデモ | Life management{% else %}メモ | Life management{% endif %}{% endblock %}
@@ -68,7 +69,7 @@
                             <select id="memo_type_filter" name="memo_type" class="form-control form-control-sm">
                                 <option value="">すべて</option>
                                 {% for type in memo_type_choices %}
-                                <option value="{{ type.id }}" {% if memo_type_filter == type.id|stringformat:"s" %}selected{% endif %}>{{ type.name }}</option>
+                                <option value="{{ type.id|unlocalize }}" {% if memo_type_filter == type.id|stringformat:"s" %}selected{% endif %}>{{ type.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -111,8 +112,8 @@
         <div class="col-lg-6 col-md-12 mb-3">
             <div class="card memo-card h-100 lp-delete-item bulk-item"
                  data-delete-url="{% url 'delete_memo' memo.id %}"
-                 data-item-id="{{ memo.id }}"
-                 data-bulk-id="{{ memo.id }}">
+                 data-item-id="{{ memo.id|unlocalize }}"
+                 data-bulk-id="{{ memo.id|unlocalize }}">
                 <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                 <div class="card-body">
                     <!-- 1行目: タイトル（左寄せ）と更新日（右寄せ） -->
@@ -131,7 +132,7 @@
                         </div>
                         <div class="memo-card-controls">
                             <button class="btn btn-outline-secondary"
-                                    onclick="event.stopPropagation(); toggleFavorite({{ memo.id }}, this)"
+                                    onclick="event.stopPropagation(); toggleFavorite({{ memo.id|unlocalize }}, this)"
                                     data-favorite="{{ memo.is_favorite|yesno:'true,false' }}"
                                     aria-pressed="{{ memo.is_favorite|yesno:'true,false' }}"
                                     aria-label="{{ memo.title }}のお気に入りを切り替え"
@@ -141,7 +142,7 @@
                             <div class="dropdown memo-item-actions">
                                 <button type="button" class="btn btn-outline-secondary" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" aria-label="{{ memo.title }}の操作"><i class="fas fa-ellipsis-h" aria-hidden="true"></i></button>
                                 <div class="dropdown-menu dropdown-menu-right">
-                                    <button type="button" class="dropdown-item" onclick="openEditMemoModal('{{ memo.id }}')">編集する</button>
+                                    <button type="button" class="dropdown-item" onclick="openEditMemoModal('{{ memo.id|unlocalize }}')">編集する</button>
                                     <button type="button" class="dropdown-item text-danger" data-toggle="modal" data-target="#deleteMemoModal" data-memo-delete-url="{% url 'delete_memo' memo.id %}" data-memo-title="{{ memo.title }}">削除する</button>
                                 </div>
                             </div>
@@ -149,14 +150,14 @@
                     </div>
                     
                     <!-- 3行目・4行目: 詳細テキストボックス（枠線付き） -->
-                    <div class="memo-preview cursor-pointer border rounded p-2 bg-light" onclick="toggleMemoExpand({{ memo.id }})" style="min-height: 60px;">
-                        <p class="card-text text-muted small mb-2" id="preview-{{ memo.id }}">
+                    <div class="memo-preview cursor-pointer border rounded p-2 bg-light" onclick="toggleMemoExpand({{ memo.id|unlocalize }})" style="min-height: 60px;">
+                        <p class="card-text text-muted small mb-2" id="preview-{{ memo.id|unlocalize }}">
                             {{ memo.content|highlight:search_query|truncatechars:100 }}
                         </p>
-                        <div class="memo-full-content card-text text-muted small mb-2" id="full-content-{{ memo.id }}" data-raw-id="memo-raw-{{ memo.id }}" style="display: none;"></div>
-                        <textarea id="memo-raw-{{ memo.id }}" class="d-none memo-raw-src">{{ memo.content }}</textarea>
+                        <div class="memo-full-content card-text text-muted small mb-2" id="full-content-{{ memo.id|unlocalize }}" data-raw-id="memo-raw-{{ memo.id|unlocalize }}" style="display: none;"></div>
+                        <textarea id="memo-raw-{{ memo.id|unlocalize }}" class="d-none memo-raw-src">{{ memo.content }}</textarea>
                         <div class="text-center">
-                            <i class="fas fa-chevron-down expand-icon" id="icon-{{ memo.id }}"></i>
+                            <i class="fas fa-chevron-down expand-icon" id="icon-{{ memo.id|unlocalize }}"></i>
                         </div>
                     </div>
                 </div>

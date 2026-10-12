@@ -132,7 +132,7 @@ test.describe("主要CRUDとAPI", () => {
     await expect(page.getByText(title)).toHaveCount(0);
   });
 
-  test("E2E-EXPENSES-CRUD-001 家計簿の取引を登録・検索・削除できる", async ({ page }) => {
+  test("E2E-EXPENSES-CRUD-001 家計簿の取引を登録・検索・編集・削除できる", async ({ page }) => {
     // Spec: docs/e2e/release-test-spec.md#crud-and-api
     const purpose = uniqueName("e2e-expense");
     const date = todayIsoDate();
@@ -157,6 +157,16 @@ test.describe("主要CRUDとAPI", () => {
       `/carbohydratepro/expenses/?view_mode=month&target_date=${targetMonth}&search=${encodeURIComponent(purpose)}`,
     );
     await expect(page.getByText(purpose, { exact: true }).first()).toBeVisible();
+
+    await page.getByRole("button", { name: `${purpose}を編集`, exact: true }).click();
+    const editModal = page.locator("#editModal");
+    await expect(editModal.getByRole("heading", { name: "取引編集" })).toBeVisible();
+    await expect(editModal.getByLabel("用途", { exact: true })).toHaveValue(purpose);
+    await editModal.getByLabel("金額", { exact: true }).fill("2345");
+    await submitAndWaitForNavigation(page, editModal.getByRole("button", { name: "保存", exact: true }));
+    await page.getByRole("button", { name: `${purpose}を編集`, exact: true }).click();
+    await expect(editModal.getByLabel("金額", { exact: true })).toHaveValue("2345");
+    await editModal.getByRole("button", { name: "キャンセル", exact: true }).click();
 
     await deleteFirstItemContaining(page, `/carbohydratepro/expenses/?view_mode=month&target_date=${targetMonth}`, purpose);
   });

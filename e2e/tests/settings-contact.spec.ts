@@ -21,13 +21,13 @@ test.describe("設定とお問い合わせ", () => {
     await page.goto("/carbohydratepro/expenses/settings/");
     await page.locator('input[placeholder="新しい支払方法"]').fill(payment);
     await submitAndWaitForNavigation(page, page.getByRole("button", { name: "追加" }).first());
-    await expect(page.getByRole("cell", { name: payment })).toBeVisible();
+    await expect(page.getByRole("cell", { name: payment, exact: true })).toBeVisible();
 
     await page.locator('input[placeholder="新しい使用用途"]').fill(purpose);
     await submitAndWaitForNavigation(page, page.getByRole("button", { name: "追加" }).nth(1));
 
-    await expect(page.getByRole("cell", { name: payment })).toBeVisible();
-    await expect(page.getByRole("cell", { name: purpose })).toBeVisible();
+    await expect(page.getByRole("cell", { name: payment, exact: true })).toBeVisible();
+    await expect(page.getByRole("cell", { name: purpose, exact: true })).toBeVisible();
 
     const paymentId = await itemAttributeByText(page, ".lp-delete-modal-item", payment);
     const purposeId = await itemAttributeByText(page, ".lp-delete-modal-item", purpose);
@@ -60,7 +60,7 @@ test.describe("設定とお問い合わせ", () => {
     });
     await submitAndWaitForNavigation(page, modal.getByRole("button", { name: "作成" }));
 
-    await expect(page.getByRole("cell", { name: label })).toBeVisible();
+    await expect(page.getByRole("cell", { name: label, exact: true })).toBeVisible();
     const labelId = await itemAttributeByText(page, ".lp-delete-modal-item", label);
     await expectOkOrRedirect(await postForm(page, "/carbohydratepro/tasks/settings/", {
       label_id: labelId,
@@ -86,7 +86,7 @@ test.describe("設定とお問い合わせ", () => {
     });
     await submitAndWaitForNavigation(page, modal.getByRole("button", { name: "作成" }));
 
-    await expect(page.getByRole("cell", { name: memoType })).toBeVisible();
+    await expect(page.getByRole("cell", { name: `${memoType} あなたの種別`, exact: true })).toBeVisible();
     const memoTypeId = await itemAttributeByText(page, ".lp-delete-modal-item", memoType);
     await expectOkOrRedirect(await postForm(page, "/carbohydratepro/memos/settings/", {
       memo_type_id: memoTypeId,

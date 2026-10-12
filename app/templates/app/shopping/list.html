@@ -1,4 +1,5 @@
 {% extends "app/base.html" %}
+{% load l10n %}
 {% load static %}
 {% load app_filters %}
 {% block title %}{% if is_demo %}買い物リストデモ | Life management{% else %}買い物リスト | Life management{% endif %}{% endblock %}
@@ -71,23 +72,23 @@
         <div class="list-group list-group-flush">
             {% for item in one_time_items %}
             <div class="list-group-item px-3 py-2 shopping-one-time-row lp-delete-item bulk-item {% if item.is_checked %}shopping-checked{% endif %}"
-                 id="item-row-{{ item.id }}"
+                 id="item-row-{{ item.id|unlocalize }}"
                  data-delete-url="{% url 'delete_shopping_item' item.id %}"
-                 data-item-id="{{ item.id }}"
-                 data-bulk-id="{{ item.id }}">
+                 data-item-id="{{ item.id|unlocalize }}"
+                 data-bulk-id="{{ item.id|unlocalize }}">
                 <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                 <div class="d-flex align-items-center">
                     <input type="checkbox" class="bulk-check" aria-label="この商品を選択">
                     <!-- チェックボタン -->
-                    <button id="check-btn-{{ item.id }}"
+                    <button id="check-btn-{{ item.id|unlocalize }}"
                             class="btn shopping-check-btn mr-3"
-                            onclick="toggleCheck({{ item.id }})"
+                            onclick="toggleCheck({{ item.id|unlocalize }})"
                             title="購入済みにする">
                         <i class="fas {% if item.is_checked %}fa-check-circle text-success{% else %}fa-circle text-muted{% endif %} fa-lg"></i>
                     </button>
                     <!-- タイトル・金額・メモ -->
                     <div class="flex-grow-1" style="min-width: 0;">
-                        <span id="item-title-{{ item.id }}"
+                        <span id="item-title-{{ item.id|unlocalize }}"
                               class="{% if item.is_checked %}text-muted{% endif %}"
                               style="{% if item.is_checked %}text-decoration: line-through;{% endif %}">
                             {{ item.title|highlight:search_query }}
@@ -121,14 +122,14 @@
             {% for item in recurring_items %}
             <div class="list-group-item px-3 py-2 lp-delete-item bulk-item"
                  data-delete-url="{% url 'delete_shopping_item' item.id %}"
-                 data-item-id="{{ item.id }}"
-                 data-bulk-id="{{ item.id }}">
+                 data-item-id="{{ item.id|unlocalize }}"
+                 data-bulk-id="{{ item.id|unlocalize }}">
                 <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                 <div class="d-flex align-items-center flex-wrap">
                     <input type="checkbox" class="bulk-check" aria-label="この商品を選択">
                     <!-- ステータスバッジ + タイトル -->
                     <div class="flex-grow-1 mr-2" style="min-width: 0;">
-                        <span id="status-badge-{{ item.id }}"
+                        <span id="status-badge-{{ item.id|unlocalize }}"
                               class="badge {% if item.status == 'insufficient' %}badge-danger{% else %}badge-success{% endif %} mr-1">
                             {{ item.get_status_display }}
                         </span>
@@ -144,16 +145,16 @@
                     <div class="d-flex align-items-center flex-shrink-0 mt-1">
                         <small class="text-muted mr-1" style="white-space: nowrap;">残数</small>
                         <button class="btn btn-sm btn-outline-secondary py-0 px-2"
-                                onclick="updateCount({{ item.id }}, 'remaining', 'decrease')"
+                                onclick="updateCount({{ item.id|unlocalize }}, 'remaining', 'decrease')"
                                 aria-label="{{ item.title }}の残数を減らす">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <span class="mx-2 font-weight-bold text-center" id="remaining-count-{{ item.id }}"
+                        <span class="mx-2 font-weight-bold text-center" id="remaining-count-{{ item.id|unlocalize }}"
                               style="min-width: 1.5em;">
                             {{ item.remaining_count }}
                         </span>
                         <button class="btn btn-sm btn-outline-primary py-0 px-2"
-                                onclick="updateCount({{ item.id }}, 'remaining', 'increase')"
+                                onclick="updateCount({{ item.id|unlocalize }}, 'remaining', 'increase')"
                                 aria-label="{{ item.title }}の残数を増やす">
                             <i class="fas fa-plus"></i>
                         </button>

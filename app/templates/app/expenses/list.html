@@ -130,8 +130,8 @@
                                 {% for category in user_categories %}
                                 <div class="advanced-filter-row">
                                     <span class="text-truncate">{{ category.name }}</span>
-                                    <label><input type="checkbox" name="category" value="{{ category.id }}" data-filter-key="category-{{ category.id }}" {% if category.id in filter_categories %}checked{% endif %}> 含む</label>
-                                    <label><input type="checkbox" name="exclude_category" value="{{ category.id }}" data-filter-key="category-{{ category.id }}" {% if category.id in excluded_categories %}checked{% endif %}> 除外</label>
+                                    <label><input type="checkbox" name="category" value="{{ category.id|unlocalize }}" data-filter-key="category-{{ category.id|unlocalize }}" {% if category.id in filter_categories %}checked{% endif %}> 含む</label>
+                                    <label><input type="checkbox" name="exclude_category" value="{{ category.id|unlocalize }}" data-filter-key="category-{{ category.id|unlocalize }}" {% if category.id in excluded_categories %}checked{% endif %}> 除外</label>
                                 </div>
                                 {% empty %}<span class="small text-muted">カテゴリがありません。</span>{% endfor %}
                             </fieldset>
@@ -142,8 +142,8 @@
                                 {% for payment_method in user_payment_methods %}
                                 <div class="advanced-filter-row">
                                     <span class="text-truncate">{{ payment_method.name }}</span>
-                                    <label><input type="checkbox" name="payment_method" value="{{ payment_method.id }}" data-filter-key="payment-{{ payment_method.id }}" {% if payment_method.id in filter_payment_methods %}checked{% endif %}> 含む</label>
-                                    <label><input type="checkbox" name="exclude_payment_method" value="{{ payment_method.id }}" data-filter-key="payment-{{ payment_method.id }}" {% if payment_method.id in excluded_payment_methods %}checked{% endif %}> 除外</label>
+                                    <label><input type="checkbox" name="payment_method" value="{{ payment_method.id|unlocalize }}" data-filter-key="payment-{{ payment_method.id|unlocalize }}" {% if payment_method.id in filter_payment_methods %}checked{% endif %}> 含む</label>
+                                    <label><input type="checkbox" name="exclude_payment_method" value="{{ payment_method.id|unlocalize }}" data-filter-key="payment-{{ payment_method.id|unlocalize }}" {% if payment_method.id in excluded_payment_methods %}checked{% endif %}> 除外</label>
                                 </div>
                                 {% empty %}<span class="small text-muted">支払方法がありません。</span>{% endfor %}
                             </fieldset>

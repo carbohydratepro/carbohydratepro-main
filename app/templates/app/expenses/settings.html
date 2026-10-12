@@ -1,4 +1,5 @@
 {% extends "app/base.html" %}
+{% load l10n %}
 {% load app_filters %}
 
 {% block title %}家計簿設定 | Life management{% endblock %}
@@ -24,13 +25,13 @@
             <!-- 支払方法の行 -->
             {% for payment in payments %}
             <tr class="lp-delete-modal-item"
-                data-delete-modal-id="deletePaymentModal{{ payment.id }}"
-                data-edit-modal-id="editPaymentModal{{ payment.id }}"
-                data-item-id="{{ payment.id }}">
+                data-delete-modal-id="deletePaymentModal{{ payment.id|unlocalize }}"
+                data-edit-modal-id="editPaymentModal{{ payment.id|unlocalize }}"
+                data-item-id="{{ payment.id|unlocalize }}">
                 <td>
                     <form method="post" class="btn-group btn-group-sm" onclick="event.stopPropagation();">
                         {% csrf_token %}
-                        <input type="hidden" name="payment_id" value="{{ payment.id }}">
+                        <input type="hidden" name="payment_id" value="{{ payment.id|unlocalize }}">
                         <input type="hidden" name="move_payment" value="1">
                         <button type="submit" name="direction" value="up" class="btn btn-outline-secondary" aria-label="{{ payment.name }}を上へ" {% if forloop.first %}disabled{% endif %}><i class="fas fa-arrow-up"></i></button>
                         <button type="submit" name="direction" value="down" class="btn btn-outline-secondary" aria-label="{{ payment.name }}を下へ" {% if forloop.last %}disabled{% endif %}><i class="fas fa-arrow-down"></i></button>
@@ -40,30 +41,30 @@
                 <td class="lp-actions-cell">
                     <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                     <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="{{ payment.name }}を編集"
-                            data-toggle="modal" data-target="#editPaymentModal{{ payment.id }}">
+                            data-toggle="modal" data-target="#editPaymentModal{{ payment.id|unlocalize }}">
                         <i class="fas fa-pencil-alt"></i>
                     </button>
                 </td>
             </tr>
 
             <!-- 支払方法編集モーダル -->
-            <div class="modal fade" id="editPaymentModal{{ payment.id }}" tabindex="-1" role="dialog" aria-labelledby="editPaymentModalLabel{{ payment.id }}" aria-hidden="true">
+            <div class="modal fade" id="editPaymentModal{{ payment.id|unlocalize }}" tabindex="-1" role="dialog" aria-labelledby="editPaymentModalLabel{{ payment.id|unlocalize }}" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                     <div class="modal-content">
                         <form method="post">
                             {% csrf_token %}
                             <div class="modal-header">
-                                <h5 class="modal-title" id="editPaymentModalLabel{{ payment.id }}">支払方法の編集</h5>
+                                <h5 class="modal-title" id="editPaymentModalLabel{{ payment.id|unlocalize }}">支払方法の編集</h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
                             </div>
                             <div class="modal-body">
                                 <div class="form-group">
-                                    <label for="payment-name-{{ payment.id }}">支払方法</label>
-                                    <input type="text" name="payment-name" class="form-control" id="payment-name-{{ payment.id }}" value="{{ payment.name }}" maxlength="20">
+                                    <label for="payment-name-{{ payment.id|unlocalize }}">支払方法</label>
+                                    <input type="text" name="payment-name" class="form-control" id="payment-name-{{ payment.id|unlocalize }}" value="{{ payment.name }}" maxlength="20">
                                 </div>
-                                <input type="hidden" name="payment_id" value="{{ payment.id }}">
+                                <input type="hidden" name="payment_id" value="{{ payment.id|unlocalize }}">
                                 <input type="hidden" name="edit_payment" value="true">
                             </div>
                             <div class="modal-footer">
@@ -76,20 +77,20 @@
             </div>
 
             <!-- 支払方法削除モーダル -->
-            <div class="modal fade" id="deletePaymentModal{{ payment.id }}" tabindex="-1" role="dialog" aria-labelledby="deletePaymentModalLabel{{ payment.id }}" aria-hidden="true">
+            <div class="modal fade" id="deletePaymentModal{{ payment.id|unlocalize }}" tabindex="-1" role="dialog" aria-labelledby="deletePaymentModalLabel{{ payment.id|unlocalize }}" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                     <div class="modal-content">
                         <form method="post">
                             {% csrf_token %}
                             <div class="modal-header">
-                                <h5 class="modal-title" id="deletePaymentModalLabel{{ payment.id }}">支払方法の削除</h5>
+                                <h5 class="modal-title" id="deletePaymentModalLabel{{ payment.id|unlocalize }}">支払方法の削除</h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
                             </div>
                             <div class="modal-body">
                                 本当に削除しますか？: {{ payment.name }}
-                                <input type="hidden" name="payment_id" value="{{ payment.id }}">
+                                <input type="hidden" name="payment_id" value="{{ payment.id|unlocalize }}">
                                 <input type="hidden" name="delete_payment" value="true">
                             </div>
                             <div class="modal-footer">
@@ -151,13 +152,13 @@
             <!-- 使用用途の行 -->
             {% for purpose in purposes %}
             <tr class="lp-delete-modal-item"
-                data-delete-modal-id="deletePurposeModal{{ purpose.id }}"
-                data-edit-modal-id="editPurposeModal{{ purpose.id }}"
-                data-item-id="{{ purpose.id }}">
+                data-delete-modal-id="deletePurposeModal{{ purpose.id|unlocalize }}"
+                data-edit-modal-id="editPurposeModal{{ purpose.id|unlocalize }}"
+                data-item-id="{{ purpose.id|unlocalize }}">
                 <td>
                     <form method="post" class="btn-group btn-group-sm" onclick="event.stopPropagation();">
                         {% csrf_token %}
-                        <input type="hidden" name="purpose_id" value="{{ purpose.id }}">
+                        <input type="hidden" name="purpose_id" value="{{ purpose.id|unlocalize }}">
                         <input type="hidden" name="move_purpose" value="1">
                         <button type="submit" name="direction" value="up" class="btn btn-outline-secondary" aria-label="{{ purpose.name }}を上へ" {% if forloop.first %}disabled{% endif %}><i class="fas fa-arrow-up"></i></button>
                         <button type="submit" name="direction" value="down" class="btn btn-outline-secondary" aria-label="{{ purpose.name }}を下へ" {% if forloop.last %}disabled{% endif %}><i class="fas fa-arrow-down"></i></button>
@@ -171,52 +172,52 @@
                 <td class="lp-actions-cell">
                     <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                     <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="{{ purpose.name }}を編集"
-                            data-toggle="modal" data-target="#editPurposeModal{{ purpose.id }}">
+                            data-toggle="modal" data-target="#editPurposeModal{{ purpose.id|unlocalize }}">
                         <i class="fas fa-pencil-alt"></i>
                     </button>
                 </td>
             </tr>
 
             <!-- 使用用途編集モーダル -->
-            <div class="modal fade" id="editPurposeModal{{ purpose.id }}" tabindex="-1" role="dialog" aria-labelledby="editPurposeModalLabel{{ purpose.id }}" aria-hidden="true">
+            <div class="modal fade" id="editPurposeModal{{ purpose.id|unlocalize }}" tabindex="-1" role="dialog" aria-labelledby="editPurposeModalLabel{{ purpose.id|unlocalize }}" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                     <div class="modal-content">
                         <form method="post">
                             {% csrf_token %}
                             <div class="modal-header">
-                                <h5 class="modal-title" id="editPurposeModalLabel{{ purpose.id }}">使用用途の編集</h5>
+                                <h5 class="modal-title" id="editPurposeModalLabel{{ purpose.id|unlocalize }}">使用用途の編集</h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
                             </div>
                             <div class="modal-body">
                                 <div class="form-group">
-                                    <label for="purpose-name-{{ purpose.id }}">使用用途</label>
-                                    <input type="text" name="purpose-name" class="form-control" id="purpose-name-{{ purpose.id }}" value="{{ purpose.name }}" maxlength="20">
+                                    <label for="purpose-name-{{ purpose.id|unlocalize }}">使用用途</label>
+                                    <input type="text" name="purpose-name" class="form-control" id="purpose-name-{{ purpose.id|unlocalize }}" value="{{ purpose.name }}" maxlength="20">
                                 </div>
                                 <div class="form-group">
-                                    <label for="purpose-chart_color-{{ purpose.id }}">グラフ色</label>
+                                    <label for="purpose-chart_color-{{ purpose.id|unlocalize }}">グラフ色</label>
                                     <div class="custom-control custom-checkbox mb-2">
-                                        <input type="checkbox" class="custom-control-input" id="purpose-auto-{{ purpose.id }}"
+                                        <input type="checkbox" class="custom-control-input" id="purpose-auto-{{ purpose.id|unlocalize }}"
                                                name="purpose-auto_color" {% if not purpose.chart_color %}checked{% endif %}
-                                               onchange="document.getElementById('purpose-chart_color-{{ purpose.id }}').disabled = this.checked;">
-                                        <label class="custom-control-label" for="purpose-auto-{{ purpose.id }}">自動で色分けする（IDに応じた既定色）</label>
+                                               onchange="document.getElementById('purpose-chart_color-{{ purpose.id|unlocalize }}').disabled = this.checked;">
+                                        <label class="custom-control-label" for="purpose-auto-{{ purpose.id|unlocalize }}">自動で色分けする（IDに応じた既定色）</label>
                                     </div>
                                     <div class="d-flex align-items-center">
                                         <input type="color" name="purpose-chart_color"
                                                class="form-control form-control-color mr-2"
-                                               id="purpose-chart_color-{{ purpose.id }}"
+                                               id="purpose-chart_color-{{ purpose.id|unlocalize }}"
                                                value="{{ purpose.effective_chart_color }}"
                                                {% if not purpose.chart_color %}disabled{% endif %}
                                                style="width:60px; padding:2px; height:38px;">
                                         <button type="button" class="btn btn-sm btn-outline-secondary"
-                                                onclick="var i=document.getElementById('purpose-chart_color-{{ purpose.id }}'); document.getElementById('purpose-auto-{{ purpose.id }}').checked=false; i.disabled=false; i.value='{{ purpose.effective_chart_color }}';">
+                                                onclick="var i=document.getElementById('purpose-chart_color-{{ purpose.id|unlocalize }}'); document.getElementById('purpose-auto-{{ purpose.id|unlocalize }}').checked=false; i.disabled=false; i.value='{{ purpose.effective_chart_color }}';">
                                             既定色を使う
                                         </button>
                                     </div>
                                     <small class="text-muted d-block mt-1">自動のチェックを外すと、選んだ色で固定します。</small>
                                 </div>
-                                <input type="hidden" name="purpose_id" value="{{ purpose.id }}">
+                                <input type="hidden" name="purpose_id" value="{{ purpose.id|unlocalize }}">
                                 <input type="hidden" name="edit_purpose" value="true">
                             </div>
                             <div class="modal-footer">
@@ -229,20 +230,20 @@
             </div>
 
             <!-- 使用用途削除モーダル -->
-            <div class="modal fade" id="deletePurposeModal{{ purpose.id }}" tabindex="-1" role="dialog" aria-labelledby="deletePurposeModalLabel{{ purpose.id }}" aria-hidden="true">
+            <div class="modal fade" id="deletePurposeModal{{ purpose.id|unlocalize }}" tabindex="-1" role="dialog" aria-labelledby="deletePurposeModalLabel{{ purpose.id|unlocalize }}" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                     <div class="modal-content">
                         <form method="post">
                             {% csrf_token %}
                             <div class="modal-header">
-                                <h5 class="modal-title" id="deletePurposeModalLabel{{ purpose.id }}">使用用途の削除</h5>
+                                <h5 class="modal-title" id="deletePurposeModalLabel{{ purpose.id|unlocalize }}">使用用途の削除</h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
                             </div>
                             <div class="modal-body">
                                 本当に削除しますか？: {{ purpose.name }}
-                                <input type="hidden" name="purpose_id" value="{{ purpose.id }}">
+                                <input type="hidden" name="purpose_id" value="{{ purpose.id|unlocalize }}">
                                 <input type="hidden" name="delete_purpose" value="true">
                             </div>
                             <div class="modal-footer">

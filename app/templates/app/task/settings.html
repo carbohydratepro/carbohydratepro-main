@@ -1,4 +1,5 @@
 {% extends 'app/base.html' %}
+{% load l10n %}
 {% load static %}
 
 {% block title %}タスク設定{% endblock %}
@@ -120,7 +121,7 @@
                                 <form method="post" class="d-inline">
                                     {% csrf_token %}
                                     <input type="hidden" name="sync_external_calendar" value="1">
-                                    <input type="hidden" name="external_calendar_id" value="{{ external_calendar.id }}">
+                                    <input type="hidden" name="external_calendar_id" value="{{ external_calendar.id|unlocalize }}">
                                     <button type="submit" class="btn btn-outline-primary btn-sm" aria-label="{{ external_calendar.name }}を今すぐ同期">
                                         <i class="fas fa-sync-alt"></i>
                                     </button>
@@ -128,7 +129,7 @@
                                 <form method="post" class="d-inline" onsubmit="return confirm('外部カレンダー「{{ external_calendar.name }}」を削除しますか？取り込んだ予定も表示されなくなります。');">
                                     {% csrf_token %}
                                     <input type="hidden" name="delete_external_calendar" value="1">
-                                    <input type="hidden" name="external_calendar_id" value="{{ external_calendar.id }}">
+                                    <input type="hidden" name="external_calendar_id" value="{{ external_calendar.id|unlocalize }}">
                                     <button type="submit" class="btn btn-outline-danger btn-sm" aria-label="{{ external_calendar.name }}を削除">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
@@ -186,13 +187,13 @@
                 <tbody>
                     {% for label in labels %}
                     <tr class="lp-delete-modal-item"
-                        data-delete-modal-id="deleteLabelModal{{ label.id }}"
-                        data-edit-modal-id="editLabelModal{{ label.id }}"
-                        data-item-id="{{ label.id }}">
+                        data-delete-modal-id="deleteLabelModal{{ label.id|unlocalize }}"
+                        data-edit-modal-id="editLabelModal{{ label.id|unlocalize }}"
+                        data-item-id="{{ label.id|unlocalize }}">
                         <td>
                             <form method="post" class="btn-group btn-group-sm" onclick="event.stopPropagation();">
                                 {% csrf_token %}
-                                <input type="hidden" name="label_id" value="{{ label.id }}">
+                                <input type="hidden" name="label_id" value="{{ label.id|unlocalize }}">
                                 <input type="hidden" name="move_label" value="1">
                                 <button type="submit" name="direction" value="up" class="btn btn-outline-secondary" aria-label="{{ label.name }}を上へ" {% if forloop.first %}disabled{% endif %}><i class="fas fa-arrow-up"></i></button>
                                 <button type="submit" name="direction" value="down" class="btn btn-outline-secondary" aria-label="{{ label.name }}を下へ" {% if forloop.last %}disabled{% endif %}><i class="fas fa-arrow-down"></i></button>
@@ -208,19 +209,19 @@
                             <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                             <form method="post" class="d-inline" onclick="event.stopPropagation();">
                                 {% csrf_token %}
-                                <input type="hidden" name="label_id" value="{{ label.id }}">
+                                <input type="hidden" name="label_id" value="{{ label.id|unlocalize }}">
                                 <button type="submit" name="set_default_label" class="btn btn-sm {% if label.is_default %}btn-primary{% else %}btn-outline-primary{% endif %}" aria-label="{{ label.name }}を既定にする" {% if label.is_default %}disabled{% endif %}><i class="fas fa-star"></i></button>
                             </form>
-                            <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="{{ label.name }}を編集" data-toggle="modal" data-target="#editLabelModal{{ label.id }}"><i class="fas fa-pencil-alt"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary lp-edit-btn" aria-label="{{ label.name }}を編集" data-toggle="modal" data-target="#editLabelModal{{ label.id|unlocalize }}"><i class="fas fa-pencil-alt"></i></button>
                         </td>
                     </tr>
 
                     <!-- 編集モーダル -->
-                    <div class="modal fade" id="editLabelModal{{ label.id }}" tabindex="-1" role="dialog" aria-labelledby="editLabelModalLabel{{ label.id }}" aria-hidden="true">
+                    <div class="modal fade" id="editLabelModal{{ label.id|unlocalize }}" tabindex="-1" role="dialog" aria-labelledby="editLabelModalLabel{{ label.id|unlocalize }}" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                             <div class="modal-content">
                                 <div class="modal-header">
-                                    <h5 class="modal-title" id="editLabelModalLabel{{ label.id }}">ラベルの編集</h5>
+                                    <h5 class="modal-title" id="editLabelModalLabel{{ label.id|unlocalize }}">ラベルの編集</h5>
                                     <button type="button" class="close" data-dismiss="modal" aria-label="閉じる">
                                         <span aria-hidden="true">&times;</span>
                                     </button>
@@ -229,34 +230,34 @@
                                     {% csrf_token %}
                                     <div class="modal-body">
                                         <div class="form-group">
-                                            <label for="label-name-{{ label.id }}">ラベル名</label>
-                                            <input type="text" name="name" class="form-control" id="label-name-{{ label.id }}" value="{{ label.name }}" maxlength="30" required>
+                                            <label for="label-name-{{ label.id|unlocalize }}">ラベル名</label>
+                                            <input type="text" name="name" class="form-control" id="label-name-{{ label.id|unlocalize }}" value="{{ label.name }}" maxlength="30" required>
                                         </div>
                                         <div class="form-group">
                                             <label>色の選択</label>
                                             <div class="color-picker-tabs">
-                                                <button type="button" class="color-picker-tab active" data-tab="template" onclick="switchColorTab('template', 'editLabelModal{{ label.id }}')">
+                                                <button type="button" class="color-picker-tab active" data-tab="template" onclick="switchColorTab('template', 'editLabelModal{{ label.id|unlocalize }}')">
                                                     <i class="fas fa-palette"></i> テンプレート
                                                 </button>
-                                                <button type="button" class="color-picker-tab" data-tab="custom" onclick="switchColorTab('custom', 'editLabelModal{{ label.id }}')">
+                                                <button type="button" class="color-picker-tab" data-tab="custom" onclick="switchColorTab('custom', 'editLabelModal{{ label.id|unlocalize }}')">
                                                     <i class="fas fa-eye-dropper"></i> カスタム
                                                 </button>
                                             </div>
                                             
                                             <!-- テンプレートタブ -->
                                             <div class="color-picker-content active" data-tab="template">
-                                                <div class="color-template-grid" id="colorTemplateGridEdit{{ label.id }}"></div>
+                                                <div class="color-template-grid" id="colorTemplateGridEdit{{ label.id|unlocalize }}"></div>
                                             </div>
                                             
                                             <!-- カスタムタブ -->
                                             <div class="color-picker-content" data-tab="custom">
                                                 <div class="custom-color-picker-wrapper">
-                                                    <input type="color" name="color" class="form-control-color" id="label-color-{{ label.id }}" value="{{ label.color }}" onchange="updateCustomColor(this, 'editLabelModal{{ label.id }}')" required>
+                                                    <input type="color" name="color" class="form-control-color" id="label-color-{{ label.id|unlocalize }}" value="{{ label.color }}" onchange="updateCustomColor(this, 'editLabelModal{{ label.id|unlocalize }}')" required>
                                                     <div class="color-preview" style="background-color: {{ label.color }};">{{ label.color }}</div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <input type="hidden" name="label_id" value="{{ label.id }}">
+                                        <input type="hidden" name="label_id" value="{{ label.id|unlocalize }}">
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>
@@ -268,11 +269,11 @@
                     </div>
 
                     <!-- 削除モーダル -->
-                    <div class="modal fade" id="deleteLabelModal{{ label.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteLabelModalLabel{{ label.id }}" aria-hidden="true">
+                    <div class="modal fade" id="deleteLabelModal{{ label.id|unlocalize }}" tabindex="-1" role="dialog" aria-labelledby="deleteLabelModalLabel{{ label.id|unlocalize }}" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
                             <div class="modal-content">
                                 <div class="modal-header">
-                                    <h5 class="modal-title" id="deleteLabelModalLabel{{ label.id }}">ラベルの削除</h5>
+                                    <h5 class="modal-title" id="deleteLabelModalLabel{{ label.id|unlocalize }}">ラベルの削除</h5>
                                     <button type="button" class="close" data-dismiss="modal" aria-label="閉じる">
                                         <span aria-hidden="true">&times;</span>
                                     </button>
@@ -282,7 +283,7 @@
                                     <div class="modal-body">
                                         <p>本当に「{{ label.name }}」を削除しますか？</p>
                                         <p class="text-danger"><small>※ このラベルを使用しているタスクのラベル設定は解除されます。</small></p>
-                                        <input type="hidden" name="label_id" value="{{ label.id }}">
+                                        <input type="hidden" name="label_id" value="{{ label.id|unlocalize }}">
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>

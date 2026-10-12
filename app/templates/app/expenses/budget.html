@@ -1,4 +1,5 @@
 {% extends "app/base.html" %}
+{% load l10n %}
 {% load app_filters humanize %}
 {% block title %}予算 | Life management{% endblock %}
 
@@ -96,7 +97,7 @@
                     <form method="post" class="form-inline">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="set_category">
-                        <input type="hidden" name="category_id" value="{{ row.category.id }}">
+                        <input type="hidden" name="category_id" value="{{ row.category.id|unlocalize }}">
                         <div class="input-group input-group-sm mr-2">
                             <input type="number" name="amount" class="form-control" min="1" step="1"
                                    style="max-width: 130px;" placeholder="予算（円）"

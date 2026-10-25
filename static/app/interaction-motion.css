@@ -1,0 +1,29 @@
+/* 本番の静止時の形・色・配置を変えず、操作への応答だけを短くする。 */
+.btn, .side-link, .bottomnav-item, .dropdown-item,
+.board-status-switch button, .habit-tab {
+    transition: background-color 120ms ease-out, color 120ms ease-out,
+        border-color 120ms ease-out, box-shadow 120ms ease-out;
+}
+.btn:not(:disabled):not(.disabled):not([aria-disabled="true"]):active {
+    translate: 0 1px;
+}
+.dropdown-menu.show { animation: menu-reveal 120ms ease-out; }
+@keyframes menu-reveal { from { opacity: 0; } to { opacity: 1; } }
+.modal.fade { transition: opacity 160ms ease-out; }
+.modal.fade .modal-dialog {
+    transform: translateY(-8px);
+    transition: transform 160ms ease-out;
+}
+.modal.show .modal-dialog { transform: none; }
+.modal-backdrop.fade { transition: opacity 160ms ease-out; }
+.collapsing { transition-duration: 180ms; }
+@media (prefers-reduced-motion: reduce) {
+    .btn, .side-link, .bottomnav-item, .dropdown-item,
+    .board-status-switch button, .habit-tab, .modal.fade,
+    .modal.fade .modal-dialog, .modal-backdrop.fade, .collapsing {
+        transition: none !important;
+    }
+    .btn:active { translate: none !important; }
+    .dropdown-menu.show { animation: none; }
+    .modal.fade .modal-dialog { transform: none; }
+}

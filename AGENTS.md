@@ -12,7 +12,7 @@ Ruff / Pyright / djlint。
 
 ## 知識の索引
 
-<!-- 1行 = 1ノート。書式: `- [name](.agents/knowledge/name.md) — いつ読むべきか` -->
+<!-- 1行 = 1ノート。書式: `- [name](.agents/knowledge/name.md) — いつ読むべきか`。索引セクションは25行以内 -->
 
 - [code-conventions](.agents/knowledge/code-conventions.md) — Python/Django または TypeScript を書くとき。ファイル責務の分割規約あり
 - [testing](.agents/knowledge/testing.md) — テスト実行時、変更後に何を検証すべきか判断するとき

@@ -4,6 +4,8 @@ from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
+from django.utils import timezone
+from zoneinfo import ZoneInfo
 from .forms import ContactMessageForm
 from .models import ContactMessage
 import logging
@@ -51,6 +53,7 @@ def contact(request: HttpRequest) -> HttpResponse:
             try:
                 inquiry_type_display = contact_message.get_inquiry_type_display()
                 subject = f"【お問い合わせ】{inquiry_type_display}: {contact_message.subject}"
+                sent_at = timezone.localtime(contact_message.created_at, ZoneInfo("Asia/Tokyo"))
                 message = f"""
 新しいお問い合わせが届きました。
 
@@ -61,7 +64,7 @@ def contact(request: HttpRequest) -> HttpResponse:
 種類: {inquiry_type_display}
 件名: {contact_message.subject}
 送信者: {request.user.email}
-送信日時: {contact_message.created_at.strftime('%Y年%m月%d日 %H:%M:%S')}
+送信日時: {sent_at.strftime('%Y年%m月%d日 %H:%M:%S')}（日本時間）
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 【お問い合わせ内容】

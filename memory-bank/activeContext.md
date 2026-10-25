@@ -2,6 +2,30 @@
 
 ## 現在の作業
 
+2026-10-25、残る未コミット差分のコミット依頼を受け、本番・ローカル・GitHubの基準が917b40bであることを再確認。追加3コミット反映後もセキュリティ関連10ファイルのSHA256がローカルと一致。4コンテナ・公開ログイン200・証明書/IP同期timer・毎時ログ保存は正常。ファイアウォール4件と隔離DockerのTLS/接続制限等3件が成功。セキュリティ変更と記録、ユーザーのAGENTS/Lucianスキル/lockを分けて本コミット群へ収録する。秘密設定・バックアップはGit管理外を維持。push・本番変更は今回の対象外。本番側には同内容の未コミット/未追跡ファイルが残るため、次回反映で保全・照合して追跡状態を整合させる。以下の記録は各作業当時の状態。
+
+2026-10-25、実行直前承認を受けて3コミット（7c80b55/fd5a1e8/917b40b）をorigin/mainへpushしAL2023本番へ反映完了。/home/ec2-user/carbohydrateproを8b294bdから917b40bへff-only、collectstatic、gunicorn HUPのみ実施。DB/migration/Compose/Nginx変更・全コンテナ再構築なし。既存セキュリティファイルの前後SHA256と全コンテナID不変、Django check正常、変更CSS/Python/テンプレート6件のSHA256がローカルと一致。公開login/demo home/memos/boardのHTTP200とinteraction-motion.d4bf5be255bd.cssの配信SHA256一致を確認。本番データの書き込み試験やメール送信はなし。セキュリティ対応・AGENTS・未使用Lucianスキル・混在するmemory記録は未コミット保持。本番/ローカル/リモートのコミットは917b40b。この完了記録は未コミット。
+
+2026-10-25、ユーザー依頼によりセキュリティ対応を除いた3コミットをmainへ作成：7c80b55（問い合わせ通知日本時間）、fd5a1e8（本番外観維持の動き/文言）、917b40b（UI方針/記録）。問い合わせ回帰1件・UI E2E22件・npm run check成功。セキュリティ/AGENTS/未使用Lucianスキル/混在するmemory記録は未コミット保持。AL2023本番を読み取り確認し /home/ec2-user/carbohydratepro、main 8b294bd、セキュリティ差分のみdirty、gunicornは同ディレクトリを/codeにbind mount。スキルの実行直前承認待ち。通常デプロイスクリプトはdirtyチェックと全再構築があるため使わず、承認後にpush→本番fetch/対象固定ff-only→collectstatic→gunicorn HUP→ハッシュ/公開画面検証の限定手順を予定。DB/Compose/Nginx/セキュリティ設定は変更しない。本番の既存差分維持を承認対象に明示する。
+
+2026-10-25、ユーザーが「現在の本番画面を維持」と指定し作業開始を依頼。本番UI基準8b294bdに未反映の全面刷新を戻し、Lucian/検索/新配色/説明コピーを取り下げ。前案のソースは /tmp/carbohydratepro-ui-draft-20261025.tar.gz に一時退避。ユーザーのスキル/AGENTS、セキュリティ/移行変更、日時修正は保持。共通interaction-motion.cssのみ追加し、本番の静止時の配置・配色・サイズを維持した短い押下/開閉反応へ調整。メモ/一時タスクの重複説明を削減、隠れ操作の案内や入力/確認は維持。開発反映・npm run check・E2E29件成功（38.1秒）。390/1440pxで動きCSS有無の静止外観一致、低減モーション、既存CRUD/レスポンシブを確認。一時ユーザー削除済み。実機Safari未確認。コミット/push/本番操作なし。10月17日の全面刷新残タスクは取り下げ済みで再開しない。
+
+2026-10-22、最終承認を受けて本番をAL2023へ移行完了。新本番 carbohydratepro-al2023-20261022 は固定IP54.238.169.177、旧 docker-django-app-carbohydratepro は2026-10-24 JSTにユーザーの明示依頼で削除済み。SSHはworkspace/security-hardening-20261022/migration-ssh-configのal2023別名と検証済みHostKeyAliasを使う。旧側で書き込み停止後に取得した最終dumpの40テーブル件数/内容ハッシュと438ファイルを照合済み。14:37:22 UTCに新側利用再開、CloudFrontはHTTPS443/TLS1.2/秘密ヘッダー設定でDeployed。22は管理元＋ブラウザSSH、443はCloudFront限定、8000閉鎖。一般接続元の443/8000/5432遮断と公開画面200を確認。最終tar展開のumask077で静的配信403が発生したが元モードへ復元し、14:44:37 UTC以降CSS/JS5件の200・内容ハッシュ一致を確認。秘密設定は0600維持。新側4サービスはproduction設定、証明書/IP同期timerと実ログ毎時S3保存は有効で検証成功。実ログ送信の自動承認拒否はユーザーの対象/保存先への明示承認後に解消。旧DBへの単純切り戻しは新データを失うため不可。復旧手順と詳細はdocs/production-al2023-cutover-2026-10-22.md、docs/production-security-hardening-2026-10-22.md。GitHubの認証不要HTTPS参照も検証しoriginを設定。検証/移行用設定は新側アプリディレクトリ外へ退避済み。現行8b294bd＋今回のセキュリティ設定のみ反映し、既存UI変更は未反映。コミット/push未依頼。次の通常デプロイ前に今回の限定差分をGitへ取り込む必要がある。旧サーバー削除はAWSでSucceededを確認。削除前に新本番の最新DB・runtimeをprivate workspaceのpre-legacy-delete-20261023T191339Zへ保存し、dump目次・gzip検査とSHA256記録を実施。移行時バックアップのSHA256も一致。旧インスタンスへの切り戻し手順は使用不可。
+
+2026-10-17 最終検証結果：最終ビルド/型検証・Django check成功、関連Playwright56件が同一状態で全成功（1.3分）。一時ユーザー削除済み。以下の「再実行中」はこの結果で更新。開発環境へ反映済み、本番変更なし。
+
+2026-10-17、全面UX/UI刷新を継続。実装前棚卸しは `docs/ui-overhaul-audit-2026-10.md`。workspace.css/ts・#046検索を新設し、ホーム/ログイン/公開/共通フォーム・シート/設定目次/明示編集削除/管理表/状態ページを改修。768pxメモ横はみ出し・検索ボタン読み上げ名も補修。主要機能と日付のブラウザ検証を実施、最終56件を再実行中。残る範囲は管理者全画面の実ブラウザ確認、認証状態画面の個別目視、実機Safari、料理の長い入力・空状態の個別再構成。全画面最終受入は未完了。コミット/push/本番操作なし。前回の日時修正・ユーザー変更を保持。
+
+2026-10-14、Lucianスキル指定で共通UIを刷新。公式CLIで#040/#039とtokens取得、ライセンス表記を保持してPC開閉ナビとスマホ一時タスクの選択ピルを移植。共通配色/カード/フォーム/メニュー/ボタン角丸を変更し、認証系baseにも適用。PCフッターの本文被りを解消。アプリはライトテーマを維持、機能固有の情報構造の全面再設計ではない。npm run check成功、デモ/レスポンシブ/Lucian10件と共通UI/認証/一時タスク15件成功。問い合わせ送信E2Eは実行せず、一時ユーザー削除済み。実機Safari未確認、未コミット・未push・本番未反映。日時修正、AGENTS.md、ユーザー追加のLucianスキルとskills-lock.jsonを保持。
+
+2026-10-14、お問い合わせ通知の送信日時がUTC表示になる問題を修正。app/views.pyでcreated_atへ直接strftimeしていたため、Asia/Tokyoへ変換後に日本時間を明記するよう変更。DBの保存時刻は変更しない。メールを外部送信しない回帰テストで通常時刻・日付跨ぎ・アクティブTZがUTCの場合を検証。未コミット・未push・本番未反映。
+
+2026-10-14、最終承認後に一時タスクUI刷新 `8b294bd`（origin/mainへpush済み）を本番反映。クリーンな `/tmp/carbohydratepro-release-8b294bd-YCGRo0` からデプロイスキル実行。4サービス稼働、追加migrationなし、Django check・Nginx構文正常。一時タスクHTML/CSS/JSのSHA256がローカルと一致し、公開デモで新しい状態切替・編集シートの配信を確認。古い未使用イメージ約1.4GBを定例整理、本番空き約33GB。既存AGENTS.mdと本番static/.gitkeepは保持。本番データの変更テストは実施せず、実機Safari確認は未完了。この反映記録は未コミット。
+
+2026-10-13、一時タスクのスマホ操作を刷新。1列＋状態切替、チェック完了、名前タップの編集ボトムシート、セット管理ダイアログ、読込/保存再試行、サーバー成功後削除とUndoを実装。カードのtouch preventDefaultを廃止し通常スクロールを許可、PC3列と補助ドラッグを維持。追加ライブラリなし。開発へ反映しnpm run check、PostgreSQL85件、関連Playwright21件成功、一時ユーザー後始末済み。途中の全削除テストはPCでメニューが常時表示される仕様に合わせてセレクタを修正し再実行成功。別機能の既存BULK/TRASHケースは旧メニュー指定で失敗し今回の最終21件には含めていない。iPhone実機Safari・ソフトウェアキーボードは未検証。docs/ui-redesign.mdに方針を追記。未コミット・未push・本番未反映、既存AGENTS.md変更は保持。
+
+2026-10-12、最終承認後にID桁区切り修正 `43eabaf` をorigin/mainへpushし本番反映完了。クリーンな `/tmp/carbohydratepro-release-43eabaf` からデプロイスキル実行。4サービス稼働、追加migrationなし、Django check・Nginx構文正常。家計簿/予定/メモ/買い物のテンプレートSHA256とJS配信ハッシュ一致、公開ログイン・デモ5画面HTTP200。本番空き約31GB。AGENTS.mdの既存変更と本番static/.gitkeep保持。本番データの変更テストは行わず、編集保存の確認は直前の開発PostgreSQL289件・E2E18件で実施。この反映記録は未コミット。
+
 2026-10-12、WSL連携有効化後にDocker接続復旧。開発4サービスを起動し、ID桁区切り修正のPostgreSQL関連289件・Playwright18件・npm run checkが成功。家計簿編集→保存→再取得、設定・料理・予算・習慣・スマホ導線を検証。一時E2Eユーザー削除済み。初回のDjango指定は存在しないtest_habitを含めて失敗しtest_listsへ訂正、設定E2Eはセルの部分一致が複数要素に一致したため完全一致へ修正して全件再実行成功。本番は3621cd3、main、既存static/.gitkeepのみ、空き33GBを読み取り確認。今回修正のコミット・pushと本番実行の最終承認待ち。既存AGENTS.md変更は対象外。
 
 2026-10-12、家計簿一覧の編集取得失敗を調査。USE_THOUSAND_SEPARATOR=TrueによりID 1234がonclickの`openEditModal(1,234)`やdata-item-id="1,234"として出力されることを再現。IDだけunlocalizeする修正を14テンプレートへ水平展開（家計簿・予定・メモ・買い物・習慣・料理履歴・問い合わせ・設定）。BoundFieldのstep_form.idは変更しない。追加回帰6件が一時SQLite（モデルから直接テスト表作成・migration未検証）で成功。家計簿既存テストを含む103件の試行は79件成功、定期支払いのPostgreSQL ArrayField関連24件はSQLite非対応でエラー。Docker Composeが使えないため本来のPostgreSQL/E2E確認は未実施。E2E家計簿CRUDに編集・再取得を追加し型検証成功。コミット・push・本番反映なし。既存AGENTS.md/前回デプロイ記録は保持。

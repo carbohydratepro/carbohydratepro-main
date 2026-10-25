@@ -160,9 +160,22 @@ set -euo pipefail
 cd "${REMOTE_DIR}"
 docker-compose -f "${COMPOSE_FILE}" restart nginx
 docker-compose -f "${COMPOSE_FILE}" ps
+docker-compose -f "${COMPOSE_FILE}" exec -T nginx nginx -t </dev/null
+
+health_origin="http://localhost:8000"
+if [[ -f .env ]] && grep -q '^NGINX_PORT=443$' .env; then
+    site_domain="$(docker-compose -f "${COMPOSE_FILE}" exec -T gunicorn python -c \
+        'import django; django.setup(); from django.conf import settings; print(settings.SITE_DOMAIN)' </dev/null)"
+    if [[ ! "$site_domain" =~ ^[A-Za-z0-9.-]+$ ]]; then
+        echo 'エラー: HTTPSヘルスチェック用ドメインが不正です。' >&2
+        exit 1
+    fi
+    health_origin="https://${site_domain}"
+fi
 
 for file in app.js task.js transaction.js styles.css; do
-    status="$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8000/static/app/${file}")"
+    status="$(curl --max-time 15 -sS -o /dev/null -w "%{http_code}" \
+        "${health_origin}/static/app/${file}?deploy_check=$(date +%s)")"
     if [[ "${status}" != "200" ]]; then
         echo "エラー: /static/app/${file} (${status})" >&2
         exit 1

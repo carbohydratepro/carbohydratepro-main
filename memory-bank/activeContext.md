@@ -2,6 +2,8 @@
 
 ## 現在の作業
 
+2026-10-25、ユーザーのpush・本番適用・統一の明示依頼を受け、3c1e8f9/9f3ad56をorigin/mainへpushしAL2023本番にも反映。先行適用済みの差分12ファイルについて対象コミットと内容・実行権限の一致を確認し、/home/ec2-user/git-unification-backup-35bvwecqへ保全。同一内容だけをstageして917b40bから9f3ad56へff-only、本番worktreeをcleanに統一した。設定ファイルのSHA256とinode、秘密設定、4コンテナIDが不変。Nginx構文・Django check正常、公開ログイン200、CSS/JS3件の配信SHA256がローカルと一致。証明書/IP同期timer・毎時ログ保存も正常。再構築・再起動・DB変更は不要だった。完了記録は文書のみの後続コミットとしてpushし本番にも同じくff-onlyで反映する。本番データの書き込みテストは未実施。
+
 2026-10-25、残る未コミット差分のコミット依頼を受け、本番・ローカル・GitHubの基準が917b40bであることを再確認。追加3コミット反映後もセキュリティ関連10ファイルのSHA256がローカルと一致。4コンテナ・公開ログイン200・証明書/IP同期timer・毎時ログ保存は正常。ファイアウォール4件と隔離DockerのTLS/接続制限等3件が成功。セキュリティ変更と記録、ユーザーのAGENTS/Lucianスキル/lockを分けて本コミット群へ収録する。秘密設定・バックアップはGit管理外を維持。push・本番変更は今回の対象外。本番側には同内容の未コミット/未追跡ファイルが残るため、次回反映で保全・照合して追跡状態を整合させる。以下の記録は各作業当時の状態。
 
 2026-10-25、実行直前承認を受けて3コミット（7c80b55/fd5a1e8/917b40b）をorigin/mainへpushしAL2023本番へ反映完了。/home/ec2-user/carbohydrateproを8b294bdから917b40bへff-only、collectstatic、gunicorn HUPのみ実施。DB/migration/Compose/Nginx変更・全コンテナ再構築なし。既存セキュリティファイルの前後SHA256と全コンテナID不変、Django check正常、変更CSS/Python/テンプレート6件のSHA256がローカルと一致。公開login/demo home/memos/boardのHTTP200とinteraction-motion.d4bf5be255bd.cssの配信SHA256一致を確認。本番データの書き込み試験やメール送信はなし。セキュリティ対応・AGENTS・未使用Lucianスキル・混在するmemory記録は未コミット保持。本番/ローカル/リモートのコミットは917b40b。この完了記録は未コミット。

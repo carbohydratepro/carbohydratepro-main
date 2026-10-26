@@ -59,6 +59,7 @@ Ruff / Pyright / djlint。
 - 開発環境の起動・停止・再起動・ログ・Django管理操作: `$carbohydrate-dev-environment`
 - Amazon Lightsail への本番デプロイ: `$carbohydrate-production-deploy`
 - commit / push / pull などの Git 操作: `$carbohydrate-git-workflow`
+- 本番に届いたお問い合わせの確認・対応・ステータス更新: `$carbohydrate-inquiry-response`
 - 本番環境でも `docker-compose-dev.yml` を使う構成は**意図されたもの**として扱う
 - 本番デプロイはユーザーの明示依頼と実行直前の承認なしに行わない
 - 学びを知識ベースに書き留める / 棚卸しする: `$knowledge-capture` / `$knowledge-gc`

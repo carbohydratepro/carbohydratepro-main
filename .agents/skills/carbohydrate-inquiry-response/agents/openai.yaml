@@ -1,0 +1,4 @@
+interface:
+  display_name: "CarbohydratePro お問い合わせ対応"
+  short_description: "本番のお問い合わせを確認し、実装・検証・反映・ステータス更新まで進める"
+  default_prompt: "Use $carbohydrate-inquiry-response to review open production inquiries and plan the fixes."

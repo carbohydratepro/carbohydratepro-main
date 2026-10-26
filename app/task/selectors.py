@@ -133,6 +133,22 @@ def get_month_tasks(user: AbstractBaseUser, start_date: datetime, end_date: date
     ).select_related('label')
 
 
+def day_floor() -> datetime:
+    """並べ替え用の最小日時（開始日未設定タスクのダミー値）。"""
+    return make_aware(datetime(1970, 1, 1))
+
+
+def _overlaps_day(task: Task, day_start: datetime, day_end: datetime) -> bool:
+    """タスクが指定日にかかるか（開始/終了の片方が未設定の場合も含む）。"""
+    if task.start_date is not None and task.end_date is not None:
+        return task.start_date <= day_end and task.end_date >= day_start
+    if task.start_date is not None:
+        return task.start_date <= day_end
+    if task.end_date is not None:
+        return task.end_date >= day_start
+    return False
+
+
 def build_calendar_data(
     month_tasks: QuerySet,
     year: int,
@@ -151,6 +167,8 @@ def build_calendar_data(
     external_events = external_events or []
 
     today = localdate()
+    # 日ごとに問い合わせず一度だけ取得し、日付判定はメモリ上で行う（開始日順・未設定は末尾）
+    all_tasks = sorted(month_tasks, key=lambda t: (t.start_date is None, t.start_date or day_floor()))
     calendar_data: list[list[dict[str, object]]] = []
     for week in cal:
         week_data: list[dict[str, object]] = []
@@ -159,11 +177,7 @@ def build_calendar_data(
             is_today = (d == today)
             day_start = make_aware(datetime(d.year, d.month, d.day, 0, 0, 0))
             day_end = make_aware(datetime(d.year, d.month, d.day, 23, 59, 59))
-            day_tasks = list(month_tasks.filter(
-                Q(start_date__lte=day_end, end_date__gte=day_start) |
-                Q(start_date__lte=day_end, end_date__isnull=True) |
-                Q(start_date__isnull=True, end_date__gte=day_start)
-            ).order_by('start_date'))
+            day_tasks = [task for task in all_tasks if _overlaps_day(task, day_start, day_end)]
             day_externals = [
                 event for event in external_events
                 if event.start_date <= day_end and (event.end_date or event.start_date) >= day_start

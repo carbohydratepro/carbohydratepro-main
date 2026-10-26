@@ -431,6 +431,52 @@ a:hover {
     display: block;
 }
 
+/* 画面内の通信中に上部へ出す進捗バー（skeleton.ts） */
+.app-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1060;
+    height: 3px;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.app-progress::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40%;
+    background-color: var(--color-primary, #33518e);
+    animation: app-progress-slide 1s ease-in-out infinite;
+}
+
+.app-progress.show {
+    opacity: 1;
+}
+
+html.is-loading,
+html.is-loading * {
+    cursor: progress !important;
+}
+
+@keyframes app-progress-slide {
+    from { left: -40%; }
+    to { left: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-progress::before {
+        animation: none;
+        left: 0;
+        width: 100%;
+    }
+}
+
 /* アプリシェル内ではトップバー・サイドバー・ボトムタブを覆わない */
 body.has-bottomnav .skeleton-overlay {
     top: var(--topbar-height);

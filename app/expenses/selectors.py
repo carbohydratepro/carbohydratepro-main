@@ -9,7 +9,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from django.db.models import Q, QuerySet, Sum
-from django.db.models.functions import TruncMonth
+from django.db.models.functions import TruncDate, TruncMonth
 from django.utils import timezone
 from django.utils.timezone import make_aware
 
@@ -218,13 +218,17 @@ def build_daily_chart_data(transactions_qs: QuerySet, date_range: list[str]) -> 
     balance_data: list[float] = []
     current_balance: float = 0.0
 
+    # 日別・種別ごとの合計を1回の集計で取得する（日数×2回の問い合わせを避ける）
+    daily_totals: dict[tuple[str, str], float] = {
+        (row['day'].isoformat(), row['transaction_type']): float(row['total'] or 0)
+        for row in transactions_qs.annotate(day=TruncDate('date'))
+        .values('day', 'transaction_type')
+        .annotate(total=Sum('amount'))
+        .order_by()
+    }
     for d in date_range:
-        daily_expense = float(
-            transactions_qs.filter(date__date=d, transaction_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
-        )
-        daily_income = float(
-            transactions_qs.filter(date__date=d, transaction_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
-        )
+        daily_expense = daily_totals.get((d, 'expense'), 0.0)
+        daily_income = daily_totals.get((d, 'income'), 0.0)
         current_balance += daily_income - daily_expense
         expense_data.append(daily_expense)
         balance_data.append(current_balance)

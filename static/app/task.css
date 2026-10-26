@@ -551,10 +551,12 @@
     text-align: center;
 }
 
-/* 狭い画面では日付を潰さず、時刻を次の行へ揃える。 */
+/* 狭い画面ではラベルを上に置き、日付と時刻は横並びを保つ。 */
 @media (max-width: 480px) {
-    .datetime-row { grid-template-columns: 2rem minmax(0, 1fr); }
-    .datetime-row .time-field { grid-column: 2; }
+    .datetime-row { grid-template-columns: minmax(0, 1fr) 6.875rem; column-gap: 6px; row-gap: 2px; }
+    .datetime-row .datetime-label { grid-column: 1 / -1; }
+    .datetime-row .time-hour-select,
+    .datetime-row .time-minute-select { width: 3rem; }
 }
 
 /* コンパクトなモバイル月表示 */
@@ -580,29 +582,30 @@
         padding: 3px 4px 1px;
     }
 
+    /* スマホでも予定名を2件まで表示し、残りは件数で示す */
     .task-calendar-cell .task-list {
+        gap: 1px;
+        height: auto;
+        padding: 0 1px;
+    }
+
+    .task-calendar-cell .task-item {
+        border-radius: 2px;
+        font-size: 0.56rem;
+        height: 13px;
+        line-height: 13px;
+        padding: 0 2px;
+    }
+
+    .task-calendar-cell .task-item:nth-child(n+3),
+    .task-calendar-cell .task-list > .text-muted {
         display: none;
     }
 
     .task-mobile-summary {
-        align-items: center;
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        justify-content: center;
-        padding: 2px;
-    }
-
-    .task-mobile-dots {
-        display: flex;
-        gap: 2px;
-    }
-
-    .task-mobile-dot {
-        background-color: #6c8ebf;
-        border-radius: 50%;
-        height: 5px;
-        width: 5px;
+        display: block;
+        padding: 0 2px;
+        text-align: right;
     }
 
     .task-mobile-count {

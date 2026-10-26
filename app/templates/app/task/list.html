@@ -212,14 +212,9 @@
                                 <div class="text-muted small">...</div>
                                 {% endif %}
                             </div>
-                            {% if day_data.task_count %}
-                            <div class="task-mobile-summary" aria-label="予定{{ day_data.task_count }}件">
-                                <span class="task-mobile-dots" aria-hidden="true">
-                                    {% for task in day_data.tasks|slice:":3" %}
-                                    <span class="task-mobile-dot"{% if task.label %} style="background-color: {{ task.label.color }};"{% endif %}></span>
-                                    {% endfor %}
-                                </span>
-                                <span class="task-mobile-count">{{ day_data.task_count }}</span>
+                            {% if day_data.task_count > 2 %}
+                            <div class="task-mobile-summary" aria-label="ほか{{ day_data.task_count|add:-2 }}件">
+                                <span class="task-mobile-count">+{{ day_data.task_count|add:-2 }}</span>
                             </div>
                             {% endif %}
                         </td>

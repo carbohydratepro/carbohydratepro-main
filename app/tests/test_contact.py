@@ -109,3 +109,27 @@ class ContactHistoryTest(TestCase):
         self.client.logout()
         response = self.client.get(reverse("contact_detail", args=[contact.id]))
         self.assertEqual(response.status_code, 302)
+
+
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    SECURITY_ALERT_EMAIL="admin@example.com",
+)
+class ContactNotificationRecipientTest(TestCase):
+    """お問い合わせ通知を開発用アドレスにも送る。"""
+
+    def setUp(self) -> None:
+        self.client.force_login(UserFactory())
+
+    def _post(self) -> None:
+        self.client.post(reverse("contact"), {"inquiry_type": "bug", "subject": "通知先", "message": "本文"})
+
+    @override_settings(CONTACT_NOTIFICATION_EXTRA_EMAILS=["dev@example.com", " ", "admin@example.com"])
+    def test_extra_addresses_are_added_without_duplicates(self) -> None:
+        self._post()
+        self.assertEqual(mail.outbox[-1].to, ["admin@example.com", "dev@example.com"])
+
+    @override_settings(CONTACT_NOTIFICATION_EXTRA_EMAILS=[])
+    def test_only_admin_when_extra_addresses_are_not_configured(self) -> None:
+        self._post()
+        self.assertEqual(mail.outbox[-1].to, ["admin@example.com"])

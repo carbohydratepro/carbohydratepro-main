@@ -113,4 +113,59 @@
     window.addEventListener('pageshow', () => {
         hideSkeleton();
     });
+
+    // 画面内の通信（fetch）中は上部に進捗バーを出し、操作が受け付けられたことを示す。
+    // 速い通信ではちらつかせない。外部APIは対象外。
+    const PROGRESS_DELAY_MS = 150;
+    let pendingRequests = 0;
+    let progressTimer: number | undefined;
+    let progressBar: HTMLDivElement | null = null;
+
+    const setProgressVisible = (visible: boolean): void => {
+        if (visible && !progressBar) {
+            progressBar = document.createElement('div');
+            progressBar.className = 'app-progress';
+            progressBar.setAttribute('role', 'progressbar');
+            progressBar.setAttribute('aria-label', '通信中');
+            document.body.appendChild(progressBar);
+        }
+        progressBar?.classList.toggle('show', visible);
+        document.documentElement.classList.toggle('is-loading', visible);
+        if (visible) {
+            document.body.setAttribute('aria-busy', 'true');
+        } else {
+            document.body.removeAttribute('aria-busy');
+        }
+    };
+
+    const isSameOriginRequest = (input: RequestInfo | URL): boolean => {
+        try {
+            const raw = input instanceof Request ? input.url : String(input);
+            return new URL(raw, window.location.href).origin === window.location.origin;
+        } catch {
+            return false;
+        }
+    };
+
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+        if (!isSameOriginRequest(input)) {
+            return originalFetch(input, init);
+        }
+        pendingRequests += 1;
+        if (pendingRequests === 1) {
+            progressTimer = window.setTimeout(() => setProgressVisible(true), PROGRESS_DELAY_MS);
+        }
+        const settle = (): void => {
+            pendingRequests = Math.max(0, pendingRequests - 1);
+            if (pendingRequests === 0) {
+                window.clearTimeout(progressTimer);
+                setProgressVisible(false);
+            }
+        };
+        return originalFetch(input, init).then(
+            (response) => { settle(); return response; },
+            (error: unknown) => { settle(); throw error; },
+        );
+    };
 })();

@@ -60,13 +60,15 @@ test.describe("レスポンシブ", () => {
     await expectNoHorizontalOverflow(page);
   });
 
-  test("E2E-RESP-004 月カレンダーは件数表示から予定一覧を開ける", async ({ page }) => {
+  test("E2E-RESP-004 月カレンダーは予定名を表示し予定一覧を開ける", async ({ page }) => {
     // Spec: docs/e2e/release-test-spec.md#e2e-resp-004
     await page.goto("/demo/tasks/");
 
     const populatedCell = page.locator('.task-calendar-cell:not([data-task-count="0"])').first();
-    await expect(populatedCell.locator(".task-mobile-summary")).toBeVisible();
-    await expect(populatedCell.locator(".task-list")).toBeHidden();
+    const firstTitle = populatedCell.locator(".task-item").first();
+    await expect(firstTitle).toBeVisible();
+    await expect(firstTitle).not.toHaveText("");
+    await expect(populatedCell.locator(".task-item").nth(2)).toBeHidden();
     await populatedCell.click();
     await expect(page.locator("#dayTasksModal")).toHaveClass(/show/);
     await expectNoHorizontalOverflow(page);

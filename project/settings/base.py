@@ -259,6 +259,8 @@ DEFAULT_FROM_EMAIL = env('EMAIL_HOST_USER', default='no-reply@gmail.com')
 
 # セキュリティアラート送信先メールアドレス
 SECURITY_ALERT_EMAIL = env('SECURITY_ALERT_EMAIL', default='carbohydratepro@gmail.com')
+# お問い合わせ通知を管理者に加えて送る開発用アドレス（カンマ区切り。未設定なら管理者のみ）
+CONTACT_NOTIFICATION_EXTRA_EMAILS = env.list('CONTACT_NOTIFICATION_EXTRA_EMAILS', default=[])
 
 # セキュリティアラート設定
 SEND_INSTANT_SECURITY_EMAIL = env.bool('SEND_INSTANT_SECURITY_EMAIL', default=False)

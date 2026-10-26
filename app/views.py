@@ -47,6 +47,13 @@ from .manage_views import manage_dashboard, manage_contacts, manage_contact_upda
 CONTACT_HISTORY_PER_PAGE = 10
 
 
+def contact_notification_recipients() -> list[str]:
+    """お問い合わせ通知の宛先（管理者＋開発用アドレス、重複なし）。"""
+    admin_email: str = getattr(settings, "SECURITY_ALERT_EMAIL", "carbohydratepro@gmail.com")
+    extra: list[str] = getattr(settings, "CONTACT_NOTIFICATION_EXTRA_EMAILS", [])
+    return list(dict.fromkeys([admin_email, *(address.strip() for address in extra if address.strip())]))
+
+
 @login_required
 def contact(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
@@ -83,8 +90,7 @@ def contact(request: HttpRequest) -> HttpResponse:
 このメールは自動送信されています。
 お問い合わせへの対応が完了したら、管理画面で「対応済み」にマークしてください。
 """
-                admin_email = getattr(settings, "SECURITY_ALERT_EMAIL", "carbohydratepro@gmail.com")
-                send_mail(subject=subject, message=message, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[admin_email], fail_silently=False)
+                send_mail(subject=subject, message=message, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=contact_notification_recipients(), fail_silently=False)
                 messages.success(request, "お問い合わせを送信しました。ご連絡ありがとうございます。")
                 logger.info(f"お問い合わせメール送信成功: {request.user.email} - {inquiry_type_display}")
             except Exception as e:

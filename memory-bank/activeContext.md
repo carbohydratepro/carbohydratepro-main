@@ -2,6 +2,8 @@
 
 ## 現在の作業
 
+2026-10-26、承認を受けc6ddbd7（お問い合わせ#14〜#17）を本番へff-only反映。migrationなし、collectstatic・gunicorn再起動、Nginx構文正常。公開ログイン/デモ家計簿/デモ予定200、スマホ月表示の「+N」、skeleton.js/task.css/styles.cssの配信ハッシュ一致を確認。#16/#17はresolved、#14は通知先アドレス未受領のためsecret.env未設定でin_progress、#15はサーバー側SQL削減のみ（家計簿95→34、月表示50→16）でin_progress。
+
 2026-10-26、承認を受け990f222/1cbccf3をorigin/mainへpushし本番へff-only反映（4d8c01e→1cbccf3、記録d7fd292も反映）。migrationなし、collectstatic・gunicorn再起動、Nginx構文正常。公開ログイン/デモ家計簿/デモ予定200、問い合わせ詳細ルート302（要ログイン）、祝日JSON・新タイトル・app/transaction/label-settings.jsのハッシュ一致を確認。本番お問い合わせ#2/#3/#5/#6をresolvedに更新。ルール記載の`.env`のMAINTENANCE_MODEは本番設定に反映されず効かないことを確認し、`.env`は元に戻した（差分なし）。新着#14〜#17は未対応。
 
 2026-10-26、デモ修正26ファイルを4d8c01eにコミットしてorigin/mainへpushし、実行直前承認後に本番へ適用完了。混在する問い合わせ・祝日表示・監査関連差分は除外して保持。対象コード単独のTypeScriptビルドと生成JS一致も確認。本番はff-only更新→collectstatic→Gunicorn HUP（コンテナ/DB停止なし）。4サービス稼働、Django/Nginx検査正常、公開/login/・/demo/expenses/・/demo/cooking/は200、変更JS8件とHTMLのハッシュ付きデモガードJSの配信SHA256が対象コミットと一致。本番mainは4d8c01e、worktree clean。本番書き込みテストは行っていない。以下は作業時点の記録。

@@ -10,6 +10,7 @@ from datetime import date, datetime, timedelta
 from django.core.paginator import Paginator
 from django.http import QueryDict
 
+from project.jp_holidays import holiday_labels
 from project.utils import CHART_COLORS, MAJOR_CATEGORY_LABELS
 
 
@@ -339,6 +340,7 @@ def _demo_daily_chart_data(
     return json.dumps({
         'labels': labels,
         'datasets': [{'label': '支出', 'data': expense_values, 'backgroundColor': CHART_COLORS['expense_bar']}],
+        'holidays': holiday_labels(labels),
     }), json.dumps({
         'labels': labels,
         'datasets': [{'label': '収支', 'data': balance_values, 'fill': False, 'borderColor': CHART_COLORS['balance_line']}],

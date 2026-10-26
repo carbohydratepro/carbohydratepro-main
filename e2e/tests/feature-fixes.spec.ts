@@ -81,21 +81,19 @@ test.describe("2026-07-26 機能修正", () => {
     );
 
     await page.goto("/carbohydratepro/tasks/settings/");
-    await page.getByText("月曜開始", { exact: true }).click();
-    await expect(page.getByLabel("月曜開始")).toBeChecked();
+    // 週の開始曜日は選択した時点で保存される（保存ボタンなし）
     await Promise.all([
       page.waitForNavigation({ waitUntil: "domcontentloaded" }),
-      page.getByRole("button", { name: "保存" }).click(),
+      page.getByText("月曜開始", { exact: true }).click(),
     ]);
     await expect(page.getByLabel("月曜開始")).toBeChecked();
 
     // 他のE2Eケースにセッション設定を残さない。
     await dismissMessageDialog(page);
-    await page.getByText("日曜開始", { exact: true }).click();
-    await expect(page.getByLabel("日曜開始")).toBeChecked();
+    // 週の開始曜日は選択した時点で保存される（保存ボタンなし）
     await Promise.all([
       page.waitForNavigation({ waitUntil: "domcontentloaded" }),
-      page.getByRole("button", { name: "保存" }).click(),
+      page.getByText("日曜開始", { exact: true }).click(),
     ]);
   });
 });

@@ -1,0 +1,35 @@
+{% extends 'app/base.html' %}
+{% load static %}
+
+{% block title %}お問い合わせ詳細{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app/contact.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="contact-container">
+    <a href="{% url 'contact' %}#contact-history" class="btn btn-outline-secondary btn-sm mb-3">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i> お問い合わせ履歴に戻る
+    </a>
+
+    <div class="history-card">
+        <div class="history-item-header">
+            <span class="history-type {{ contact_message.inquiry_type }}">{{ contact_message.get_inquiry_type_display }}</span>
+            <span class="history-date">{{ contact_message.created_at|date:"Y/m/d H:i" }}</span>
+        </div>
+        <h2 class="contact-detail-subject">{{ contact_message.subject }}</h2>
+        <div class="contact-detail-body">{{ contact_message.message }}</div>
+    </div>
+
+    {% if contact_message.admin_reply %}
+    <div class="history-card contact-detail-reply">
+        <div class="history-item-header">
+            <strong><i class="fas fa-reply" aria-hidden="true"></i> 運営からの返信</strong>
+            {% if contact_message.admin_reply_at %}<span class="history-date">{{ contact_message.admin_reply_at|date:"Y/m/d H:i" }}</span>{% endif %}
+        </div>
+        <div class="contact-detail-body">{{ contact_message.admin_reply }}</div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -196,21 +196,17 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// 日付・時刻入力: クリック時に必ずピッカーを開く
-function initDateTimePickers(): void {
-    document.querySelectorAll<HTMLInputElement>('input[type="date"], input[type="time"]').forEach(input => {
-        input.addEventListener('click', () => {
-            if (typeof input.showPicker === 'function') {
-                input.showPicker();
-            }
-        });
-    });
-}
+// 日付・時刻・月入力: 欄のどこをクリックしても必ずピッカーを開く
+// Ajaxで読み込むモーダル内の入力にも効くよう document で委譲する
+const PICKER_INPUT_SELECTOR = 'input[type="date"], input[type="time"], input[type="month"], input[type="datetime-local"]';
 
-document.addEventListener('DOMContentLoaded', () => {
-    initDateTimePickers();
-    // モーダルが開いた後にも適用
-    document.addEventListener('shown.bs.modal', () => {
-        initDateTimePickers();
-    });
+document.addEventListener('click', (e) => {
+    const target = e.target;
+    if (!(target instanceof HTMLInputElement) || !target.matches(PICKER_INPUT_SELECTOR)) return;
+    if (target.disabled || target.readOnly || typeof target.showPicker !== 'function') return;
+    try {
+        target.showPicker();
+    } catch {
+        // 既に開いている・ユーザー操作扱いにならない環境では標準動作に任せる
+    }
 });

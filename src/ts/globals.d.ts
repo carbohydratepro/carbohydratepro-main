@@ -86,6 +86,7 @@ interface ChartData {
   labels: string[];
   datasets: ChartDataset[];
   filterValues?: string[];
+  holidays?: string[];
 }
 
 interface ChartConfig {

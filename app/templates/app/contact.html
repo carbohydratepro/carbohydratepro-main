@@ -71,65 +71,70 @@
         </form>
     </div>
     
-    {% if user_messages %}
-    <div class="history-card">
+    <div class="history-card" id="contact-history">
         <div class="history-header">
             <h2>📝 お問い合わせ履歴</h2>
         </div>
-        
+
+        {% if has_any_history %}
+        <form method="get" action="{% url 'contact' %}#contact-history" class="history-search" role="search">
+            <label for="history-search-q" class="sr-only">お問い合わせ履歴を検索</label>
+            <input type="search" id="history-search-q" name="q" value="{{ search_query }}" class="form-control form-control-sm" placeholder="件名・内容で検索" maxlength="100">
+            <label for="history-search-type" class="sr-only">種類で絞り込み</label>
+            <select id="history-search-type" name="inquiry_type" class="form-control form-control-sm">
+                <option value="">すべての種類</option>
+                {% for val, label in inquiry_choices %}
+                <option value="{{ val }}" {% if inquiry_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-outline-primary btn-sm">検索</button>
+            {% if search_query or inquiry_filter %}
+            <a href="{% url 'contact' %}#contact-history" class="btn btn-link btn-sm">解除</a>
+            {% endif %}
+        </form>
+        {% endif %}
+
         {% for msg in user_messages %}
-        <div class="history-item">
+        <a class="history-item history-item-link" href="{% url 'contact_detail' msg.id|unlocalize %}">
             <div class="history-item-header">
                 <div>
                     <span class="history-type {{ msg.inquiry_type }}">
                         {{ msg.get_inquiry_type_display }}
                     </span>
+                    {% if msg.admin_reply %}<span class="history-replied">返信あり</span>{% endif %}
                 </div>
                 <span class="history-date">{{ msg.created_at|date:"Y/m/d H:i" }}</span>
             </div>
             <div class="history-subject">{{ msg.subject }}</div>
-            {% if msg.message|wordcount > 30 %}
-            <div class="history-message" id="msg-preview-{{ msg.id|unlocalize }}">{{ msg.message|truncatewords:30 }}</div>
-            <div id="msg-full-{{ msg.id|unlocalize }}" style="display:none;">
-                <div class="history-message-full">{{ msg.message|linebreaksbr }}</div>
-            </div>
-            <button type="button" class="btn btn-link btn-sm p-0 history-toggle-btn"
-                    data-msg-id="{{ msg.id|unlocalize }}">
-                <small>全文を見る</small>
-            </button>
-            {% else %}
             <div class="history-message">{{ msg.message }}</div>
-            {% endif %}
+            <span class="history-detail-link">詳細を見る <i class="fas fa-chevron-right" aria-hidden="true"></i></span>
+        </a>
+        {% empty %}
+        <div class="no-history">
+            {% if has_any_history %}条件に一致するお問い合わせはありません{% else %}まだお問い合わせ履歴がありません{% endif %}
         </div>
         {% endfor %}
+
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="お問い合わせ履歴のページ切り替え">
+            <ul class="pagination pagination-sm justify-content-center mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number|unlocalize }}{% if filter_querystring %}&amp;{{ filter_querystring }}{% endif %}#contact-history">前へ</a></li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active" aria-current="page"><span class="page-link">{{ num|unlocalize }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item"><a class="page-link" href="?page={{ num|unlocalize }}{% if filter_querystring %}&amp;{{ filter_querystring }}{% endif %}#contact-history">{{ num|unlocalize }}</a></li>
+                    {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number|unlocalize }}{% if filter_querystring %}&amp;{{ filter_querystring }}{% endif %}#contact-history">次へ</a></li>
+                {% endif %}
+            </ul>
+            <p class="text-muted small text-center mt-2 mb-0">{{ page_obj.paginator.count|unlocalize }}件中 {{ page_obj.start_index|unlocalize }}〜{{ page_obj.end_index|unlocalize }}件</p>
+        </nav>
+        {% endif %}
     </div>
-    {% else %}
-    <div class="history-card">
-        <div class="no-history">
-            まだお問い合わせ履歴がありません
-        </div>
-    </div>
-    {% endif %}
 </div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.history-toggle-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var msgId = btn.getAttribute('data-msg-id');
-            var preview = document.getElementById('msg-preview-' + msgId);
-            var full = document.getElementById('msg-full-' + msgId);
-            var label = btn.querySelector('small');
-            if (full.style.display === 'none') {
-                full.style.display = 'block';
-                if (preview) preview.style.display = 'none';
-                if (label) label.textContent = '閉じる';
-            } else {
-                full.style.display = 'none';
-                if (preview) preview.style.display = '';
-                if (label) label.textContent = '全文を見る';
-            }
-        });
-    });
-});
-</script>
 {% endblock %}

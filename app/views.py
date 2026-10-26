@@ -1,10 +1,13 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.mail import send_mail
+from django.core.paginator import Paginator
+from django.db.models import Q
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.utils import timezone
+from django.utils.http import urlencode
 from zoneinfo import ZoneInfo
 from .forms import ContactMessageForm
 from .models import ContactMessage
@@ -40,6 +43,9 @@ from .cooking.views import (
     cooking_record_today,
 )
 from .manage_views import manage_dashboard, manage_contacts, manage_contact_update, manage_users, manage_users_stats_api, manage_analytics, manage_analytics_api
+
+CONTACT_HISTORY_PER_PAGE = 10
+
 
 @login_required
 def contact(request: HttpRequest) -> HttpResponse:
@@ -91,6 +97,36 @@ def contact(request: HttpRequest) -> HttpResponse:
     else:
         form = ContactMessageForm()
     
-    user_messages = ContactMessage.objects.filter(user=request.user)[:10]
-    context = {"form": form, "user_messages": user_messages}
+    search_query = request.GET.get("q", "").strip()
+    inquiry_filter = request.GET.get("inquiry_type", "")
+    if inquiry_filter not in dict(ContactMessage.INQUIRY_TYPE_CHOICES):
+        inquiry_filter = ""
+
+    user_messages = ContactMessage.objects.filter(user=request.user)
+    has_any_history = user_messages.exists()
+    if search_query:
+        user_messages = user_messages.filter(Q(subject__icontains=search_query) | Q(message__icontains=search_query))
+    if inquiry_filter:
+        user_messages = user_messages.filter(inquiry_type=inquiry_filter)
+
+    page_obj = Paginator(user_messages, CONTACT_HISTORY_PER_PAGE).get_page(request.GET.get("page"))
+    filter_params = {key: value for key, value in (("q", search_query), ("inquiry_type", inquiry_filter)) if value}
+
+    context = {
+        "form": form,
+        "page_obj": page_obj,
+        "user_messages": page_obj.object_list,
+        "has_any_history": has_any_history,
+        "search_query": search_query,
+        "inquiry_filter": inquiry_filter,
+        "inquiry_choices": ContactMessage.INQUIRY_TYPE_CHOICES,
+        "filter_querystring": urlencode(filter_params),
+    }
     return render(request, "app/contact.html", context)
+
+
+@login_required
+def contact_detail(request: HttpRequest, contact_id: int) -> HttpResponse:
+    """自分が送信したお問い合わせの全文と返信を表示する。"""
+    contact_message = get_object_or_404(ContactMessage, id=contact_id, user=request.user)
+    return render(request, "app/contact_detail.html", {"contact_message": contact_message})

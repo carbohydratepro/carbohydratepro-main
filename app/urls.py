@@ -82,6 +82,7 @@ urlpatterns = [
     path('habits/list/', views.habit_list, name='habit_list'),
     # お問い合わせ
     path('contact/', views.contact, name='contact'),
+    path('contact/<int:contact_id>/', views.contact_detail, name='contact_detail'),
     # 管理パネル（スタッフ専用）
     path('manage/', views.manage_dashboard, name='manage_dashboard'),
     path('manage/contacts/', views.manage_contacts, name='manage_contacts'),

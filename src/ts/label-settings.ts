@@ -151,6 +151,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initLongPressDelete();
 
+    // 週の開始曜日: 選択した時点で保存して反映する（保存ボタン不要）
+    const weekStartForm = document.getElementById('weekStartForm') as HTMLFormElement | null;
+    weekStartForm?.querySelectorAll<HTMLInputElement>('input[name="week_start"]').forEach(radio => {
+        radio.addEventListener('change', () => weekStartForm.requestSubmit());
+    });
 });
 
 // カレンダー配信URLをクリップボードへコピーする（タスク設定画面）

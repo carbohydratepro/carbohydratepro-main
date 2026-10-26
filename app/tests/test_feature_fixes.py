@@ -286,6 +286,14 @@ class ScheduleFeatureFixTest(TestCase):
         self.assertContains(response, 'for="week-start-monday"')
         self.assertNotContains(response, 'data-toggle="buttons"')
 
+    def test_schedule_settings_wording_and_week_start_saves_on_change(self) -> None:
+        response = self.client.get(reverse("task_settings"))
+
+        self.assertContains(response, "スケジュール設定")
+        self.assertContains(response, "スケジュールに戻る")
+        self.assertNotContains(response, "タスク設定")
+        self.assertContains(response, '<noscript><button type="submit" class="btn btn-primary btn-sm ml-2">保存</button></noscript>')
+
 
 class ResponsiveAndDashboardFixTest(SimpleTestCase):
     """金額表示とホーム簡易情報の表示契約を検証する。"""

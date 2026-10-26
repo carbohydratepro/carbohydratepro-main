@@ -430,21 +430,25 @@ function initializeLineChart(canvasId, balanceData, maxTicksX, maxTicksY, hoverR
     config.options.scales.y.ticks.stepSize = scale.step;
     registerExpenseChart(ctx, config);
 }
-// 土日色付け状態（localStorage で永続化）
+// 土日祝色付け状態（localStorage で永続化）
 let weekendColorEnabled = localStorage.getItem('weekendColorEnabled') === 'true';
-// 土日判定
-function isWeekend(dateStr) {
-    const date = new Date(dateStr);
-    const day = date.getDay();
-    return day === 0 || day === 6;
+// 土日祝判定（日付ラベルは YYYY-MM-DD。祝日はサーバーが holidays で渡す）
+function isRestDay(dateStr, holidays) {
+    if (holidays.has(dateStr))
+        return true;
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const weekday = new Date(year, month - 1, day).getDay();
+    return weekday === 0 || weekday === 6;
 }
-// 棒グラフ用の色配列を生成（土日色付けON/OFFに応じる）
+// 棒グラフ用の色配列を生成（土日祝色付けON/OFFに応じる）
 function buildBarColors(labels) {
+    var _a;
     const normalColor = '#FF6384';
     const weekendColor = 'rgba(255, 165, 0, 0.75)';
-    return labels.map(label => (weekendColorEnabled && isWeekend(label)) ? weekendColor : normalColor);
+    const holidays = new Set(typeof expenseData !== 'undefined' ? (_a = expenseData.holidays) !== null && _a !== void 0 ? _a : [] : []);
+    return labels.map(label => (weekendColorEnabled && isRestDay(label, holidays)) ? weekendColor : normalColor);
 }
-// 土日色付けトグル（設定画面から呼ばれる場合などに使用）
+// 土日祝色付けトグル（設定画面から呼ばれる場合などに使用）
 function toggleWeekendColor() {
     weekendColorEnabled = !weekendColorEnabled;
     localStorage.setItem('weekendColorEnabled', String(weekendColorEnabled));
@@ -602,7 +606,7 @@ function initializeExpenseCharts() {
             });
         }
     }
-    // 棒グラフ用データを土日色付け状態に応じて準備
+    // 棒グラフ用データを土日祝色付け状態に応じて準備
     const barColors = buildBarColors(expenseData.labels);
     const expenseDataWithColors = {
         labels: expenseData.labels,

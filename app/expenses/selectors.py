@@ -13,6 +13,7 @@ from django.db.models.functions import TruncMonth
 from django.utils import timezone
 from django.utils.timezone import make_aware
 
+from project.jp_holidays import holiday_labels
 from project.utils import CHART_COLORS, MAJOR_CATEGORY_LABELS
 
 from .models import Budget, Category, PaymentMethod, RecurringPayment, Transaction
@@ -231,6 +232,7 @@ def build_daily_chart_data(transactions_qs: QuerySet, date_range: list[str]) -> 
     expense_json = json.dumps({
         'labels': date_range,
         'datasets': [{'label': '支出', 'data': expense_data, 'backgroundColor': CHART_COLORS['expense_bar']}],
+        'holidays': holiday_labels(date_range),
     })
     balance_json = json.dumps({
         'labels': date_range,

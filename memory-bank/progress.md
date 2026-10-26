@@ -22,7 +22,8 @@
 - [x] 家計簿日別グラフの土日祝色付け（祝日計算を追加）
 - [x] 対応手順を `carbohydrate-inquiry-response` スキル化
 - [x] Django全554件、`npm run check`、E2E（settings-contact/feature-fixes/date-controls/demo）成功
-- [ ] コミット・本番反映・本番ステータス更新（承認待ち）
+- [x] コミット・push・本番反映・本番ステータス更新（#2/#3/#5/#6 → 対応済み）
+- [ ] 本番メンテナンスモードの有効化手段を決める（`.env` 方式は効かない）
 
 ## 2026-10-25 push・本番Git状態の統一
 

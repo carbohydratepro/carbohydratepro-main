@@ -54,6 +54,8 @@ function openBoardSheet(id) {
     document.body.classList.add('board-sheet-open');
 }
 function openBoardTaskEditor(localId) {
+    if (requireDemoLogin())
+        return;
     const task = getTaskByLocalId(localId);
     if (!task || task.savedState !== 'saved' || boardMutation)
         return;
@@ -64,6 +66,8 @@ function openBoardTaskEditor(localId) {
     openBoardSheet('boardTaskSheet');
 }
 function openBoardSetEditor(rename) {
+    if (requireDemoLogin())
+        return;
     if (!boardCanLeave() || boardLoading)
         return;
     boardRenameSet = rename;
@@ -76,6 +80,8 @@ function openBoardSetEditor(rename) {
     openBoardSheet('boardSetSheet');
 }
 function deleteCurrentBoardSet() {
+    if (requireDemoLogin())
+        return;
     if (!boardCanLeave() || boardLoading)
         return;
     const current = sets.find(s => s.id === currentSetId);
@@ -412,6 +418,8 @@ async function promptAddSet() {
 // タスク操作（楽観的UI更新 + 非同期保存）
 // =========================================================
 async function addTask(status) {
+    if (requireDemoLogin())
+        return;
     if (boardLoading || currentSetId === null)
         return;
     const input = document.getElementById(`input-${status}`);
@@ -463,6 +471,8 @@ async function addTask(status) {
     }
 }
 async function deleteTask(localId) {
+    if (requireDemoLogin())
+        return;
     const index = tasks.findIndex(t => t.localId === localId);
     if (index === -1)
         return;
@@ -515,6 +525,8 @@ async function deleteTask(localId) {
 }
 // 削除履歴から同じIDのタスクを復元する（Undo用）
 async function moveTask(localId, newStatus) {
+    if (requireDemoLogin())
+        return;
     const task = getTaskByLocalId(localId);
     if (!task || task.status === newStatus || task.savedState !== 'saved' || boardMutation)
         return;
@@ -547,6 +559,8 @@ async function moveTask(localId, newStatus) {
     }
 }
 function clearAllTasks() {
+    if (requireDemoLogin())
+        return;
     if (!boardCanLeave())
         return;
     if (tasks.length === 0)

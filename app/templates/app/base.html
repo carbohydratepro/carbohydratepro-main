@@ -57,6 +57,7 @@
     <script src="{% static 'app/toast.js' %}"></script>
     <script src="{% static 'app/bulk_delete.js' %}" defer></script>
     <script src="{% static 'app/app.js' %}"></script>
+    <script src="{% static 'app/demo-guard.js' %}"></script>
     <script src="{% static 'app/skeleton.js' %}" defer></script>
 
   </head>
@@ -131,12 +132,12 @@
     <!-- ============================================================
          デモ用：サインアップ促進モーダル
     ============================================================ -->
-    <div class="modal fade" id="demoSignupModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fade" id="demoSignupModal" tabindex="-1" role="dialog" aria-labelledby="demoSignupTitle" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
         <div class="modal-content">
           <div class="modal-header bg-dark text-white">
-            <h5 class="modal-title" style="font-size:1rem;"><i class="fas fa-lock mr-2"></i>この操作にはログインが必要です</h5>
-            <button type="button" class="close text-white" data-dismiss="modal">
+            <h5 id="demoSignupTitle" class="modal-title" style="font-size:1rem;"><i class="fas fa-lock mr-2"></i>この操作にはログインが必要です</h5>
+            <button type="button" class="close text-white" data-dismiss="modal" aria-label="閉じる">
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
@@ -166,27 +167,8 @@
       'use strict';
 
       function showDemoModal () {
-        var $open = $('.modal.show').not('#demoSignupModal');
-        if ($open.length) {
-          $open.modal('hide');
-          setTimeout(function () { $('#demoSignupModal').modal('show'); }, 200);
-        } else {
-          $('#demoSignupModal').modal('show');
-        }
+        requireDemoLogin();
       }
-
-      /* --- ボードのミューテーション操作をブロック --- */
-      /* clearAllTasks / addTask / promptAddSet はボードテンプレートの onclick から呼ばれるグローバル関数 */
-      ['clearAllTasks', 'addTask', 'promptAddSet'].forEach(function (fn) {
-        if (typeof window[fn] === 'function') window[fn] = function () { showDemoModal(); };
-      });
-      /* ボード削除オーバーレイのクリックをキャプチャフェーズで横取り */
-      document.addEventListener('click', function (e) {
-        if (e.target.closest('.kanban-task-delete-overlay')) {
-          e.stopPropagation();
-          showDemoModal();
-        }
-      }, true);
 
       /* --- 設定ページリンクをデモ設定ページにリダイレクト --- */
       var settingsRedirectMap = {
@@ -203,24 +185,22 @@
         '/carbohydratepro/habits/':            '/demo/habits/',
         '/carbohydratepro/shopping/':          '/demo/shopping/',
         '/carbohydratepro/tasks/board/':       '/demo/board/',
+        '/carbohydratepro/cooking/':           '/demo/cooking/',
       };
       document.addEventListener('click', function (e) {
         var a = e.target.closest('a[href]');
         if (!a) return;
-        var href = a.getAttribute('href');
-        if (settingsRedirectMap[href]) {
+        var url = new URL(a.href, window.location.href);
+        if (url.origin !== window.location.origin) return;
+        if (settingsRedirectMap[url.pathname]) {
           e.preventDefault();
-          window.location.href = settingsRedirectMap[href];
-        }
-      });
-
-      /* --- フォーム送信をブロック（GET フィルターは通す） --- */
-      document.addEventListener('submit', function (e) {
-        if ((e.target.method || '').toLowerCase() !== 'get') {
+          window.location.href = settingsRedirectMap[url.pathname] + url.search + url.hash;
+        } else if (url.pathname.indexOf('/carbohydratepro/') === 0) {
           e.preventDefault();
+          e.stopImmediatePropagation();
           showDemoModal();
         }
-      });
+      }, true);
 
       /* --- fetch パッチ：read-only API はフェイクデータを返し、
              mutation は即ブロックしてモーダルを表示 --- */

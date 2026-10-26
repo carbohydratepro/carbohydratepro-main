@@ -230,6 +230,7 @@ function updateWeekCell(habitId: string, dateStr: string, completed: boolean, co
 // ---- AJAX トグル ----
 
 async function doToggle(habitId: string, dateStr: string, coefficient: string): Promise<{ completed: boolean; score_delta: number } | null> {
+  if (requireDemoLogin()) return null;
   const tokenEl = document.querySelector<HTMLInputElement>('[name=csrfmiddlewaretoken]');
   const csrfToken = tokenEl?.value ?? '';
 
@@ -278,6 +279,7 @@ function updateHabitCardButton(card: HTMLElement): void {
 }
 
 async function toggleHabitCard(card: HTMLElement): Promise<void> {
+  if (requireDemoLogin()) return;
   if (pendingHabitCards.has(card)) return;
   pendingHabitCards.add(card);
   const button = card.querySelector<HTMLButtonElement>('.habit-complete-button');
@@ -658,6 +660,7 @@ function openEditHabit(
   monthlyGoal: number,
 ): void {
   const form = document.getElementById('editHabitForm') as HTMLFormElement | null;
+  if (requireDemoLogin()) return;
   if (!form) return;
 
   form.action = `/carbohydratepro/habits/edit/${id}/`;

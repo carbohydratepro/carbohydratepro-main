@@ -236,6 +236,7 @@ async function submitModalForm(form: HTMLFormElement, modalSelector: string): Pr
 
 // 編集モーダル関連
 async function openEditModal(transactionId: string): Promise<void> {
+    if (requireDemoLogin()) return;
     try {
         const response = await fetch(`/carbohydratepro/expenses/edit/${transactionId}/`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -266,6 +267,7 @@ async function openEditModal(transactionId: string): Promise<void> {
 
 // 新規作成モーダル関連
 async function openCreateModal(createUrl = '/carbohydratepro/expenses/create/'): Promise<void> {
+    if (requireDemoLogin()) return;
     try {
         const response = await fetch(createUrl, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },

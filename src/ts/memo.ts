@@ -83,6 +83,7 @@ function setMarkdownMode(enabled: boolean): void {
 
 // お気に入りの切り替え
 function toggleFavorite(memoId: string, button: HTMLElement): void {
+    if (requireDemoLogin()) return;
     if (!(button instanceof HTMLButtonElement) || button.disabled) return;
     button.disabled = true;
     fetch(`/carbohydratepro/memos/toggle-favorite/${memoId}/`, {
@@ -125,6 +126,7 @@ function serializeMemoForm(form: HTMLFormElement): string {
 let memoOpening = false;
 
 async function openMemoEditor(url: string, modalId: string): Promise<void> {
+    if (requireDemoLogin()) return;
     if (memoOpening) return;
     memoOpening = true;
     const active = document.activeElement;

@@ -217,6 +217,8 @@ function updateWeekCell(habitId, dateStr, completed, color) {
 // ---- AJAX トグル ----
 async function doToggle(habitId, dateStr, coefficient) {
     var _a, _b, _c;
+    if (requireDemoLogin())
+        return null;
     const tokenEl = document.querySelector('[name=csrfmiddlewaretoken]');
     const csrfToken = (_a = tokenEl === null || tokenEl === void 0 ? void 0 : tokenEl.value) !== null && _a !== void 0 ? _a : '';
     const resp = await fetch('/carbohydratepro/habits/toggle/', {
@@ -268,6 +270,8 @@ function updateHabitCardButton(card) {
 }
 async function toggleHabitCard(card) {
     var _a, _b, _c, _d;
+    if (requireDemoLogin())
+        return;
     if (pendingHabitCards.has(card))
         return;
     pendingHabitCards.add(card);
@@ -652,6 +656,8 @@ function habitFreqChanged(prefix) {
 }
 function openEditHabit(id, title, frequency, coefficient, isPositive, weeklyGoal, monthlyGoal) {
     const form = document.getElementById('editHabitForm');
+    if (requireDemoLogin())
+        return;
     if (!form)
         return;
     form.action = `/carbohydratepro/habits/edit/${id}/`;

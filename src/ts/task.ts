@@ -227,6 +227,7 @@ function openEditTaskModalFromList(taskId: number): void {
 
 // 一覧モーダルからタスクを削除
 function deleteTaskFromList(taskId: number): void {
+    if (requireDemoLogin()) return;
     if (!confirm('このタスクを削除してもよろしいですか？')) return;
 
     const csrfToken = document.querySelector<HTMLInputElement>('[name=csrfmiddlewaretoken]')?.value || '';
@@ -317,6 +318,7 @@ async function submitTaskModalForm(form: HTMLFormElement, modalSelector: string)
 
 // 指定日付で新規タスク作成モーダルを開く
 async function openCreateTaskModalWithDate(year: string, month: string, day: string): Promise<void> {
+    if (requireDemoLogin()) return;
     const selectedDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
     try {
@@ -351,6 +353,7 @@ async function openCreateTaskModalWithDate(year: string, month: string, day: str
 
 // 編集モーダル関連
 async function openEditTaskModal(taskId: number): Promise<void> {
+    if (requireDemoLogin()) return;
     try {
         const response = await fetch(`/carbohydratepro/tasks/edit/${taskId}/`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -377,6 +380,7 @@ async function openEditTaskModal(taskId: number): Promise<void> {
 
 // 新規作成モーダル関連
 async function openCreateTaskModal(): Promise<void> {
+    if (requireDemoLogin()) return;
     try {
         const response = await fetch('/carbohydratepro/tasks/create/', {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },

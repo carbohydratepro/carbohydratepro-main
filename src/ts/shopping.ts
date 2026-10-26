@@ -23,6 +23,7 @@ function getCsrfToken(): string {
 
 // 購入済みトグル
 async function toggleCheck(itemId: number): Promise<void> {
+    if (requireDemoLogin()) return;
     try {
         const response = await fetch(`/carbohydratepro/shopping/toggle-check/${itemId}/`, {
             method: 'POST',
@@ -66,6 +67,7 @@ async function toggleCheck(itemId: number): Promise<void> {
 
 // 残数の更新
 function updateCount(itemId: number, fieldType: string, action: string): void {
+    if (requireDemoLogin()) return;
     fetch(`/carbohydratepro/shopping/update-count/${itemId}/`, {
         method: 'POST',
         headers: {
@@ -103,6 +105,7 @@ function serializeShoppingForm(form: HTMLFormElement): string {
 
 // 編集モーダル
 async function openEditShoppingModal(itemId: number): Promise<void> {
+    if (requireDemoLogin()) return;
     try {
         const response = await fetch(`/carbohydratepro/shopping/edit/${itemId}/`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -146,6 +149,7 @@ async function openEditShoppingModal(itemId: number): Promise<void> {
 
 // 新規作成モーダル
 async function openCreateShoppingModal(): Promise<void> {
+    if (requireDemoLogin()) return;
     try {
         const response = await fetch('/carbohydratepro/shopping/create/', {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },

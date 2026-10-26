@@ -94,13 +94,7 @@
         deleteBtn === null || deleteBtn === void 0 ? void 0 : deleteBtn.addEventListener('click', () => {
             if (selected.size === 0)
                 return;
-            // デモモードでは実削除せず、デモのインターセプターにブロックさせる
-            if (window.DEMO_MODE) {
-                void fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
-                    body: JSON.stringify({ ids: Array.from(selected) }),
-                });
+            if (requireDemoLogin()) {
                 exitMode();
                 return;
             }

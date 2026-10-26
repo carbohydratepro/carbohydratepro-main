@@ -100,6 +100,7 @@ function openBoardSheet(id: string): void {
 }
 
 function openBoardTaskEditor(localId: string): void {
+    if (requireDemoLogin()) return;
     const task = getTaskByLocalId(localId);
     if (!task || task.savedState !== 'saved' || boardMutation) return;
     boardSelectedTask = localId;
@@ -110,6 +111,7 @@ function openBoardTaskEditor(localId: string): void {
 }
 
 function openBoardSetEditor(rename: boolean): void {
+    if (requireDemoLogin()) return;
     if (!boardCanLeave() || boardLoading) return;
     boardRenameSet = rename;
     const current = sets.find(s => s.id === currentSetId);
@@ -121,6 +123,7 @@ function openBoardSetEditor(rename: boolean): void {
 }
 
 function deleteCurrentBoardSet(): void {
+    if (requireDemoLogin()) return;
     if (!boardCanLeave() || boardLoading) return;
     const current = sets.find(s => s.id === currentSetId);
     if (sets.length <= 1) { showToast('最後のセットは削除できません。', 'info'); return; }
@@ -436,6 +439,7 @@ async function promptAddSet(): Promise<void> {
 // =========================================================
 
 async function addTask(status: string): Promise<void> {
+    if (requireDemoLogin()) return;
     if (boardLoading || currentSetId === null) return;
     const input = document.getElementById(`input-${status}`) as HTMLInputElement | null;
     if (!input) return;
@@ -484,6 +488,7 @@ async function addTask(status: string): Promise<void> {
 }
 
 async function deleteTask(localId: string): Promise<void> {
+    if (requireDemoLogin()) return;
     const index = tasks.findIndex(t => t.localId === localId);
     if (index === -1) return;
     const task = tasks[index];
@@ -525,6 +530,7 @@ async function deleteTask(localId: string): Promise<void> {
 // 削除履歴から同じIDのタスクを復元する（Undo用）
 
 async function moveTask(localId: string, newStatus: string): Promise<void> {
+    if (requireDemoLogin()) return;
     const task = getTaskByLocalId(localId);
     if (!task || task.status === newStatus || task.savedState !== 'saved' || boardMutation) return;
 
@@ -558,6 +564,7 @@ async function moveTask(localId: string, newStatus: string): Promise<void> {
 }
 
 function clearAllTasks(): void {
+    if (requireDemoLogin()) return;
     if (!boardCanLeave()) return;
     if (tasks.length === 0) return;
     showConfirm({

@@ -6,6 +6,8 @@ function getCsrfToken() {
 }
 // 購入済みトグル
 async function toggleCheck(itemId) {
+    if (requireDemoLogin())
+        return;
     try {
         const response = await fetch(`/carbohydratepro/shopping/toggle-check/${itemId}/`, {
             method: 'POST',
@@ -49,6 +51,8 @@ async function toggleCheck(itemId) {
 }
 // 残数の更新
 function updateCount(itemId, fieldType, action) {
+    if (requireDemoLogin())
+        return;
     fetch(`/carbohydratepro/shopping/update-count/${itemId}/`, {
         method: 'POST',
         headers: {
@@ -85,6 +89,8 @@ function serializeShoppingForm(form) {
 }
 // 編集モーダル
 async function openEditShoppingModal(itemId) {
+    if (requireDemoLogin())
+        return;
     try {
         const response = await fetch(`/carbohydratepro/shopping/edit/${itemId}/`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -130,6 +136,8 @@ async function openEditShoppingModal(itemId) {
 }
 // 新規作成モーダル
 async function openCreateShoppingModal() {
+    if (requireDemoLogin())
+        return;
     try {
         const response = await fetch('/carbohydratepro/shopping/create/', {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },

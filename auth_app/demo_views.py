@@ -3,6 +3,11 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render, redirect
 
 from . import demo_data
+from .demo_cooking import get_cooking_context
+
+
+def demo_cooking(request: HttpRequest) -> HttpResponse:
+    return render(request, 'app/cooking/list.html', get_cooking_context(request.GET))
 
 
 def demo_redirect(request: HttpRequest) -> HttpResponse:

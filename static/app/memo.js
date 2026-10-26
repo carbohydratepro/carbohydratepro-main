@@ -82,6 +82,8 @@ function setMarkdownMode(enabled) {
 // お気に入りの切り替え
 function toggleFavorite(memoId, button) {
     var _a;
+    if (requireDemoLogin())
+        return;
     if (!(button instanceof HTMLButtonElement) || button.disabled)
         return;
     button.disabled = true;
@@ -130,6 +132,8 @@ function serializeMemoForm(form) {
 let memoOpening = false;
 async function openMemoEditor(url, modalId) {
     var _a, _b, _c;
+    if (requireDemoLogin())
+        return;
     if (memoOpening)
         return;
     memoOpening = true;

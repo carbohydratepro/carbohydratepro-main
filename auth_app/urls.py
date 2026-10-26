@@ -20,6 +20,7 @@ urlpatterns = [
     path('demo/habits/', demo_views.demo_habits, name='demo_habits'),
     path('demo/memos/', demo_views.demo_memos, name='demo_memos'),
     path('demo/shopping/', demo_views.demo_shopping, name='demo_shopping'),
+    path('demo/cooking/', demo_views.demo_cooking, name='demo_cooking'),
     path('demo/board/', demo_views.demo_board, name='demo_board'),
     path('demo/settings/expenses/', demo_views.demo_expenses_settings, name='demo_expenses_settings'),
     path('demo/settings/tasks/', demo_views.demo_task_settings, name='demo_task_settings'),

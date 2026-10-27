@@ -2,7 +2,7 @@
 name: testing
 description: テストを実行するとき、または変更後に何を検証すべきか判断するとき
 scope: project
-updated: 2026-08-31
+updated: 2026-10-27
 ---
 
 # テストと検証基準
@@ -21,6 +21,15 @@ bash .agents/skills/carbohydrate-dev-environment/scripts/manage-dev-environment.
 bash .agents/skills/carbohydrate-dev-environment/scripts/manage-dev-environment.sh \
   test app.tests.test_memo
 ```
+
+## クリーンなCI環境の静的ファイル
+
+`project.storage.ManifestStaticFilesStorageLax` はDEBUG中もハッシュ付きURLを強制する。
+`manifest_strict=False` は保存先のファイル欠落を許容しないため、CIではDjangoテスト前に
+`python manage.py collectstatic --noinput --settings=project.settings.test` が必要。
+ローカルの既存 `static_root` はこの前処理漏れを隠す。調査時は秘密設定・生成物を含まない
+Git追跡ファイルだけの一時checkoutで再現する。テスト用storageを弱める方法ではなく、
+本番と同じ収集手順をCIへ加え、静的ファイルの参照も検証対象に保つ。
 
 ## TypeScript
 

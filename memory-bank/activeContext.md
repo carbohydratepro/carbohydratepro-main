@@ -2,6 +2,8 @@
 
 ## 現在の作業
 
+2026-10-27、Django CI失敗を調査。974444fの追跡ファイルだけの一時checkout・隔離PostgreSQL16で、static_rootなしでは561件中161件が静的ファイル欠落のValueError、collectstatic後は同じ561件が全成功と再現。ManifestStaticFilesStorageLaxがDEBUGでもハッシュURLを強制し、CIにcollectstaticがなかったことが再現原因。CIのDjangoテスト直前に収集処理を追加し、誤解を招くstorageコメントとテスト知識を訂正した。実GitHubログは認証必須で取得不可のため記録済みエラーの直接照合・GitHub再実行・E2Eは未確認。今回の変更は未コミット・未push、本番変更なし。調査ログはGit管理外のworkspace/ci-django-investigation-20261027/。
+
 2026-10-27、公開Git監査への対応として、本番DBの公開済みパスワードを失効させ、管理用・アプリ用のランダムな認証情報へ分離。アプリを非superuserロールへ切り替え、40テーブルと38シーケンスの所有権を移行。全40テーブルの件数・全行ハッシュ一致、旧認証拒否、新規認証・権限、Django check・migration適用済み、公開ログイン/家計簿デモ/予定デモ200、CSS/JS配信一致を確認。秘密ファイルを除外したイメージへgunicorn/cronを再作成し旧2イメージを削除。DBボリューム・Nginxコンテナは保持。固定DB設定をGit管理外envへ移し、Git/Docker除外・全履歴Gitleaks CI・検出/例外/Docker COPYの回帰3件を追加。隔離DBで認証変更とCRUD/DDLを検証。本番への機能テストによる書き込みは行っていない。Git履歴の書き換えは行わず、無効な旧秘密値の特定履歴だけを検査例外とした。バックアップ・具体的な認証/復旧設定は非公開領域に保持。
 
 2026-10-26、承認を受けc6ddbd7（お問い合わせ#14〜#17）を本番へff-only反映。migrationなし、collectstatic・gunicorn再起動、Nginx構文正常。公開ログイン/デモ家計簿/デモ予定200、スマホ月表示の「+N」、skeleton.js/task.css/styles.cssの配信ハッシュ一致を確認。#16/#17はresolved、#14は通知先アドレス未受領のためsecret.env未設定でin_progress、#15はサーバー側SQL削減のみ（家計簿95→34、月表示50→16）でin_progress。

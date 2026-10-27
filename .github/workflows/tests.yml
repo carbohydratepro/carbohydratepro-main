@@ -60,6 +60,9 @@ jobs:
       - name: TypeScript checks
         run: npm run check
 
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput --settings=project.settings.test
+
       - name: Django tests
         run: python manage.py test --settings=project.settings.test
 

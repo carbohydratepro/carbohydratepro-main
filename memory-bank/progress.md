@@ -5,7 +5,8 @@
 - [x] 秘密設定・static_rootなしのクリーンな追跡ファイルと一時PostgreSQLで再現。561件中161件がmanifest.webmanifest/styles.cssの保存先欠落でエラー。
 - [x] collectstaticだけ追加して再実行し561件全成功。既存ローカル生成物が前処理不足を隠していたことを確認。
 - [x] CIに収集ステップを追加、storageの誤ったコメントを訂正、再現条件・判断を知識へ記録。
-- [ ] 実GitHubログとの直接照合・GitHub上の再実行。ログ取得は認証必須。今回の修正は未コミット・未pushで、本番変更・E2E実行なし。
+- [x] 修正ee84360をorigin/mainへpushし、GitHub Actions 40493685282でcollectstatic・Django tests・E2E DB準備の成功を確認。Secret checks 40493685091も成功。本番変更なし。
+- [ ] 後続Playwright E2Eの最終結果（実行中）。今回のDjangoテスト失敗は解消済み。
 
 ## 2026-10-27 公開Git監査の是正
 

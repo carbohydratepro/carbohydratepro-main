@@ -6,10 +6,7 @@ services:
   db:
     image: postgres:16
     restart: ${CONTAINER_RESTART_POLICY:-no}
-    environment:
-      - POSTGRES_DB=mydatabase
-      - POSTGRES_USER=myuser
-      - POSTGRES_PASSWORD=mypassword
+    env_file: ${POSTGRES_ENV_FILE:-db.env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     command: ["postgres", "-c", "shared_buffers=32MB", "-c", "max_connections=10", "-c", "work_mem=2MB", "-c", "maintenance_work_mem=16MB", "-c", "huge_pages=off"]

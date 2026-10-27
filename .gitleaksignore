@@ -1,0 +1,8 @@
+# Exact historical findings only: old production DB password rotated on 2026-10-27;
+# historical Django keys are not active in production.
+# No path-wide suppression: the same value in a new commit must fail.
+95103f93de5bd3e8d06327c5e21dcb9a89900585:.devcontainer/docker-compose-debug.yml:postgres-literal-password:13
+4bc39978f8877c9888785b4498e3c913c62cab81:docker-compose-dev.yml:postgres-literal-password:13
+6fcc9f9c9c49800c72a3c4ff21f94fbb8021dd0c:carbohydratepro/settings.py:django-generated-secret-key:23
+b5854779a4dd1497de8e78a1fc1676401a0dbbd9:project/project/settings.py:django-generated-secret-key:23
+d46ff0d00df985a64a9d650cf586cf9f14d22875:.github/workflows/tests.yml:postgres-literal-password:17

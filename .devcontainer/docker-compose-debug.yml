@@ -7,10 +7,7 @@ version: '3'
 services:
   db:
     image: postgres:13
-    environment:
-      - POSTGRES_DB=mydatabase
-      - POSTGRES_USER=myuser
-      - POSTGRES_PASSWORD=mypassword
+    env_file: ${POSTGRES_ENV_FILE:-db.env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

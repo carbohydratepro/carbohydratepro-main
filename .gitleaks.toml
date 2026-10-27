@@ -1,0 +1,21 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "django-generated-secret-key"
+description = "Django generated keys must not be committed"
+regex = '''(?i)\bSECRET_KEY\s*=\s*['"](django-insecure-[^'"\r\n]+)['"]'''
+secretGroup = 1
+
+[[rules]]
+id = "postgres-literal-password"
+description = "PostgreSQL passwords must come from private configuration"
+regex = '''(?i)\bPOSTGRES_PASSWORD\s*[:=]\s*['"]?([a-zA-Z0-9_!@#%+.-]{4,})'''
+secretGroup = 1
+
+[[rules.allowlists]]
+description = "Ephemeral GitHub Actions test database; never used in production"
+condition = "AND"
+regexTarget = "secret"
+regexes = ['''^ci-only-disposable-postgres$''']
+paths = ['''(^|/)\.github/workflows/tests\.yml$''']

@@ -14,7 +14,7 @@ jobs:
         env:
           POSTGRES_DB: mydatabase
           POSTGRES_USER: myuser
-          POSTGRES_PASSWORD: mypassword
+          POSTGRES_PASSWORD: ci-only-disposable-postgres
         ports:
           - 5432:5432
         options: >-
@@ -28,7 +28,7 @@ jobs:
       ALLOWED_HOSTS: localhost,127.0.0.1,testserver
       DB_NAME: mydatabase
       DB_USER: myuser
-      DB_PASS: mypassword
+      DB_PASS: ci-only-disposable-postgres
       DB_HOST: localhost
       DB_PORT: "5432"
       SITE_DOMAIN: localhost:8000

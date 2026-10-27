@@ -2,7 +2,7 @@
 name: security-testing
 description: ZAPなどの動的セキュリティスキャンを実行・事故復旧するとき
 scope: project
-updated: 2026-10-25
+updated: 2026-10-27
 ---
 
 # 動的セキュリティスキャン
@@ -41,3 +41,10 @@ Full ScanやActive Scanは、原則としてローカルまたはステージン
 - 非公開バックアップ取得時の `umask 077` を展開処理にも使う場合、通常の `tar -x` はstatic_rootを0700/0600にしてNginx workerの読み取りを妨げる。信頼済みアーカイブは `tar -xp` で元の権限も復元し、秘密設定だけ明示的に0600へ戻す。内容ハッシュだけでなく、実際のNginx経由でCSS/JSの200応答を確認してからメンテナンスを解除する。
 - Nginxの動的なメンテナンス判定を `if (-f ...)` で行う場合、判定するworkerがマーカーへ到達できる必要がある。秘密設定用0700ディレクトリ内には置かず、秘密を含まない専用ディレクトリを読取専用でマウントし、workerユーザーでのファイル存在確認と実HTTP 503まで検証する。
 - 本番へ先行適用したセキュリティ設定を後からGit管理へ統一するときは、単一ファイルのDocker bind mountがinodeを参照していることに注意する。stash等で稼働ファイルを退避・再作成する方法は避ける。反映対象コミットと既存差分の内容・実行権限が完全一致する場合に限り、ファイルとGit indexを保全し、一致したパスだけをstageして `git merge --ff-only <固定コミット>` する。対象外の差分がないこと、前後の内容・inode・コンテナID・秘密設定が不変であること、最終worktreeがcleanであることを検証する。不一致時はこの手順を使わない。
+
+## DB認証情報の分離・変更
+
+- PostgreSQLの初期管理者（bootstrap role）はSUPERUSERを外せない。既存アプリがこれを使っている場合は、新しい通常権限のLOGINロールへアプリを移し、初期管理者のパスワードも変更して管理用途だけに残す。
+- 所有権の移行は対象アプリDBとpublic内のアプリオブジェクトに限定する。`REASSIGN OWNED`は他のDBなど共有オブジェクトにも作用するため、一括実行しない。アプリロールはmigration用の所有権を持つが、SUPERUSER・CREATEDB・CREATEROLE・REPLICATION・BYPASSRLSは持たせない。
+- DB管理用envはアプリへbind mountするリポジトリの外に0600で置く。既存DBではPOSTGRES_PASSWORDのenv変更だけでSQLロールのパスワードは変わらない。SQL変更と全利用コンテナの再作成を同じメンテナンスで行う。
+- PostgreSQL公式イメージの隔離検証では、初期化中の一時サーバーをreadyと誤認しないようTCPで待つ。localhostのtrust認証ではパスワード失効を検証できないため、検証用DBはhost認証を明示的にscram-sha-256へ設定する。本番の認証確認はアプリと同じネットワーク経路で行う。

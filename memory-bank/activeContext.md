@@ -2,6 +2,8 @@
 
 ## 現在の作業
 
+2026-10-27、公開Git監査への対応として、本番DBの公開済みパスワードを失効させ、管理用・アプリ用のランダムな認証情報へ分離。アプリを非superuserロールへ切り替え、40テーブルと38シーケンスの所有権を移行。全40テーブルの件数・全行ハッシュ一致、旧認証拒否、新規認証・権限、Django check・migration適用済み、公開ログイン/家計簿デモ/予定デモ200、CSS/JS配信一致を確認。秘密ファイルを除外したイメージへgunicorn/cronを再作成し旧2イメージを削除。DBボリューム・Nginxコンテナは保持。固定DB設定をGit管理外envへ移し、Git/Docker除外・全履歴Gitleaks CI・検出/例外/Docker COPYの回帰3件を追加。隔離DBで認証変更とCRUD/DDLを検証。本番への機能テストによる書き込みは行っていない。Git履歴の書き換えは行わず、無効な旧秘密値の特定履歴だけを検査例外とした。バックアップ・具体的な認証/復旧設定は非公開領域に保持。
+
 2026-10-26、承認を受けc6ddbd7（お問い合わせ#14〜#17）を本番へff-only反映。migrationなし、collectstatic・gunicorn再起動、Nginx構文正常。公開ログイン/デモ家計簿/デモ予定200、スマホ月表示の「+N」、skeleton.js/task.css/styles.cssの配信ハッシュ一致を確認。#16/#17はresolved、#14は通知先アドレス未受領のためsecret.env未設定でin_progress、#15はサーバー側SQL削減のみ（家計簿95→34、月表示50→16）でin_progress。
 
 2026-10-26、承認を受け990f222/1cbccf3をorigin/mainへpushし本番へff-only反映（4d8c01e→1cbccf3、記録d7fd292も反映）。migrationなし、collectstatic・gunicorn再起動、Nginx構文正常。公開ログイン/デモ家計簿/デモ予定200、問い合わせ詳細ルート302（要ログイン）、祝日JSON・新タイトル・app/transaction/label-settings.jsのハッシュ一致を確認。本番お問い合わせ#2/#3/#5/#6をresolvedに更新。ルール記載の`.env`のMAINTENANCE_MODEは本番設定に反映されず効かないことを確認し、`.env`は元に戻した（差分なし）。新着#14〜#17は未対応。

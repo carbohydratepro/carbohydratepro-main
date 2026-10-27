@@ -38,6 +38,7 @@ bash .agents/skills/carbohydrate-production-deploy/scripts/run-production-deploy
 ## デプロイ内容
 
 - リモートで `git fetch`、ブランチ切替、fast-forward pull
+- `scripts/maintenance-mode.sh on` でメンテナンスモードを有効化（検証後に `off` で解除し、`/login/` 200 を確認）
 - `docker-compose-dev.yml` によるイメージビルド
 - コンテナ停止・起動とgunicorn準備確認
 - Django migrationとcollectstatic
@@ -52,4 +53,6 @@ bash .agents/skills/carbohydrate-production-deploy/scripts/run-production-deploy
 - force push、リモートのreset、未コミット変更の破棄を行わない。
 - SSH鍵、`secret.env`、本番の秘匿値を表示しない。
 - 失敗時は停止し、失敗段階とログの要点を報告する。自動ロールバックは行わない。
+  メンテナンスモードは有効のまま残るため、原因を確認してから `bash scripts/maintenance-mode.sh off` で解除する。
+- スクリプトを使わない限定反映（ff-only＋collectstatic＋gunicorn再作成など）でも、前後で同じく `on` / `off` を実行する。
 - 実環境へのforward testは行わない。

@@ -120,3 +120,16 @@ class LegacyAdminUrlTest(TestCase):
         """/admin/ は500ではなく404を返す（Http404 を raise しない旧実装の回帰テスト）"""
         response = self.client.get('/admin/')
         self.assertEqual(response.status_code, 404)
+
+
+class MaintenanceModeComposeTest(TestCase):
+    """本番で .env の MAINTENANCE_MODE が gunicorn に届くこと（2026-10-26 に届いていなかった）。"""
+
+    def test_gunicorn_receives_maintenance_mode_from_env_file(self) -> None:
+        from pathlib import Path
+
+        from django.conf import settings
+
+        compose = (Path(settings.BASE_DIR) / "docker-compose-dev.yml").read_text(encoding="utf-8")
+        gunicorn_block = compose.split("\n  gunicorn:", 1)[1].split("\n  nginx:", 1)[0]
+        self.assertIn("- MAINTENANCE_MODE=${MAINTENANCE_MODE:-False}", gunicorn_block)

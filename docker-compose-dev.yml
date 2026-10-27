@@ -24,6 +24,8 @@ services:
     env_file: secret.env
     environment:
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-project.settings.development}
+      # .env の MAINTENANCE_MODE を渡す。切替は scripts/maintenance-mode.sh（restart では反映されない）
+      - MAINTENANCE_MODE=${MAINTENANCE_MODE:-False}
     stdin_open: true
     tty: true
     depends_on:

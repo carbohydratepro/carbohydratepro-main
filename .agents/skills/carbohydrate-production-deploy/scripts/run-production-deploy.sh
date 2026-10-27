@@ -94,6 +94,9 @@ git checkout "${BRANCH}"
 git pull --ff-only origin "${BRANCH}"
 echo "本番コミット: $(git rev-parse HEAD)"
 
+# 作業中は利用者にメンテナンス画面を出す。失敗時は有効のまま残し、原因確認後に手動で解除する。
+bash scripts/maintenance-mode.sh on
+
 # 稼働・停止コンテナが参照するイメージとボリュームを保持しながら、
 # 7日より古い未使用イメージとBuildKitキャッシュだけを削除する。
 docker image prune -a -f --filter until=168h
@@ -182,6 +185,14 @@ for file in app.js task.js transaction.js styles.css; do
     fi
     echo "OK /static/app/${file} (${status})"
 done
+
+bash scripts/maintenance-mode.sh off
+status="$(curl --max-time 15 -sS -o /dev/null -w "%{http_code}" "${health_origin}/login/")"
+if [[ "${status}" != "200" ]]; then
+    echo "エラー: メンテナンス解除後の /login/ が ${status} です。" >&2
+    exit 1
+fi
+echo "OK /login/ (${status}) メンテナンス解除済み"
 REMOTE_VERIFY
 
 echo "デプロイ完了: ${REMOTE_HOST} ${BRANCH}"

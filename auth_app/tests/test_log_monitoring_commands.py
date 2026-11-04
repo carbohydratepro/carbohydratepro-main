@@ -35,7 +35,7 @@ class DailySecurityReportCommandTest(TestCase):
         SECURITY_ALERT_EMAIL="security@example.com",
     )
     @patch("auth_app.management.commands.check_security_log.send_mail")
-    def test_report_aggregates_noise_and_limits_actionable_details(
+    def test_report_aggregates_noise_without_copying_private_details(
         self,
         send_mail_mock: MagicMock,
     ) -> None:
@@ -63,12 +63,12 @@ class DailySecurityReportCommandTest(TestCase):
         send_mail_mock.assert_called_once()
         call_kwargs = send_mail_mock.call_args.kwargs
         self.assertEqual(call_kwargs["recipient_list"], ["security@example.com"])
-        self.assertIn("管理画面への未認証アクセス: 1件", call_kwargs["message"])
-        self.assertIn("存在しないユーザーへのログイン試行: 1件", call_kwargs["message"])
+        self.assertIn("管理画面の探索: 1件", call_kwargs["message"])
+        self.assertIn("ログイン失敗・ロック: 1件", call_kwargs["message"])
         self.assertIn("- ERROR: 1件", call_kwargs["message"])
         self.assertNotIn("Not Found: /wp-login.php", call_kwargs["message"])
-        self.assertEqual(call_kwargs["message"].count("特権ユーザーログイン検知"), 1)
-        self.assertIn("application error", call_kwargs["message"])
+        self.assertIn("特権ユーザーのログイン（本人確認が必要）: 2件", call_kwargs["message"])
+        self.assertNotIn("application error", call_kwargs["message"])
 
         delivery = SecurityReportDelivery.objects.get(report_date=timezone.localdate())
         self.assertEqual(delivery.status, SecurityReportDelivery.STATUS_SENT)

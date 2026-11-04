@@ -6,12 +6,14 @@ interface JQuery {
 
 // Chart.js (loaded via CDN)
 interface ChartTickOptions {
+  precision?: number;
   autoSkip?: boolean;
   maxTicksLimit?: number;
   stepSize?: number;
 }
 
 interface ChartScaleOptions {
+  stacked?: boolean;
   type?: string;
   ticks?: ChartTickOptions;
   grid?: {

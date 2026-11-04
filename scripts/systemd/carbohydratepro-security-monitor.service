@@ -1,0 +1,15 @@
+[Unit]
+Description=CarbohydratePro host security monitor
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/libexec/carbohydratepro/collect-host-security.py
+User=root
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/carbohydratepro-monitor
+PrivateTmp=true
+TimeoutStartSec=90

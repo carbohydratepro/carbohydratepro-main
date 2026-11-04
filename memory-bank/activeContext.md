@@ -2,6 +2,8 @@
 
 ## 現在の作業
 
+2026-11-03、セキュリティ通知の整理と管理グラフを実装（開発環境のみ）。2分周期で重要イベントを集約し同種60分抑制、通常の拒否/単発ERROR等は毎朝6時の日次。分類済みイベントを90日保持、スーパーユーザー管理パネルに30日グラフ・表・最終収集状態を追加。root所有のホスト監視スクリプト/systemdも準備し、SSH許可範囲外ログイン、失敗集中、指定ファイル変更、upload内の実行形式、新規待受ポートを検出。ポートスキャン/全マルウェアの網羅検出・外形監視は未実装。本番読取では7014ca0、日次のみ有効・速報/ホスト監視は未導入。Django全593件成功、最終の通知件数補正後も通知20件成功、ホスト5件、npm run check、管理グラフのPC/390px E2E成功。前回11/1の既存日付依存3失敗は変更前HEADでも再現、11/3には発生せず（未修正）。開発DB auth_app0008・collectstatic・メールなし集計・Gunicorn HUP反映済み。本番の設定変更や実メール送信なし。未コミット・未push・本番未反映。既存メモ機能の差分は保持。仕様/導入手順はdocs/operations/security-monitoring.md、非公開証跡はworkspace/security-monitoring-20261101/。
+
 2026-10-27、Django CI失敗を調査。974444fの追跡ファイルだけの一時checkout・隔離PostgreSQL16で、static_rootなしでは561件中161件が静的ファイル欠落のValueError、collectstatic後は同じ561件が全成功と再現。ManifestStaticFilesStorageLaxがDEBUGでもハッシュURLを強制し、CIにcollectstaticがなかったことが再現原因。CIのDjangoテスト直前に収集処理を追加し、誤解を招くstorageコメントとテスト知識を訂正した。ユーザー承認後、修正ee84360をorigin/mainへpush。GitHub Actions 40493685282でcollectstatic・Django tests・E2E DB準備が成功し、Secret checks 40493685091も成功。Djangoテスト失敗の解消をGitHub上で確認できた。後続E2Eは実行中で最終結果は未確認。本番変更なし。調査ログはGit管理外のworkspace/ci-django-investigation-20261027/。
 
 2026-10-27、公開Git監査への対応として、本番DBの公開済みパスワードを失効させ、管理用・アプリ用のランダムな認証情報へ分離。アプリを非superuserロールへ切り替え、40テーブルと38シーケンスの所有権を移行。全40テーブルの件数・全行ハッシュ一致、旧認証拒否、新規認証・権限、Django check・migration適用済み、公開ログイン/家計簿デモ/予定デモ200、CSS/JS配信一致を確認。秘密ファイルを除外したイメージへgunicorn/cronを再作成し旧2イメージを削除。DBボリューム・Nginxコンテナは保持。固定DB設定をGit管理外envへ移し、Git/Docker除外・全履歴Gitleaks CI・検出/例外/Docker COPYの回帰3件を追加。隔離DBで認証変更とCRUD/DDLを検証。本番への機能テストによる書き込みは行っていない。Git履歴の書き換えは行わず、無効な旧秘密値の特定履歴だけを検査例外とした。バックアップ・具体的な認証/復旧設定は非公開領域に保持。

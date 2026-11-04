@@ -1,0 +1,11 @@
+[Unit]
+Description=Check CarbohydratePro host security every two minutes
+
+[Timer]
+OnBootSec=60s
+OnUnitActiveSec=120s
+AccuracySec=5s
+Unit=carbohydratepro-security-monitor.service
+
+[Install]
+WantedBy=timers.target

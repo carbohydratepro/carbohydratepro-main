@@ -1,0 +1,31 @@
+{% load static %}
+<section class="card mb-4" aria-labelledby="security-heading">
+    <div class="card-body">
+        <h3 id="security-heading" class="h5">セキュリティ・エラー検出</h3>
+        <p class="small text-muted">過去30日・日本時間。検出件数は侵入の確定件数ではありません。</p>
+        {% if security.stale %}
+        <p class="alert alert-warning" role="status">ログ集計が未開始、停止中、または失敗しています。0件でも安全とは判断できません。</p>
+        {% endif %}
+        <p class="small mb-2">
+            最終集計：{{ security.state.checked_at|date:"Y/m/d H:i"|default:"未収集" }} ／
+            重要通知：{% if security.urgent_enabled %}2分ごとに確認・同種60分抑制{% else %}未有効化{% endif %} ／ 日次：毎朝6時
+        </p>
+        <p class="small">
+            サーバー監視：{% if not security.host_enabled %}未導入{% elif security.host_stale %}<strong class="text-danger">更新停止・異常</strong>{% else %}稼働中{% endif %}。
+            ポートスキャン全体・未知のマルウェアの網羅的な検査は対象外です。
+        </p>
+        <div style="height:260px;position:relative"><canvas id="security-chart" role="img" aria-label="日別の重大ログ、エラー、警告、予定メンテナンスの検出件数。下の表でも確認できます。"></canvas></div>
+        {{ security.days|json_script:"security-chart-data" }}
+        <details class="mt-3">
+            <summary>日別の件数を表で表示</summary>
+            <div class="table-responsive"><table class="table table-sm">
+                <thead><tr><th>日付</th><th>重大</th><th>エラー</th><th>警告</th><th>予定メンテナンス</th></tr></thead>
+                <tbody>{% for day in security.days %}<tr><th>{{ day.date }}</th><td>{{ day.critical|default_if_none:"未収集" }}</td><td>{{ day.error|default_if_none:"未収集" }}</td><td>{{ day.warning|default_if_none:"未収集" }}</td><td>{{ day.maintenance|default_if_none:"未収集" }}</td></tr>{% endfor %}</tbody>
+            </table></div>
+        </details>
+        <h4 class="h6 mt-3">最近の検出（最大20件）</h4>
+        <ul class="small mb-0">{% for event in security.recent %}<li>{{ event.occurred_at|date:"m/d H:i" }} — {{ event.summary }}</li>{% empty %}<li>表示できる検出記録はありません。</li>{% endfor %}</ul>
+    </div>
+</section>
+<script src="{% static 'app/vendor/chart.umd.js' %}" defer></script>
+<script src="{% static 'app/security-monitor.js' %}" defer></script>

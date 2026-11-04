@@ -6,6 +6,7 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 SEND_INSTANT_SECURITY_EMAIL = False
 SEND_PERIODIC_SECURITY_EMAIL = False
+SEND_URGENT_SECURITY_EMAIL = False
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",

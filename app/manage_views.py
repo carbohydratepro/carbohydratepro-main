@@ -41,7 +41,10 @@ def manage_dashboard(request: HttpRequest) -> HttpResponse:
     in_progress_contacts = ContactMessage.objects.filter(status='in_progress').count()
     recent_contacts = ContactMessage.objects.select_related('user').order_by('-created_at')[:5]
 
+    from auth_app.security_selectors import security_dashboard
+
     context = {
+        'security': security_dashboard(),
         'total_users': total_users,
         'verified_users': verified_users,
         'open_contacts': open_contacts,

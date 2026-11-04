@@ -3,6 +3,9 @@ PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 # 定期支払い自動実行 - 毎日0時に実行
 0 0 * * * root cd /code && python manage.py execute_recurring_payments >> /var/log/cron.log 2>&1
 
+# ログ集計と重要イベントの速報（同種は60分抑制）
+*/2 * * * * root cd /code && python manage.py check_security_log --urgent >> /var/log/cron.log 2>&1
+
 # セキュリティ・重大エラーの日次集約 - 毎日6時に1通だけ送信
 0 6 * * * root cd /code && python manage.py check_security_log --hours 24 >> /var/log/cron.log 2>&1
 

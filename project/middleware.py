@@ -25,7 +25,9 @@ class MaintenanceModeMiddleware:
             # 静的ファイルとメンテナンスページ自体はスルー
             if request.path.startswith('/static/') or request.path.startswith('/media/'):
                 return self.get_response(request)
-            return render(request, 'maintenance.html', status=503)
+            response = render(request, 'maintenance.html', status=503)
+            request._planned_maintenance_response = True
+            return response
 
         return self.get_response(request)
 

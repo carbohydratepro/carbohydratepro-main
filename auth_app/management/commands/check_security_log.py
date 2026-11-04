@@ -1,33 +1,15 @@
 """セキュリティイベントと重大エラーを日次集約して通知する。"""
 
 from datetime import date, datetime, timedelta
-from pathlib import Path
 from typing import Any
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import get_connection, send_mail
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db import transaction
 from django.utils import timezone
 
-from auth_app.log_monitoring import (
-    actionable_details,
-    classify_security_logs,
-    log_paths,
-    recent_log_lines,
-)
 from auth_app.models import SecurityReportDelivery
-
-
-CATEGORY_LABELS: tuple[tuple[str, str], ...] = (
-    ("privileged_login", "特権ユーザーログイン"),
-    ("unknown_login", "存在しないユーザーへのログイン試行"),
-    ("locked_login", "ロック中アカウントへのログイン試行"),
-    ("admin_probe", "管理画面への未認証アクセス"),
-    ("csrf", "CSRF拒否"),
-    ("forbidden", "その他のアクセス拒否"),
-    ("other", "その他"),
-)
 
 
 class Command(BaseCommand):
@@ -36,6 +18,7 @@ class Command(BaseCommand):
     CLAIM_TIMEOUT = timedelta(minutes=30)
 
     def add_arguments(self, parser: CommandParser) -> None:
+        parser.add_argument('--urgent', action='store_true', help='重要イベントだけを集約して通知する')
         parser.add_argument(
             "--hours",
             type=float,
@@ -44,114 +27,62 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args: object, **options: Any) -> None:
-        if not getattr(settings, "SEND_PERIODIC_SECURITY_EMAIL", True):
-            self.stdout.write("定期セキュリティレポートは無効です")
-            return
+        from collections import Counter
+        from auth_app.security_collection import collect_events
+        from auth_app.security_models import SecurityEvent
+        from auth_app.security_notifications import send_urgent_report
+        from auth_app.security_rules import LABELS
 
-        hours = float(options["hours"])
-        if hours <= 0:
-            raise CommandError("--hours には0より大きい値を指定してください")
-
-        end = timezone.localtime().replace(tzinfo=None)
-        start = end - timedelta(hours=hours)
-        base_dir = Path(settings.BASE_DIR)
-        security_lines = recent_log_lines(
-            log_paths(base_dir, "security.log"),
-            start,
-            end,
-        )
-        debug_lines = recent_log_lines(
-            log_paths(base_dir, "django_debug.log"),
-            start,
-            end,
-        )
-        critical_count = sum(line.startswith("CRITICAL") for line in debug_lines)
-        error_count = sum(line.startswith("ERROR") for line in debug_lines)
-
-        if not security_lines and critical_count == 0 and error_count == 0:
-            self.stdout.write("集計対象のセキュリティイベント・重大エラーはありません")
-            return
-
-        report_date = timezone.localdate()
-        attempted_at = timezone.now()
-        if not self._claim_delivery(report_date, attempted_at):
-            self.stdout.write(
-                f"{report_date:%Y-%m-%d}のセキュリティレポートは送信済みまたは送信中です"
-            )
-            return
-
-        counts = classify_security_logs(security_lines)
-        max_details = int(getattr(settings, "SECURITY_REPORT_MAX_DETAILS", 20))
-        details = actionable_details(security_lines, debug_lines)[:max_details]
-        summary_lines = [
-            "日次セキュリティ・エラーレポート",
-            "",
-            f"監視期間: {start:%Y-%m-%d %H:%M:%S} ～ {end:%Y-%m-%d %H:%M:%S}",
-            "",
-            "【セキュリティイベント】",
-            f"総件数: {len(security_lines)}件",
-        ]
-        summary_lines.extend(
-            f"- {label}: {counts.get(category, 0)}件"
-            for category, label in CATEGORY_LABELS
-        )
-        summary_lines.extend(
-            [
-                "",
-                "【アプリケーション重大ログ】",
-                f"- CRITICAL: {critical_count}件",
-                f"- ERROR: {error_count}件",
-            ]
-        )
-        if details:
-            summary_lines.extend(["", f"【要確認の詳細（最大{max_details}件）】"])
-            summary_lines.extend(
-                f"{index}. {line[:2000]}" for index, line in enumerate(details, 1)
-            )
-        summary_lines.extend(
-            [
-                "",
-                "管理画面探索やCSRF拒否などの日常的なインターネットノイズは件数のみ集約しています。",
-            ]
-        )
-
-        recipient = getattr(settings, "SECURITY_ALERT_EMAIL", "carbohydratepro@gmail.com")
+        hours = float(options['hours'])
+        if hours <= 0 or hours > 168:
+            raise CommandError('--hours は0より大きく168以下にしてください')
+        now = timezone.now()
         try:
-            send_mail(
-                subject=(
-                    "【日次セキュリティレポート】"
-                    f"イベント{len(security_lines)}件・重大ログ{critical_count + error_count}件"
-                ),
-                message="\n".join(summary_lines),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[recipient],
-                fail_silently=False,
-            )
+            collect_events(now)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            if options['urgent']:
+                send_urgent_report(now)
+            raise CommandError('ログ取り込みに失敗しました。監視元を確認してください') from exc
+        if options['urgent']:
+            sent = send_urgent_report(now)
+            self.stdout.write('重要イベントを1通通知しました' if sent else '新しい速報対象はありません')
+            return
+        if not settings.SEND_PERIODIC_SECURITY_EMAIL:
+            self.stdout.write('定期セキュリティレポートは無効です（集計は継続）')
+            return
+        start = now - timedelta(hours=hours)
+        events = SecurityEvent.objects.filter(occurred_at__gte=start, occurred_at__lte=now)
+        counts = Counter(events.values_list('category', flat=True))
+        if not counts:
+            self.stdout.write('集計対象はありません')
+            return
+        report_date = timezone.localdate(now)
+        if not self._claim_delivery(report_date, now):
+            self.stdout.write('本日の日次レポートは送信済みまたは送信中です')
+            return
+        security_count = events.filter(source='security').count()
+        error_count = events.filter(severity='error').count()
+        critical_count = events.filter(severity='critical').count()
+        lines = ['日次セキュリティ・エラーレポート',
+            f'監視期間: {timezone.localtime(start):%Y-%m-%d %H:%M:%S} ～ {timezone.localtime(now):%Y-%m-%d %H:%M:%S}', '',
+            f'検出総数: {events.count()}件',
+            f'- CRITICAL: {critical_count}件', f'- ERROR: {error_count}件', '']
+        lines += [f'- {LABELS.get(category, category)}: {count}件' for category, count in sorted(counts.items())]
+        lines += ['', '拒否済みアクセスや予定メンテナンスは侵入・障害の確定情報ではありません。',
+                  'ログ本文・認証情報はメールへ転記していません。詳細は管理パネルで確認してください。']
+        try:
+            delivered = send_mail(subject=f'【日次セキュリティレポート】検出{events.count()}件',
+                message='\n'.join(lines), from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[settings.SECURITY_ALERT_EMAIL], fail_silently=False, connection=get_connection(timeout=15))
+            if delivered == 0:
+                raise RuntimeError('Mail backend did not accept the report')
         except Exception as exc:
-            SecurityReportDelivery.objects.filter(
-                report_date=report_date,
-                status=SecurityReportDelivery.STATUS_SENDING,
-                attempted_at=attempted_at,
-            ).update(status=SecurityReportDelivery.STATUS_FAILED)
-            raise CommandError(f"日次セキュリティレポート送信エラー: {exc}") from exc
-
-        SecurityReportDelivery.objects.filter(
-            report_date=report_date,
-            status=SecurityReportDelivery.STATUS_SENDING,
-            attempted_at=attempted_at,
-        ).update(
-            status=SecurityReportDelivery.STATUS_SENT,
-            sent_at=timezone.now(),
-            security_event_count=len(security_lines),
-            critical_error_count=critical_count + error_count,
-        )
-
-        self.stdout.write(
-            self.style.SUCCESS(
-                "日次セキュリティレポートを1通送信しました "
-                f"（セキュリティ{len(security_lines)}件、重大ログ{critical_count + error_count}件）"
-            )
-        )
+            SecurityReportDelivery.objects.filter(report_date=report_date, attempted_at=now).update(status='failed')
+            raise CommandError('日次セキュリティレポート送信エラー') from exc
+        SecurityReportDelivery.objects.filter(report_date=report_date, attempted_at=now).update(
+            status='sent', sent_at=timezone.now(), security_event_count=security_count,
+            critical_error_count=critical_count+error_count)
+        self.stdout.write('日次セキュリティレポートを1通送信しました')
 
     def _claim_delivery(self, report_date: date, attempted_at: datetime) -> bool:
         """同日の送信権をDB行ロックで1実行だけに与える。"""

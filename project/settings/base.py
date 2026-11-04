@@ -191,10 +191,14 @@ LOGGING = {
             'style': '{',
         },
     },
+    'filters': {
+        'planned_maintenance': {'()': 'project.logging_filters.PlannedMaintenanceFilter'},
+    },
     'handlers': {
         'file': {
             'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
+            'filters': ['planned_maintenance'],
             'filename': 'django_debug.log',
             'maxBytes': 10 * 1024 * 1024,  # 10MB
             'backupCount': 5,
@@ -266,3 +270,10 @@ CONTACT_NOTIFICATION_EXTRA_EMAILS = env.list('CONTACT_NOTIFICATION_EXTRA_EMAILS'
 SEND_INSTANT_SECURITY_EMAIL = env.bool('SEND_INSTANT_SECURITY_EMAIL', default=False)
 SEND_PERIODIC_SECURITY_EMAIL = env.bool('SEND_PERIODIC_SECURITY_EMAIL', default=True)
 SECURITY_REPORT_MAX_DETAILS = env.int('SECURITY_REPORT_MAX_DETAILS', default=20)
+
+# 速報はcronで2分ごとにまとめる。既存のログイン直送とは別の設定。
+SEND_URGENT_SECURITY_EMAIL = env.bool('SEND_URGENT_SECURITY_EMAIL', default=False)
+SECURITY_ALERT_COOLDOWN_MINUTES = 60
+SECURITY_HOST_MONITOR_ENABLED = env.bool('SECURITY_HOST_MONITOR_ENABLED', default=False)
+SECURITY_HOST_MONITOR_DIR = env('SECURITY_HOST_MONITOR_DIR', default='/var/lib/carbohydratepro-monitor')
+SECURITY_EVENT_RETENTION_DAYS = 90

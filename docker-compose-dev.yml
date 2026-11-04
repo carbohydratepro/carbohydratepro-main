@@ -54,6 +54,7 @@ services:
     container_name: cron
     volumes:
       - .:/code/
+      - ${SECURITY_MONITOR_EXPORT_DIR:-./workspace/host-monitor-export}:/var/lib/carbohydratepro-monitor:ro
     env_file: secret.env
     environment:
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-project.settings.development}

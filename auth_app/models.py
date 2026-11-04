@@ -281,3 +281,6 @@ class SecurityReportDelivery(models.Model):
 
     def __str__(self) -> str:
         return f'{self.report_date:%Y-%m-%d} ({self.get_status_display()})'
+
+# 別ファイルの監視モデルもDjangoのモデル登録対象にする。
+from .security_models import SecurityAlertState, SecurityEvent, SecurityMonitorState  # noqa: E402,F401

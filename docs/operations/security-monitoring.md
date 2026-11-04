@@ -1,128 +1,94 @@
-# セキュリティログ監視ガイド
+# セキュリティ監視・通知
 
-本書は、`security.log`と`django_debug.log`から送信する日次レポートの現行仕様を扱う。
-ディスク・Docker・S3を含む運用全体は
-[本番運用・容量管理](production-maintenance.md)を参照する。
+## 通知の振り分け
 
-## 現行方針
+- 2分ごとにログを収集し、速報対象を1通へまとめる。同じ種類の再通知は60分間抑制する。
+- 速報対象: 明示的なCRITICAL、5分間に10件以上のアプリERROR、許可範囲外のSSHログイン、SSH認証失敗の集中（5分20件）、監視対象ファイル変更、アップロード領域の実行形式ファイル、新しい待受ポート、ホスト監視の停止・失敗。
+- 単発ERROR、拒否済みアクセス、通常の特権ログイン、予定メンテナンスは毎朝6時（JST）の日次レポートへ集約する。
+- 初回取り込み時の過去ログは速報せず、直近5分だけ対象にする。初回以降の未通知CRITICALは収集の再開後にも通知対象とする。
+- 日次は成功1回/日。失敗時は手動または次回の実行で再試行可能。速報はメール送信が成功しなければ次の2分周期で再試行する。
+- メールとイベントDBには分類・時刻・件数だけを残し、ログ本文、メールアドレス、IP、トークン、ファイル内容を転記しない。
+- メール受け付け直後のプロセス停止・DB障害では重複が起こり得る。配送時間も含めた厳密な到着保証はない。
 
-旧運用の1分ごとのセキュリティ通知と、5分ごとのWARNING通知は廃止した。
-Dockerのcronコンテナが毎日6:00 JSTに過去24時間を集約し、対象がある場合だけ
-定期レポートを1通送信する。
+アプリの予定されたメンテナンス応答だけをINFOに分類する。通常の503や障害はERRORのまま。
+`SEND_INSTANT_SECURITY_EMAIL` は従来の特権ログイン直送であり、今回の速報とは別物。通知をまとめる運用ではFalseを維持する。
 
-```cron
-0 6 * * * root cd /code && python manage.py check_security_log --hours 24 >> /var/log/cron.log 2>&1
+## 管理パネル
+
+スーパーユーザーのみ、管理パネルで30日間の日別グラフ・件数表・直近20件の分類を確認できる。
+日付はJSTの暦日。日次メールの前日6時〜当日6時とは集計境界が異なる。
+未収集期間は未収集と表示し、5分以上集計が更新されなければ警告する。記録は90日保持する。
+ログのローテーションを含む再読み込みはfingerprintで重複を抑止する。同一ミリ秒の同一内容も行数を保持する。
+ログが消去・改ざんされた場合や長期間停止して保存世代を超えた場合、完全な件数復元は保証しない。
+
+## 検出範囲と限界
+
+| 対象 | 対応 | 限界 |
+|---|---|---|
+| Web管理画面探索・CSRF拒否 | 既存アプリログから集計、日次 | 拒否ログは侵入成功の証拠ではない |
+| アプリ障害 | CRITICALとERROR急増は速報、単発ERRORは日次 | DB・cron・ホスト全体が停止するとこの仕組みも停止 |
+| SSHログイン・認証失敗 | ホストcollectorでjournaldを収集。許可ユーザーと接続元範囲で分類 | 信頼範囲内からの盗難鍵利用は検出できない。成功ログだけで本人性は証明できない |
+| ファイル追加・変更・削除、権限変更 | 明示した監視パスをレビュー済みbaselineと比較 | 全ディスクではない。正常なデプロイも変更になる |
+| 不審ファイル | upload_rootsで実行系拡張子、ELF/PE/shebang/PHP先頭、symlinkを検出 | すべてのマルウェア・偽装形式・メモリ上の侵害は検出できない |
+| 待受ポートの追加 | ホストのTCP/UDP待受をbaselineと比較 | ホストから見えないコンテナ内部の待受や一時的な短時間の待受は対象外 |
+| 外部からのポートスキャン | **未対応** | 接続試行/拒否のパケットログを別途収集する必要がある。Lightsail側で遮断された通信はホストに届かない |
+| ホスト監視の停止 | アプリがheartbeatを確認し、5分超の遅延・失敗を速報 | アプリ側も同時停止した場合に備え、別ホストからの外形監視が必要 |
+
+root権限を奪われるとホスト内の監視や証拠も改ざん可能。既存の外部ログ保存を維持し、独立した外形監視を併用する。
+この仕組みを「侵入がないことの証明」やEDR/IDSの代替として扱わない。
+
+## 本番へ適用するとき
+
+1. 対象ソースとDBバックアップを確認し、auth_appの新しいmigrationを適用する。
+2. `/etc/carbohydratepro/host-monitor.json` をroot所有0600で準備する。次の例の値は**環境に合わせてレビュー**する。
+
+```json
+{
+  "state_dir": "/var/lib/carbohydratepro-monitor",
+  "watch_paths": ["/etc/ssh", "/etc/crontab", "/etc/cron.d", "/etc/systemd/system", "/usr/local/libexec/carbohydratepro", "/home/APP_USER/.ssh/authorized_keys"],
+  "upload_roots": ["/home/APP_USER/APP_REPOSITORY/media"],
+  "ssh_users": ["APP_USER"],
+  "ssh_networks": ["192.0.2.10/32"]
+}
 ```
 
-通常運用では`check_debug_log`を定期実行しない。コマンド自体は互換性のため残っているが、
-旧5分監視を復活させない。
+3. 異常がないことを確認したホストで `sudo bash scripts/install-host-security-monitor.sh` を実行する。初回だけbaselineを作成する。既存baselineは上書きしない。root collectorはアプリの書き換え可能な領域から直接実行せず、root所有のコピーを使う。
+4. Compose用 `.env` に `SECURITY_MONITOR_EXPORT_DIR=/var/lib/carbohydratepro-monitor/export` を設定。`secret.env` に `SECURITY_HOST_MONITOR_ENABLED=True`、`SEND_URGENT_SECURITY_EMAIL=True` を設定する。
+5. cronイメージを再ビルドし、cron/gunicornコンテナを再作成して新しいcrontab・設定・読み取り専用exportマウントを反映する。単なるrestartでは設定は変わらない。必要な静的ファイルをcollectstaticする。
+6. 新しい監視データの取り込みは **cronコンテナ** で実行する。gunicornにはホストexportをマウントしない。`check_security_log --urgent` は有効化後に実メールを送る可能性があるため、テスト送信を意図せず本番検証として実行しない。
+7. 管理画面の最終集計・サーバー監視状態、systemd timer、SMTP配送を確認する。
 
-## 集計対象
+ホスト2分周期＋アプリ2分周期により、正常稼働時は通常1〜5分程度で通知処理へ進む。メール配送遅延や同種の60分抑制は別扱い。
 
-### security.log
+baseline変更を自動承認しない。正常な運用変更であることを差分・権限・出所で確認し、旧baselineをroot専用領域へ退避してから明示的に再初期化する。
+不審なファイルは自動実行・削除しない。対象の詳細はroot専用の `/var/lib/carbohydratepro-monitor/details.jsonl` に残る。
+SSHのjournal cursorが失効した場合は失敗として通知する。保全したログを確認し、復旧の収集開始点を判断してからcursorを更新する。
 
-次のイベントはカテゴリ別件数として集約する。
+ホスト監視の参考: [systemd journalctl](https://www.freedesktop.org/software/systemd/man/latest/journalctl.html)、[Lightsailファイアウォール](https://docs.aws.amazon.com/lightsail/latest/userguide/understanding-firewall-and-port-mappings-in-amazon-lightsail.html)。
 
-- 特権ユーザーログイン
-- 存在しないユーザーへのログイン試行
-- ロック中アカウントへのログイン試行
-- 管理画面への未認証アクセス
-- CSRF拒否
-- その他のアクセス拒否・セキュリティイベント
+## 運用確認
 
-管理画面探索、CSRF拒否、通常のbotアクセスなどの日常的なノイズは、
-メール本文へ1件ずつ掲載しない。特権ユーザーログインだけを要確認の詳細へ載せる。
+運用全体・S3退避は[本番運用・容量管理](production-maintenance.md)を参照。
+`security.log`（WARNING以上）と`django_debug.log`（INFO以上）は10MB×5世代でローテーションし、現在ログと世代ログを収集する。既存の毎時S3退避も維持する。
+`check_debug_log`の旧5分メールは再登録しない。`SECURITY_REPORT_MAX_DETAILS`は互換用設定として残るが、この日次レポートでは使用しない。
 
-### django_debug.log
+| 設定 | 既定値 | 用途 |
+|---|---|---|
+| `SEND_PERIODIC_SECURITY_EMAIL` | True | 毎朝6時の日次メール |
+| `SEND_URGENT_SECURITY_EMAIL` | False | 2分周期の重要メール。導入確認後に有効化 |
+| `SEND_INSTANT_SECURITY_EMAIL` | False | 旧特権ログイン直送。Falseを維持 |
+| `SECURITY_HOST_MONITOR_ENABLED` | False | ホストexportの取り込み |
+| `SECURITY_ALERT_EMAIL` | アプリ既定値 | 通知先 |
 
-- `ERROR`と`CRITICAL`を件数・詳細の対象にする。
-- `WARNING`、404、通常のbot探索は詳細通知の対象外とする。
-- 詳細は`SECURITY_REPORT_MAX_DETAILS`件までとし、既定値は20件である。
-
-両ログに対象がなければメールを送信しない。
-
-## 通知設定
-
-設定は環境変数から読み込む。
-
-| 変数 | 既定値 | 用途 |
-| --- | --- | --- |
-| `SEND_PERIODIC_SECURITY_EMAIL` | `True` | 日次レポートの有効・無効 |
-| `SEND_INSTANT_SECURITY_EMAIL` | `False` | 特権ログインの即時通知 |
-| `SECURITY_REPORT_MAX_DETAILS` | `20` | メールへ載せる詳細の上限 |
-| `SECURITY_ALERT_EMAIL` | アプリ既定値 | 送信先 |
-
-日次レポートは最大1日1通である。
-`SEND_INSTANT_SECURITY_EMAIL=True`を明示した場合は、特権ログイン時のメールが別に送信される。
-
-管理コマンドは`SecurityReportDelivery`へJST日付ごとの送信状態を保存する。
-cronの重複登録や誤った毎分実行があっても、送信済みまたは送信中の同日レポートは
-DB行ロックで拒否される。SMTP送信に失敗した場合だけ、同日中の再試行を許可する。
-
-SMTP認証情報は`secret.env`で管理し、ドキュメント、ログ、Gitへ記録しない。
-
-## ログファイル
-
-| ファイル | Djangoハンドラー | ローテーション |
-| --- | --- | --- |
-| `security.log` | WARNING以上 | 10MB、5世代 |
-| `django_debug.log` | INFO以上 | 10MB、5世代 |
-
-現在ログと番号付きローテーションログのうち、指定した24時間に含まれる行を集計する。
-ログは別途、毎時S3へ圧縮退避される。
-
-## 動作確認
-
-cronコンテナと設定を確認する。
+SMTP認証情報は`secret.env`に置き、Git・ログ・文書へ転記しない。
 
 ```bash
-docker-compose -f docker-compose-dev.yml ps cron
+docker compose -f docker-compose-dev.yml ps cron
 docker exec cron cat /etc/cron.d/recurring-payments
 docker logs cron --tail 100
+systemctl list-timers carbohydratepro-security-monitor.timer
 ```
 
-コンテナの`/var/log/cron.log`は標準出力へtailされるため、`docker logs cron`で確認できる。
+`/var/log/cron.log`はコンテナ標準出力へ転送される。メール過多なら、ホストcronの重複登録・旧`check_debug_log`・旧特権ログイン直送の有効化を確認する。未着なら最終集計時刻、監視停止表示、SMTP失敗、各送信フラグを確認する。日次の送信履歴は`SecurityReportDelivery`、速報は`SecurityAlertState`に残る。
 
-手動実行する場合、対象イベントがあれば実際にメールを送信する。
-送信先とSMTP設定を確認してから実行する。
-
-```bash
-docker-compose -f docker-compose-dev.yml exec -T cron \
-  python manage.py check_security_log --hours 24
-```
-
-## トラブルシューティング
-
-### メールが多い
-
-1. `/etc/cron.d/recurring-payments`が1日1回になっているか確認する。
-2. ホスト側cronに`check_security_log`や`check_debug_log`が重複していないか確認する。
-3. `SEND_INSTANT_SECURITY_EMAIL`が意図せず有効になっていないか確認する。
-4. 同じcronコンテナが複数起動していないか確認する。
-5. `SecurityReportDelivery`に当日の`sent`履歴が1件だけ記録されているか確認する。
-
-メール本文に「このメールは1分ごとに自動送信されています」とある場合は、
-日次集約へ切り替える前の旧`check_security_log`が送信元である。現行コマンドの件名は
-`【日次セキュリティレポート】`であり、本文に毎分送信の記載はない。
-
-### メールが届かない
-
-1. cronコンテナが稼働しているか確認する。
-2. `docker logs cron --tail 100`で実行結果を確認する。
-3. `SEND_PERIODIC_SECURITY_EMAIL`が有効か確認する。
-4. `SECURITY_ALERT_EMAIL`とSMTP設定を確認する。
-5. 対象期間にセキュリティイベントまたはERROR／CRITICALが存在するか確認する。
-
-### ログが記録されない
-
-1. gunicornコンテナが正常に稼働しているか確認する。
-2. `project/settings/base.py`の`LOGGING`設定を確認する。
-3. コンテナから`security.log`と`django_debug.log`へ書き込めるか確認する。
-
-## 関連実装
-
-- cron設定: `crontab`
-- 日次コマンド: `auth_app/management/commands/check_security_log.py`
-- ログ分類: `auth_app/log_monitoring.py`
-- 設定: `project/settings/base.py`
-- テスト: `auth_app/tests/test_log_monitoring_commands.py`
+検証はDjangoのlocmemメールバックエンドと合成ログを使い、実メールの試験送信や不審ファイルの実行は行わない。

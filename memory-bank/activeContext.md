@@ -2,6 +2,8 @@
 
 ## 現在の作業
 
+2026-11-04、ユーザーの本番適用承認を受け、監視変更8897613をコミット・origin/mainへpushし、AL2023本番へ反映。既存のメモ機能差分は除外して保持。リリース内容だけの隔離コピーでDjango577件、ホスト監視5件成功。GitHub Secret checks・TypeScript・Djangoは成功、Playwrightはブラウザ導入ステップで失敗（ローカルの管理グラフPC/390px E2Eは成功済み）。DB/envを非公開バックアップ後、メンテナンス中にauth_app0008、静的ファイル、cron新イメージを適用。root所有のホスト監視を導入し、明示的な14パス・既存管理用SSHとAWSブラウザSSH接続元を監視基準に設定。速報2分/同種60分抑制・日次6時JSTを有効化。exportはcronだけroマウント。メンテナンス解除、公開login/家計簿・予定デモ200、グラフJS/Chart.js配信ハッシュ一致、管理グラフ30日テンプレート正常、systemd/cronの自動収集を確認。重大速報送信履歴なし、初期収集は探索・CSRF拒否・許可範囲SSHのみ。Lightsailファイアウォールは前後一致（新規開放なし）、DB/NginxコンテナID維持。手動テストメールや本番の機能書込試験なし。秘密設定・バックアップ・証跡は非公開領域、ローカル証跡workspace/security-deploy-20261104/。
+
 2026-11-03、セキュリティ通知の整理と管理グラフを実装（開発環境のみ）。2分周期で重要イベントを集約し同種60分抑制、通常の拒否/単発ERROR等は毎朝6時の日次。分類済みイベントを90日保持、スーパーユーザー管理パネルに30日グラフ・表・最終収集状態を追加。root所有のホスト監視スクリプト/systemdも準備し、SSH許可範囲外ログイン、失敗集中、指定ファイル変更、upload内の実行形式、新規待受ポートを検出。ポートスキャン/全マルウェアの網羅検出・外形監視は未実装。本番読取では7014ca0、日次のみ有効・速報/ホスト監視は未導入。Django全593件成功、最終の通知件数補正後も通知20件成功、ホスト5件、npm run check、管理グラフのPC/390px E2E成功。前回11/1の既存日付依存3失敗は変更前HEADでも再現、11/3には発生せず（未修正）。開発DB auth_app0008・collectstatic・メールなし集計・Gunicorn HUP反映済み。本番の設定変更や実メール送信なし。未コミット・未push・本番未反映。既存メモ機能の差分は保持。仕様/導入手順はdocs/operations/security-monitoring.md、非公開証跡はworkspace/security-monitoring-20261101/。
 
 2026-10-27、Django CI失敗を調査。974444fの追跡ファイルだけの一時checkout・隔離PostgreSQL16で、static_rootなしでは561件中161件が静的ファイル欠落のValueError、collectstatic後は同じ561件が全成功と再現。ManifestStaticFilesStorageLaxがDEBUGでもハッシュURLを強制し、CIにcollectstaticがなかったことが再現原因。CIのDjangoテスト直前に収集処理を追加し、誤解を招くstorageコメントとテスト知識を訂正した。ユーザー承認後、修正ee84360をorigin/mainへpush。GitHub Actions 40493685282でcollectstatic・Django tests・E2E DB準備が成功し、Secret checks 40493685091も成功。Djangoテスト失敗の解消をGitHub上で確認できた。後続E2Eは実行中で最終結果は未確認。本番変更なし。調査ログはGit管理外のworkspace/ci-django-investigation-20261027/。

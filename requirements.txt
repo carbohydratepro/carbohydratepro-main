@@ -5,7 +5,7 @@ psycopg2
 django-cors-headers
 python-dateutil
 requests
-urllib3==2.7.0
+urllib3==2.8.0
 factory-boy
 icalendar
 recurring-ical-events

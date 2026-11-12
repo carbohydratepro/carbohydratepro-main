@@ -12,6 +12,7 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.contrib.admin.sites import AdminSite
 from django.contrib.sitemaps.views import sitemap
 from auth_app.sitemaps import PublicPagesSitemap
+from app.media_views import protected_media
 from app.task.views import calendar_feed
 import os
 
@@ -76,10 +77,10 @@ urlpatterns = [
     path('offline/', TemplateView.as_view(template_name='offline.html'), name='offline'),
     # ICSカレンダー配信（トークン認証のためログイン不要）
     path('calendar/<uuid:token>.ics', calendar_feed, name='calendar_feed'),
+    path('media/<path:file_path>', protected_media, name='protected_media'),
     path('carbohydratepro/', include('app.urls')),
     path('', include('auth_app.urls')),
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

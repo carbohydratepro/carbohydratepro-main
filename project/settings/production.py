@@ -12,6 +12,9 @@ CSRF_TRUSTED_ORIGINS = [f'{SITE_PROTOCOL}://{SITE_DOMAIN}']
 
 # CloudFront / ロードバランサー経由の HTTPS を Django に伝える
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 # 本番環境では管理サイトをデフォルト無効化
 ADMIN_ENABLED = env.bool('ADMIN_ENABLED', default=False)  # noqa: F405

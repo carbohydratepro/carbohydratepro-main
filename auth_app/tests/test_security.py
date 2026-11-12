@@ -84,6 +84,15 @@ class LoginLockoutTest(TestCase):
         """存在しないメールアドレスはロック対象外であること"""
         self.assertFalse(services.is_login_locked('nonexistent@example.com'))
 
+    def test_failures_from_one_ip_do_not_lock_other_ips(self) -> None:
+        self._create_failures(5)
+        factory = RequestFactory()
+        attacker = factory.get('/', REMOTE_ADDR='203.0.113.10')
+        legitimate_user = factory.get('/', REMOTE_ADDR='203.0.113.11')
+
+        self.assertTrue(services.is_login_locked(self.user.email, attacker))
+        self.assertFalse(services.is_login_locked(self.user.email, legitimate_user))
+
     def test_login_rejected_while_locked_even_with_correct_password(self) -> None:
         """ロック中は正しいパスワードでもログインできないこと"""
         for _ in range(5):

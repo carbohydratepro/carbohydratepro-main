@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
 
-from .models import Task
+from django.core.exceptions import ValidationError
+
+from .models import MAX_REPEAT_COUNT, MAX_REPEAT_INTERVAL, Task
 
 
 def create_recurring_tasks(parent_task: Task) -> None:
@@ -18,6 +21,8 @@ def create_recurring_tasks(parent_task: Task) -> None:
 
     if not count or count <= 0:
         return
+    if interval > MAX_REPEAT_INTERVAL or count > MAX_REPEAT_COUNT:
+        raise ValidationError('繰り返し間隔または回数が上限を超えています。')
 
     current_start = parent_task.start_date
     current_end = parent_task.end_date
@@ -181,64 +186,139 @@ def normalize_external_calendar_url(url: str) -> str:
 
     webcal:// は https:// に変換する。http/https 以外は拒否する。
     """
-    from urllib.parse import urlparse
+    from urllib.parse import urlsplit
 
     url = url.strip()
     if url.lower().startswith('webcal://'):
         url = 'https://' + url[len('webcal://'):]
-    parsed = urlparse(url)
+    parsed = urlsplit(url)
     if parsed.scheme not in ('http', 'https') or not parsed.hostname:
         raise ValueError('http または https のURLを指定してください。')
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError('認証情報を含むURLは指定できません。')
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError('ポート番号が不正です。') from exc
+    expected_port = 443 if parsed.scheme == 'https' else 80
+    if port is not None and port != expected_port:
+        raise ValueError('標準ポート以外のURLは指定できません。')
     return url
 
 
-def _assert_public_host(hostname: str) -> None:
-    """SSRF対策: ホストがグローバルIPに解決されることを確認する。
+def _resolve_public_ip(hostname: str, port: int) -> str:
+    """ホストを検証し、接続に固定するグローバルIPを返す。
 
     プライベート/ループバック/リンクローカル/予約済みIP（AWSメタデータ等）
-    へのアクセスを拒否する。
+    へのアクセスを拒否する。検証後の再名前解決を避けるため、呼び出し元は
+    戻り値のIPへ直接接続する。
     """
     import ipaddress
     import socket
 
     try:
-        infos = socket.getaddrinfo(hostname, None)
-    except socket.gaierror:
-        raise ValueError('ホスト名を解決できませんでした。')
+        infos = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
+    except socket.gaierror as exc:
+        raise ValueError('ホスト名を解決できませんでした。') from exc
+    addresses: list[str] = []
     for info in infos:
-        ip = ipaddress.ip_address(info[4][0])
+        address = info[4][0]
+        ip = ipaddress.ip_address(address)
         if not ip.is_global:
             raise ValueError('このURLへのアクセスは許可されていません。')
+        if address not in addresses:
+            addresses.append(address)
+    if not addresses:
+        raise ValueError('ホスト名を解決できませんでした。')
+    return addresses[0]
+
+
+def _assert_public_host(hostname: str) -> None:
+    """URL入力時の事前検証用ラッパー。"""
+    _resolve_public_ip(hostname, 443)
+
+
+def _request_pinned_url(url: str, pinned_ip: str) -> tuple[int, Mapping[str, str], bytes]:
+    """検証済みIPへ直接接続して、応答をサイズ制限付きで取得する。"""
+    from urllib.parse import urlsplit, urlunsplit
+
+    import requests
+    import urllib3
+
+    parsed = urlsplit(url)
+    hostname = parsed.hostname or ''
+    port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+    timeout = urllib3.Timeout(
+        connect=EXTERNAL_FETCH_TIMEOUT_SECONDS,
+        read=EXTERNAL_FETCH_TIMEOUT_SECONDS,
+    )
+    if parsed.scheme == 'https':
+        pool = urllib3.HTTPSConnectionPool(
+            pinned_ip,
+            port=port,
+            timeout=timeout,
+            maxsize=1,
+            block=True,
+            cert_reqs='CERT_REQUIRED',
+            ca_certs=requests.certs.where(),
+            assert_hostname=hostname,
+            server_hostname=hostname,
+        )
+    else:
+        pool = urllib3.HTTPConnectionPool(
+            pinned_ip,
+            port=port,
+            timeout=timeout,
+            maxsize=1,
+            block=True,
+        )
+
+    response = None
+    try:
+        request_target = urlunsplit(('', '', parsed.path or '/', parsed.query, ''))
+        response = pool.urlopen(
+            'GET',
+            request_target,
+            headers={
+                'Host': parsed.netloc,
+                'User-Agent': 'carbohydratepro-calendar-sync/1.0',
+                'Accept-Encoding': 'identity',
+            },
+            redirect=False,
+            retries=False,
+            preload_content=False,
+        )
+        content = b''
+        if response.status not in (301, 302, 303, 307, 308):
+            for chunk in response.stream(64 * 1024):
+                content += chunk
+                if len(content) > EXTERNAL_MAX_ICS_BYTES:
+                    raise ValueError('ICSファイルが大きすぎます（5MB上限）。')
+        return response.status, response.headers, content
+    finally:
+        if response is not None:
+            response.close()
+        pool.close()
 
 
 def fetch_external_ics(url: str) -> bytes:
     """外部カレンダーのICSを取得する（リダイレクトごとにURLを再検証）。"""
-    from urllib.parse import urljoin, urlparse
-
-    import requests
+    from urllib.parse import urljoin, urlsplit
 
     for _ in range(EXTERNAL_MAX_REDIRECTS + 1):
         url = normalize_external_calendar_url(url)
-        _assert_public_host(urlparse(url).hostname or '')
-        response = requests.get(
-            url,
-            timeout=EXTERNAL_FETCH_TIMEOUT_SECONDS,
-            allow_redirects=False,
-            stream=True,
-            headers={'User-Agent': 'carbohydratepro-calendar-sync/1.0'},
-        )
-        if response.is_redirect or response.is_permanent_redirect:
-            location = response.headers.get('Location')
+        parsed = urlsplit(url)
+        port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+        pinned_ip = _resolve_public_ip(parsed.hostname or '', port)
+        status, headers, content = _request_pinned_url(url, pinned_ip)
+        if status in (301, 302, 303, 307, 308):
+            location = headers.get('Location')
             if not location:
                 raise ValueError('不正なリダイレクト応答を受信しました。')
             url = urljoin(url, location)
             continue
-        response.raise_for_status()
-        content = b''
-        for chunk in response.iter_content(chunk_size=64 * 1024):
-            content += chunk
-            if len(content) > EXTERNAL_MAX_ICS_BYTES:
-                raise ValueError('ICSファイルが大きすぎます（5MB上限）。')
+        if status < 200 or status >= 300:
+            raise ValueError(f'カレンダーの取得に失敗しました（HTTP {status}）。')
         return content
     raise ValueError('リダイレクトが多すぎます。')
 

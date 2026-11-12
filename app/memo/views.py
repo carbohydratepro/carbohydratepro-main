@@ -138,13 +138,7 @@ def memo_settings(request: HttpRequest) -> HttpResponse:
         # 編集
         if 'edit_memo_type' in request.POST:
             memo_type_id = request.POST.get('memo_type_id')
-            memo_type = get_object_or_404(MemoType, id=memo_type_id)
-            if memo_type.user and memo_type.user != request.user:
-                messages.error(request, '編集権限がありません。')
-                return redirect('memo_settings')
-            if not memo_type.user and memo_type.name == 'その他':
-                messages.error(request, '「その他」は変更できません。')
-                return redirect('memo_settings')
+            memo_type = get_object_or_404(MemoType, id=memo_type_id, user=request.user)
             form = MemoTypeForm(request.POST, instance=memo_type)
             if form.is_valid():
                 form.save()
@@ -155,13 +149,7 @@ def memo_settings(request: HttpRequest) -> HttpResponse:
         # 削除
         if 'delete_memo_type' in request.POST:
             memo_type_id = request.POST.get('memo_type_id')
-            memo_type = get_object_or_404(MemoType, id=memo_type_id)
-            if memo_type.user and memo_type.user != request.user:
-                messages.error(request, '削除権限がありません。')
-                return redirect('memo_settings')
-            if not memo_type.user and memo_type.name == 'その他':
-                messages.error(request, '「その他」は削除できません。')
-                return redirect('memo_settings')
+            memo_type = get_object_or_404(MemoType, id=memo_type_id, user=request.user)
             if memo_type.memos.exists():
                 messages.error(request, 'この種別を利用しているメモがあるため削除できません。')
             else:

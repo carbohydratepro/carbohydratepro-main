@@ -94,6 +94,28 @@ class AccountSwitchViewTest(TestCase):
         self.assertTrue(response.url.startswith(reverse('login')))
         self.assertEqual(int(self.client.session['_auth_user_id']), self.user.pk)
 
+    def test_password_change_revokes_passwordless_switch(self) -> None:
+        response = self.client.post(
+            reverse('account_add'),
+            {
+                'form_type': 'existing',
+                'existing-email': self.other_user.email,
+                'existing-password': self.password,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.client.post(reverse('account_switch', kwargs={'pk': self.user.pk}))
+
+        self.other_user.set_password('new-password-456')
+        self.other_user.save(update_fields=['password'])
+        response = self.client.post(
+            reverse('account_switch', kwargs={'pk': self.other_user.pk}),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith(reverse('login')))
+        self.assertEqual(int(self.client.session['_auth_user_id']), self.user.pk)
+
     def test_unverified_account_cannot_be_added(self) -> None:
         self.other_user.is_email_verified = False
         self.other_user.save(update_fields=['is_email_verified'])
@@ -206,6 +228,10 @@ class AccountSwitchViewTest(TestCase):
             self.other_user.pk,
             self.third_user.pk,
         ]
+        session[services.ACCOUNT_ACTIVE_USER_HASHES_SESSION_KEY] = {
+            str(user.pk): user.get_session_auth_hash()
+            for user in (self.user, self.other_user, self.third_user)
+        }
         session.save()
 
         response = self.client.post(reverse('logout'))

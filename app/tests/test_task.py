@@ -3,6 +3,7 @@
 """
 from datetime import timedelta
 
+from django.core.exceptions import ValidationError
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
@@ -269,6 +270,22 @@ class TaskFormTest(TestCase):
             }
         )
         self.assertFalse(form.is_valid())
+
+    def test_recurring_form_rejects_excessive_repeat_count(self) -> None:
+        form = TaskForm(
+            user=self.user,
+            data={
+                'title': '過剰な繰り返し',
+                'frequency': 'daily',
+                'repeat_interval': 1,
+                'repeat_count': 1000000,
+                'priority': 'medium',
+                'status': 'not_started',
+            },
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('repeat_count', form.errors)
 
     def test_form_start_date_without_time_invalid(self) -> None:
         """終日でない場合に開始日のみで開始時刻なしが無効であることをテスト"""
@@ -622,6 +639,22 @@ class RecurringTaskTest(TestCase):
         # 子タスクが生成されないことを確認
         child_tasks = Task.objects.filter(parent_task=parent_task)
         self.assertEqual(child_tasks.count(), 0)
+
+    def test_service_rejects_excessive_repeat_count(self) -> None:
+        from app.task.services import create_recurring_tasks
+
+        parent_task = Task.objects.create(
+            user=self.user,
+            title='過剰な繰り返し',
+            frequency='daily',
+            repeat_interval=1,
+            repeat_count=1000000,
+            start_date=timezone.now(),
+        )
+
+        with self.assertRaises(ValidationError):
+            create_recurring_tasks(parent_task)
+        self.assertFalse(Task.objects.filter(parent_task=parent_task).exists())
 
     def test_delete_parent_task_deletes_children(self) -> None:
         """親タスク削除時に子タスクもカスケード削除されるテスト"""

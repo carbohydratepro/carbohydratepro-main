@@ -49,7 +49,7 @@
                 </thead>
                 <tbody>
                     {% for memo_type in memo_types %}
-                    {% if memo_type.name == 'その他' %}
+                    {% if not memo_type.user %}
                     <tr>
                         <td>
                             <span class="badge p-2" style="background-color: {{ memo_type.color }}; color: #fff;">{{ memo_type.color }}</span>
@@ -84,7 +84,7 @@
                     </tr>
                     {% endif %}
 
-                    {% if memo_type.name != 'その他' %}
+                    {% if memo_type.user %}
                     <!-- 編集モーダル -->
                     <div class="modal fade" id="editMemoTypeModal{{ memo_type.id|unlocalize }}" tabindex="-1" role="dialog" aria-labelledby="editMemoTypeModalLabel{{ memo_type.id|unlocalize }}" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">

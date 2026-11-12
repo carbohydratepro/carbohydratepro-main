@@ -2,6 +2,11 @@ import uuid
 
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
+
+
+MAX_REPEAT_INTERVAL = 99
+MAX_REPEAT_COUNT = 999
 
 
 class TaskLabel(models.Model):
@@ -52,8 +57,15 @@ class Task(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tasks')
     title = models.CharField(max_length=200, verbose_name="タイトル")
     frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, blank=True, default='', verbose_name="頻度")
-    repeat_interval = models.IntegerField(default=1, verbose_name="繰り返し間隔")  # 例: 2なら「2週ごと」
-    repeat_count = models.IntegerField(blank=True, null=True, verbose_name="繰り返し回数")  # 何回繰り返すか（Noneなら無制限）
+    repeat_interval = models.IntegerField(
+        default=1,
+        verbose_name="繰り返し間隔",
+    )  # 例: 2なら「2週ごと」
+    repeat_count = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name="繰り返し回数",
+    )
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium', verbose_name="優先度")
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='not_started', verbose_name="ステータス")
     label = models.ForeignKey('TaskLabel', on_delete=models.SET_NULL, blank=True, null=True, related_name='tasks', verbose_name="ラベル")
@@ -66,6 +78,20 @@ class Task(models.Model):
 
     def __str__(self) -> str:
         return f"{self.title} - {self.get_status_display()}"
+
+    def clean(self) -> None:
+        super().clean()
+        errors: dict[str, str] = {}
+        if self.repeat_interval is not None and (
+            self.repeat_interval < 1 or self.repeat_interval > MAX_REPEAT_INTERVAL
+        ):
+            errors['repeat_interval'] = '繰り返し間隔は1から99の範囲で指定してください。'
+        if self.repeat_count is not None and (
+            self.repeat_count < 1 or self.repeat_count > MAX_REPEAT_COUNT
+        ):
+            errors['repeat_count'] = '繰り返し回数は1から999の範囲で指定してください。'
+        if errors:
+            raise ValidationError(errors)
 
     class Meta:
         ordering = ['-created_date']

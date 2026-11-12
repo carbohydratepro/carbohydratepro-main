@@ -58,6 +58,20 @@ function truncateText(text: string, maxLength: number): string {
     return text.length <= maxLength ? text : text.substring(0, maxLength) + '...';
 }
 
+function escapeTaskHtml(text: string): string {
+    return text.replace(/[&<>"']/g, character => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    })[character]!);
+}
+
+function safeColor(color: string | undefined, fallback: string): string {
+    return color && /^#[0-9a-fA-F]{6}$/.test(color) ? color : fallback;
+}
+
 // カレンダーセルのクリックイベント処理
 function setupCalendarClickEvents(): void {
     document.querySelectorAll<HTMLElement>('.task-calendar-cell[data-day]').forEach(cell => {
@@ -126,15 +140,15 @@ function showDayTasksModal(year: string, month: string, day: string, monthLabel:
                 modalBody.innerHTML = data.tasks.map(task => {
                     // 外部カレンダーのイベントは読み取り専用（編集・削除不可）のカードで表示する
                     if (task.is_external) {
-                        const calendarColor = task.calendar?.color ?? '#6c8ebf';
+                        const calendarColor = safeColor(task.calendar?.color, '#6c8ebf');
                         const calendarName = task.calendar?.name ?? '外部カレンダー';
                         return `
                             <div class="card task-card-mini mb-2" style="border-left: 4px solid ${calendarColor};">
                                 <div class="card-body">
-                                    <h6 class="mb-1">${truncateText(task.title, 30)}</h6>
-                                    ${task.due_date ? `<p class="small text-muted mb-2"><i class="far fa-clock"></i> ${task.due_date}</p>` : ''}
+                                    <h6 class="mb-1">${escapeTaskHtml(truncateText(task.title, 30))}</h6>
+                                    ${task.due_date ? `<p class="small text-muted mb-2"><i class="far fa-clock"></i> ${escapeTaskHtml(task.due_date)}</p>` : ''}
                                     <span class="badge" style="background-color: ${calendarColor}; color: white;">
-                                        <i class="far fa-calendar"></i> ${truncateText(calendarName, 20)}
+                                        <i class="far fa-calendar"></i> ${escapeTaskHtml(truncateText(calendarName, 20))}
                                     </span>
                                 </div>
                             </div>
@@ -144,10 +158,11 @@ function showDayTasksModal(year: string, month: string, day: string, monthLabel:
                                        task.status === 'in_progress' ? 'badge-info' : 'badge-secondary';
                     const priorityBadge = task.priority === 'high' ? 'badge-danger' :
                                          task.priority === 'medium' ? 'badge-warning' : 'badge-secondary';
-                    const borderStyle = task.label ? `style="border-left: 4px solid ${task.label.color};"` : '';
+                    const labelColor = safeColor(task.label?.color, '#6c757d');
+                    const borderStyle = task.label ? `style="border-left: 4px solid ${labelColor};"` : '';
                     const labelHtml = task.label ?
-                        `<span class="badge mr-1" style="background-color: ${task.label.color}; color: white;">
-                            <i class="fas fa-tag"></i> ${task.label.name}
+                        `<span class="badge mr-1" style="background-color: ${labelColor}; color: white;">
+                            <i class="fas fa-tag"></i> ${escapeTaskHtml(task.label.name)}
                         </span>` : '';
 
                     return `
@@ -157,13 +172,13 @@ function showDayTasksModal(year: string, month: string, day: string, monthLabel:
                              ${borderStyle}>
                             <div class="lp-delete-overlay"><i class="fas fa-trash-alt"></i> 削除</div>
                             <div class="card-body">
-                                <h6 class="mb-1">${truncateText(task.title, 30)}</h6>
-                                ${task.due_date ? `<p class="small text-muted mb-2"><i class="far fa-clock"></i> ${task.due_date}</p>` : ''}
-                                ${task.description ? `<p class="small text-muted mb-2">${task.description}</p>` : ''}
+                                <h6 class="mb-1">${escapeTaskHtml(truncateText(task.title, 30))}</h6>
+                                ${task.due_date ? `<p class="small text-muted mb-2"><i class="far fa-clock"></i> ${escapeTaskHtml(task.due_date)}</p>` : ''}
+                                ${task.description ? `<p class="small text-muted mb-2">${escapeTaskHtml(task.description)}</p>` : ''}
                                 <div class="d-flex flex-wrap gap-1">
                                     ${labelHtml}
-                                    <span class="badge ${priorityBadge} mr-1">${task.priority_display}</span>
-                                    <span class="badge ${statusBadge}">${task.status_display}</span>
+                                    <span class="badge ${priorityBadge} mr-1">${escapeTaskHtml(task.priority_display)}</span>
+                                    <span class="badge ${statusBadge}">${escapeTaskHtml(task.status_display)}</span>
                                 </div>
                             </div>
                         </div>
@@ -287,7 +302,11 @@ function displayTaskFormErrors(form: HTMLFormElement, errors: Record<string, str
         if (modalBody) {
             const alertDiv = document.createElement('div');
             alertDiv.className = 'alert alert-danger dynamic-form-error';
-            alertDiv.innerHTML = nonFieldErrors.map(e => `<div>${e}</div>`).join('');
+            nonFieldErrors.forEach(message => {
+                const messageDiv = document.createElement('div');
+                messageDiv.textContent = message;
+                alertDiv.appendChild(messageDiv);
+            });
             modalBody.prepend(alertDiv);
         }
     }

@@ -344,6 +344,36 @@ class MemoViewTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(MemoType.objects.filter(id=type_to_delete.id).exists())
 
+    def test_memo_settings_cannot_edit_or_delete_global_type(self) -> None:
+        global_type = MemoType.objects.create(user=None, name='共通種別')
+
+        edit_response = self.client.post(reverse('memo_settings'), {
+            'memo_type_id': global_type.id,
+            'edit_memo_type': '',
+            'name': '改ざん',
+            'color': '#FF0000',
+        })
+        delete_response = self.client.post(reverse('memo_settings'), {
+            'memo_type_id': global_type.id,
+            'delete_memo_type': '',
+        })
+
+        self.assertEqual(edit_response.status_code, 404)
+        self.assertEqual(delete_response.status_code, 404)
+        global_type.refresh_from_db()
+        self.assertEqual(global_type.name, '共通種別')
+
+    def test_memo_settings_cannot_edit_other_users_type(self) -> None:
+        other_type = MemoTypeFactory(user=UserFactory())
+        response = self.client.post(reverse('memo_settings'), {
+            'memo_type_id': other_type.id,
+            'edit_memo_type': '',
+            'name': '改ざん',
+            'color': '#FF0000',
+        })
+
+        self.assertEqual(response.status_code, 404)
+
 
 class MemoAjaxViewTest(TestCase):
     """メモAJAXビューのテスト"""

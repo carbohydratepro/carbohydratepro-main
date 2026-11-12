@@ -12,6 +12,7 @@ from django.core.mail import send_mail
 from django.db import close_old_connections, transaction
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.crypto import constant_time_compare
 
 from app.models import Category, PaymentMethod
 from .models import (
@@ -30,6 +31,7 @@ security_logger = logging.getLogger('security')
 
 ACCOUNT_GROUP_SESSION_KEY = 'account_group_id'
 ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY = 'account_active_user_ids'
+ACCOUNT_ACTIVE_USER_HASHES_SESSION_KEY = 'account_active_user_hashes'
 
 LOCAL_IP_ADDRESSES = frozenset({'127.0.0.1', 'localhost', '::1'})
 
@@ -96,7 +98,7 @@ def schedule_location_resolution(history: LoginHistory) -> None:
     thread.start()
 
 
-def is_login_locked(email: str | None) -> bool:
+def is_login_locked(email: str | None, request: HttpRequest | None = None) -> bool:
     """直近のログイン失敗が上限に達し、一時ロック中のアカウントかを判定する。
 
     直近 LOGIN_LOCKOUT_WINDOW_MINUTES 分間で、最後の成功より後の失敗が
@@ -108,7 +110,7 @@ def is_login_locked(email: str | None) -> bool:
         return False
 
     User = get_user_model()
-    user = User.objects.filter(email=email).first()
+    user = User.objects.filter(email__iexact=email).first()
     if user is None:
         return False
 
@@ -117,6 +119,8 @@ def is_login_locked(email: str | None) -> bool:
     window_start = timezone.now() - timedelta(minutes=window_minutes)
 
     recent_histories = user.login_histories.filter(login_time__gte=window_start)
+    if request is not None:
+        recent_histories = recent_histories.filter(ip_address=get_client_ip(request))
     last_success_time = (
         recent_histories.filter(success=True)
         .order_by('-login_time')
@@ -243,6 +247,15 @@ def activate_authenticated_account(
     request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = [
         user_id for user_id in related_user_ids if user_id in active_user_ids
     ]
+    hashes = request.session.get(ACCOUNT_ACTIVE_USER_HASHES_SESSION_KEY, {})
+    if not isinstance(hashes, dict):
+        hashes = {}
+    hashes[str(user.pk)] = user.get_session_auth_hash()
+    request.session[ACCOUNT_ACTIVE_USER_HASHES_SESSION_KEY] = {
+        str(user_id): hashes[str(user_id)]
+        for user_id in request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY]
+        if str(user_id) in hashes
+    }
 
 
 def remember_authenticated_account(request: HttpRequest, user: AbstractBaseUser) -> AccountGroup:
@@ -257,20 +270,30 @@ def restore_account_session(
     request: HttpRequest,
     group: AccountGroup,
     active_user_ids: list[int],
+    active_user_hashes: dict[str, str] | None = None,
     authenticated_user: AbstractBaseUser | None = None,
 ) -> None:
     """Djangoログイン後にアカウント切替用セッション情報を復元する。"""
     remember_account_group(request, group)
     normalized_user_ids = {int(user_id) for user_id in active_user_ids}
+    candidate_hashes = active_user_hashes or {}
+    restored_ids: list[int] = []
+    restored_hashes: dict[str, str] = {}
+    for membership in get_related_memberships(group):
+        user = membership.user
+        saved_hash = candidate_hashes.get(str(user.pk))
+        if user.pk in normalized_user_ids and saved_hash and constant_time_compare(
+            saved_hash,
+            user.get_session_auth_hash(),
+        ):
+            restored_ids.append(user.pk)
+            restored_hashes[str(user.pk)] = saved_hash
     if authenticated_user is not None:
-        normalized_user_ids.add(authenticated_user.pk)
-
-    verified_user_ids = [
-        membership.user_id for membership in get_related_memberships(group)
-    ]
-    request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = [
-        user_id for user_id in verified_user_ids if user_id in normalized_user_ids
-    ]
+        if authenticated_user.pk not in restored_ids:
+            restored_ids.append(authenticated_user.pk)
+        restored_hashes[str(authenticated_user.pk)] = authenticated_user.get_session_auth_hash()
+    request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = restored_ids
+    request.session[ACCOUNT_ACTIVE_USER_HASHES_SESSION_KEY] = restored_hashes
 
 
 def get_session_account_group(request: HttpRequest) -> AccountGroup | None:
@@ -294,7 +317,24 @@ def get_active_account_user_ids(request: HttpRequest, group: AccountGroup) -> li
         else:
             request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = []
         raw_user_ids = request.session.get(ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY, [])
-    return [int(user_id) for user_id in raw_user_ids]
+    hashes = request.session.get(ACCOUNT_ACTIVE_USER_HASHES_SESSION_KEY, {})
+    if not isinstance(hashes, dict):
+        hashes = {}
+    memberships = {item.user_id: item for item in get_related_memberships(group)}
+    active_user_ids: list[int] = []
+    active_hashes: dict[str, str] = {}
+    for raw_user_id in raw_user_ids:
+        user_id = int(raw_user_id)
+        membership = memberships.get(user_id)
+        saved_hash = hashes.get(str(user_id))
+        if membership is None or not saved_hash:
+            continue
+        if constant_time_compare(saved_hash, membership.user.get_session_auth_hash()):
+            active_user_ids.append(user_id)
+            active_hashes[str(user_id)] = saved_hash
+    request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = active_user_ids
+    request.session[ACCOUNT_ACTIVE_USER_HASHES_SESSION_KEY] = active_hashes
+    return active_user_ids
 
 
 def reserve_password_reset_email(user: AbstractBaseUser) -> bool:
@@ -372,6 +412,10 @@ def deactivate_current_account(request: HttpRequest, user: AbstractBaseUser) -> 
     active_user_ids = get_active_account_user_ids(request, group)
     active_user_ids = [user_id for user_id in active_user_ids if user_id != user.pk]
     request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = active_user_ids
+    hashes = request.session.get(ACCOUNT_ACTIVE_USER_HASHES_SESSION_KEY, {})
+    if isinstance(hashes, dict):
+        hashes.pop(str(user.pk), None)
+        request.session[ACCOUNT_ACTIVE_USER_HASHES_SESSION_KEY] = hashes
     return [
         membership for membership in get_related_memberships(group)
         if membership.user_id in active_user_ids
@@ -416,6 +460,10 @@ def remove_account_from_group(
         request.session[ACCOUNT_ACTIVE_USER_IDS_SESSION_KEY] = [
             user_id for user_id in active_user_ids if user_id != target_user.pk
         ]
+        hashes = request.session.get(ACCOUNT_ACTIVE_USER_HASHES_SESSION_KEY, {})
+        if isinstance(hashes, dict):
+            hashes.pop(str(target_user.pk), None)
+            request.session[ACCOUNT_ACTIVE_USER_HASHES_SESSION_KEY] = hashes
     return removed
 
 

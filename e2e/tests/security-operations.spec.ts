@@ -31,6 +31,52 @@ test.describe("セキュリティ・運用軽量検査", () => {
     await deleteFirstItemContaining(page, "/carbohydratepro/memos/", title);
   });
 
+  test("E2E-SEC-003 外部カレンダー文字列がタスクモーダルで実行されない", async ({ page }) => {
+    // Spec: docs/e2e/release-test-spec.md#security-and-access-control
+    const now = new Date();
+    const year = String(now.getFullYear());
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const payload = `<img src=x onerror="window.__E2E_TASK_XSS__=true">`;
+    await page.route(`**/carbohydratepro/tasks/day/${year}-${month}-${day}/`, async route => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          tasks: [{
+            id: 1,
+            title: payload,
+            status: "",
+            priority: "",
+            status_display: "",
+            priority_display: "",
+            due_date: null,
+            description: null,
+            label: null,
+            is_external: true,
+            calendar: { name: payload, color: `red; background-image: url(javascript:alert(1))` },
+          }],
+        }),
+      });
+    });
+    await page.goto("/carbohydratepro/tasks/");
+
+    await page.evaluate(({ year, month, day }) => {
+      const taskWindow = window as unknown as {
+        showDayTasksModal: (year: string, month: string, day: string, label: string) => void;
+      };
+      taskWindow.showDayTasksModal(year, month, day, month);
+    }, { year, month, day });
+
+    const modal = page.getByRole("dialog", { name: `${year}/${month}/${day}` });
+    await expect(modal).toContainText(`${payload.substring(0, 30)}...`);
+    await expect(modal.locator("img")).toHaveCount(0);
+    const executed = await page.evaluate(() => Boolean(
+      (window as unknown as { __E2E_TASK_XSS__?: boolean }).__E2E_TASK_XSS__,
+    ));
+    expect(executed).toBe(false);
+  });
+
   test("E2E-OPS-001 送信ボタン連打相当でも一覧表示と再読み込みが破綻しない", async ({ page }) => {
     // Spec: docs/e2e/release-test-spec.md#operations-and-data-integrity
     await page.goto("/carbohydratepro/expenses/?per_page=10");

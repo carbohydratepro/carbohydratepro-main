@@ -25,7 +25,7 @@ class LoginForm(AuthenticationForm):
 
     def clean(self) -> dict[str, object]:
         # ロック中は認証処理自体を行わない（正しいパスワードでも拒否する）
-        if services.is_login_locked(self.cleaned_data.get('username')):
+        if services.is_login_locked(self.cleaned_data.get('username'), self.request):
             raise forms.ValidationError(LOGIN_LOCKED_MESSAGE, code='locked')
         return super().clean()
 
@@ -56,8 +56,8 @@ class SignupForm(UserCreationForm):
         return username
 
     def clean_email(self) -> str:
-        email = self.cleaned_data.get('email')
-        if get_user_model().objects.filter(email=email).exists():
+        email = self.cleaned_data.get('email', '').strip()
+        if get_user_model().objects.filter(email__iexact=email).exists():
             raise forms.ValidationError(self.error_messages['duplicate_email'], code='duplicate_email')
         return email
 
@@ -66,6 +66,11 @@ class SignupForm(UserCreationForm):
 class UserUpdateForm(forms.ModelForm):
     username = forms.CharField(label="ユーザー名")
     email = forms.EmailField(label="メールアドレス")
+    current_password = forms.CharField(
+        label="現在のパスワード（メールアドレス変更時）",
+        widget=forms.PasswordInput,
+        required=False,
+    )
 
     class Meta:
         model = get_user_model()
@@ -73,11 +78,37 @@ class UserUpdateForm(forms.ModelForm):
 
     # bootstrap4対応
     def __init__(self, *args: object, **kwargs: object) -> None:
+        self.email_changed = False
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs['class'] = 'form-control-file' if field.widget.input_type == 'file' else 'form-control'
             if field.required:
                 field.widget.attrs['required'] = ''
+
+    def clean_email(self) -> str:
+        email = self.cleaned_data.get('email', '').strip()
+        duplicate = (
+            get_user_model().objects
+            .filter(email__iexact=email)
+            .exclude(pk=self.instance.pk)
+            .exists()
+        )
+        if duplicate:
+            raise forms.ValidationError('このメールアドレスは使われています。')
+        return email
+
+    def clean(self) -> dict[str, object]:
+        cleaned_data = super().clean()
+        if 'email' not in cleaned_data:
+            return cleaned_data
+        new_email = str(cleaned_data.get('email') or '')
+        old_email = str(self.instance.email or '')
+        self.email_changed = new_email.casefold() != old_email.casefold()
+        if self.email_changed:
+            password = cleaned_data.get('current_password')
+            if not password or not self.instance.check_password(str(password)):
+                self.add_error('current_password', '現在のパスワードが正しくありません。')
+        return cleaned_data
 
 
 class AccountLinkLoginForm(forms.Form):
@@ -100,7 +131,7 @@ class AccountLinkLoginForm(forms.Form):
         if not email or not password:
             return cleaned_data
 
-        if services.is_login_locked(email):
+        if services.is_login_locked(email, self.request):
             raise forms.ValidationError(LOGIN_LOCKED_MESSAGE, code='locked')
 
         user = authenticate(self.request, username=email, password=password)

@@ -72,10 +72,15 @@ class Login(LoginView):
     def form_valid(self, form):
         restore_group = None
         restore_active_user_ids = None
+        restore_active_user_hashes = None
         if self.request.GET.get('account_switch') == '1':
             restore_group = services.get_session_account_group(self.request)
             if restore_group is not None:
                 restore_active_user_ids = services.get_active_account_user_ids(self.request, restore_group)
+                restore_active_user_hashes = self.request.session.get(
+                    services.ACCOUNT_ACTIVE_USER_HASHES_SESSION_KEY,
+                    {},
+                ).copy()
 
         response = super().form_valid(form)
         if restore_group is not None and restore_active_user_ids is not None:
@@ -83,6 +88,7 @@ class Login(LoginView):
                 self.request,
                 restore_group,
                 restore_active_user_ids,
+                active_user_hashes=restore_active_user_hashes,
                 authenticated_user=form.get_user(),
             )
         return response
@@ -136,6 +142,13 @@ class Signup(generic.CreateView):
 
         # サインアップ後に自動的にログインせず、メール確認ページにリダイレクト
         return redirect('signup_done')
+
+    def form_invalid(self, form):
+        email_errors = form.errors.as_data().get('email', [])
+        if any(error.code in ('duplicate_email', 'unique') for error in email_errors):
+            # 既存アカウントの有無をHTTP応答から判別できないようにする。
+            return redirect('signup_done')
+        return super().form_invalid(form)
     
     # データ送信
     def get_context_data(self, **kwargs):
@@ -159,6 +172,24 @@ class Edit(OnlyYouMixin, generic.UpdateView):
 
     def get_success_url(self):
         return resolve_url('my_page', pk=self.kwargs['pk'])
+
+    def form_valid(self, form):
+        self.object = form.save(commit=False)
+        if form.email_changed:
+            from .models import EmailVerificationToken
+
+            self.object.is_email_verified = False
+            self.object.save()
+            form.save_m2m()
+            EmailVerificationToken.objects.filter(
+                user=self.object,
+                is_verified=False,
+            ).update(is_verified=True)
+            send_verification_email(self.object)
+            logout(self.request)
+            messages.info(self.request, '新しいメールアドレスへ確認メールを送信しました。')
+            return redirect('signup_done')
+        return super().form_valid(form)
 
     # contextデータ作成
     def get_context_data(self, **kwargs):
@@ -291,8 +322,18 @@ account_select = account_edit
 
 def _login_with_account_session(request, user, group, active_user_ids: list[int]) -> None:
     """Djangoログインでセッションが更新された後、アカウント切替状態を戻す。"""
+    active_user_hashes = request.session.get(
+        services.ACCOUNT_ACTIVE_USER_HASHES_SESSION_KEY,
+        {},
+    ).copy()
     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-    services.restore_account_session(request, group, active_user_ids, authenticated_user=user)
+    services.restore_account_session(
+        request,
+        group,
+        active_user_ids,
+        active_user_hashes=active_user_hashes,
+        authenticated_user=user,
+    )
 
 
 @login_required

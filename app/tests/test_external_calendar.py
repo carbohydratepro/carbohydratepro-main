@@ -59,6 +59,15 @@ class UrlValidationTest(TestCase):
             with self.assertRaises(ValueError):
                 services.normalize_external_calendar_url(bad_url)
 
+    def test_credentials_and_nonstandard_ports_are_rejected(self) -> None:
+        for bad_url in [
+            'https://user:password@example.com/cal.ics',
+            'https://example.com:8443/cal.ics',
+            'http://example.com:8080/cal.ics',
+        ]:
+            with self.assertRaises(ValueError):
+                services.normalize_external_calendar_url(bad_url)
+
     def test_private_hosts_are_rejected(self) -> None:
         """プライベート/ループバック/メタデータIPへのアクセスは拒否されること"""
         for host in ['127.0.0.1', '10.0.0.1', '192.168.1.1', '169.254.169.254', 'localhost']:
@@ -71,13 +80,55 @@ class UrlValidationTest(TestCase):
 
     def test_redirect_to_private_host_is_rejected(self) -> None:
         """リダイレクト先がプライベートIPの場合は拒否されること"""
-        redirect_response = MagicMock()
-        redirect_response.is_redirect = True
-        redirect_response.is_permanent_redirect = False
-        redirect_response.headers = {'Location': 'http://127.0.0.1/steal'}
-        with patch('requests.get', return_value=redirect_response):
+        with patch(
+            'app.task.services._request_pinned_url',
+            return_value=(302, {'Location': 'http://127.0.0.1/steal'}, b''),
+        ):
             with self.assertRaises(ValueError):
                 services.fetch_external_ics('https://93.184.216.34/cal.ics')
+
+    def test_fetch_connects_to_the_validated_ip(self) -> None:
+        with (
+            patch('app.task.services._resolve_public_ip', return_value='8.8.8.8') as resolve,
+            patch(
+                'app.task.services._request_pinned_url',
+                return_value=(200, {}, b'BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n'),
+            ) as request,
+        ):
+            content = services.fetch_external_ics('https://example.com/cal.ics')
+
+        self.assertIn(b'VCALENDAR', content)
+        resolve.assert_called_once_with('example.com', 443)
+        request.assert_called_once_with('https://example.com/cal.ics', '8.8.8.8')
+
+    def test_pinned_https_request_preserves_tls_hostname(self) -> None:
+        response = MagicMock(status=200, headers={})
+        response.stream.return_value = [b'BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n']
+        pool = MagicMock()
+        pool.urlopen.return_value = response
+
+        with patch('urllib3.HTTPSConnectionPool', return_value=pool) as pool_class:
+            status, _, content = services._request_pinned_url(
+                'https://example.com/cal.ics',
+                '8.8.8.8',
+            )
+
+        self.assertEqual(status, 200)
+        self.assertIn(b'VCALENDAR', content)
+        _, kwargs = pool_class.call_args
+        self.assertEqual(pool_class.call_args.args[0], '8.8.8.8')
+        self.assertEqual(kwargs['assert_hostname'], 'example.com')
+        self.assertEqual(kwargs['server_hostname'], 'example.com')
+        self.assertEqual(pool.urlopen.call_args.args[:2], ('GET', '/cal.ics'))
+
+    def test_mixed_public_and_private_dns_answers_are_rejected(self) -> None:
+        answers = [
+            (2, 1, 6, '', ('8.8.8.8', 443)),
+            (2, 1, 6, '', ('127.0.0.1', 443)),
+        ]
+        with patch('socket.getaddrinfo', return_value=answers):
+            with self.assertRaises(ValueError):
+                services._resolve_public_ip('example.com', 443)
 
 
 class SyncExternalCalendarTest(TestCase):

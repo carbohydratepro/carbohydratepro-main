@@ -242,7 +242,7 @@ class SignupViewTest(TestCase):
         self.assertContains(response, 'このユーザー名は使われています。')
 
     def test_signup_duplicate_email(self) -> None:
-        """メールアドレス重複時のテスト"""
+        """メールアドレス重複を応答から判別できないこと"""
         signup_data = {
             'username': 'anotheruser',
             'email': self.existing_user.email,
@@ -250,8 +250,11 @@ class SignupViewTest(TestCase):
             'password2': 'somepassword123',
         }
         response = self.client.post(reverse('signup'), signup_data)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'このメールアドレスは使われています。')
+        self.assertRedirects(response, reverse('signup_done'))
+        self.assertEqual(
+            get_user_model().objects.filter(email__iexact=self.existing_user.email).count(),
+            1,
+        )
 
     def test_signup_password_mismatch(self) -> None:
         """パスワード不一致時のテスト"""
@@ -288,6 +291,53 @@ class UserFormPageTitleTest(TestCase):
         self.assertContains(response, '<title>パスワード変更 | Life management</title>', html=False)
         self.assertNotContains(response, '<title>サインアップ | Life management</title>', html=False)
 
+
+@override_settings(
+    SITE_DOMAIN='example.com',
+    SITE_PROTOCOL='http',
+    SITE_NAME='CarbohydratePro',
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+)
+class ProfileEmailChangeTest(TestCase):
+    def setUp(self) -> None:
+        self.user = UserFactory()
+        self.client.force_login(self.user)
+        self.url = reverse('edit', kwargs={'pk': self.user.pk})
+
+    def test_email_change_requires_current_password(self) -> None:
+        response = self.client.post(self.url, {
+            'username': self.user.username,
+            'email': 'changed@example.com',
+            'current_password': 'wrong-password',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '現在のパスワードが正しくありません。')
+        self.user.refresh_from_db()
+        self.assertNotEqual(self.user.email, 'changed@example.com')
+
+    @patch('auth_app.views.send_html_email', return_value=True)
+    def test_verified_email_change_logs_out_and_requires_reverification(self, mock_send) -> None:
+        old_token = EmailVerificationToken.objects.create(user=self.user)
+
+        response = self.client.post(self.url, {
+            'username': self.user.username,
+            'email': 'changed@example.com',
+            'current_password': 'testpass123',
+        })
+
+        self.assertRedirects(response, reverse('signup_done'))
+        self.user.refresh_from_db()
+        old_token.refresh_from_db()
+        self.assertEqual(self.user.email, 'changed@example.com')
+        self.assertFalse(self.user.is_email_verified)
+        self.assertTrue(old_token.is_verified)
+        self.assertNotIn('_auth_user_id', self.client.session)
+        self.assertEqual(
+            EmailVerificationToken.objects.filter(user=self.user, is_verified=False).count(),
+            1,
+        )
+        mock_send.assert_called_once()
 
 @override_settings(
     SITE_DOMAIN='example.com',

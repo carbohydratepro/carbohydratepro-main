@@ -28,6 +28,18 @@ class OriginConfigurationTests(unittest.TestCase):
         ], 'ipv6_prefixes': []}
         self.assertEqual(origin_security.cloudfront_networks(data), ['192.0.2.2/32'])
 
+    def test_redacts_sensitive_path_tokens_from_access_log(self):
+        config = (ROOT / 'nginx/production.conf').read_text()
+
+        self.assertIn('map $uri $origin_log_uri', config)
+        self.assertIn('$request_method $origin_log_uri $server_protocol', config)
+        for redacted_path in [
+            '/calendar/[redacted].ics',
+            '/password_reset_confirm/[redacted]/[redacted]/',
+            '/verify-email/[redacted]/',
+        ]:
+            self.assertIn(redacted_path, config)
+
 
 class OriginRuntimeTests(unittest.TestCase):
     def test_tls_and_access_control(self):
@@ -100,6 +112,12 @@ if os.environ['TRUSTED']=='1':
     assert 'x-carbohydratepro-origin' not in forwarded,'Secret leaked to application'
     status,headers,body=request(good,'/static/app.012345abcdef.css')
     assert status==200 and 'immutable' in headers['Cache-Control']
+    for path in [
+        '/calendar/11111111-1111-1111-1111-111111111111.ics',
+        '/password_reset_confirm/MQ/reset-token-value/',
+        '/verify-email/22222222-2222-2222-2222-222222222222/',
+    ]:
+        assert request(good,path)[0]==200,'Sensitive path request failed'
     print('PASS: TLS trust, missing/wrong secret, client IP, spoofed protocol, secret removal, static cache')
 else:
     assert request(good)[0]==403,'Untrusted source with valid token was accepted'
@@ -135,6 +153,15 @@ else:
                 logs = docker('logs', nginx)
                 self.assertNotIn(token.strip(), logs.stdout + logs.stderr)
                 self.assertIn('203.0.113.9 peer=192.0.2.2', logs.stdout)
+                for secret in [
+                    '11111111-1111-1111-1111-111111111111',
+                    'reset-token-value',
+                    '22222222-2222-2222-2222-222222222222',
+                ]:
+                    self.assertNotIn(secret, logs.stdout)
+                self.assertIn('/calendar/[redacted].ics', logs.stdout)
+                self.assertIn('/password_reset_confirm/[redacted]/[redacted]/', logs.stdout)
+                self.assertIn('/verify-email/[redacted]/', logs.stdout)
             except subprocess.CalledProcessError as error:
                 detail = (error.stdout or '') + (error.stderr or '')
                 for container in containers:

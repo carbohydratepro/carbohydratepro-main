@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from auth_app import services
-from auth_app.forms import LOGIN_LOCKED_MESSAGE
+from auth_app.forms import INVALID_LOGIN_MESSAGE
 from auth_app.models import LoginHistory
 from tests.factories import UserFactory
 
@@ -94,7 +94,7 @@ class LoginLockoutTest(TestCase):
         self.assertFalse(services.is_login_locked(self.user.email, legitimate_user))
 
     def test_login_rejected_while_locked_even_with_correct_password(self) -> None:
-        """ロック中は正しいパスワードでもログインできないこと"""
+        """ロック状態を開示せず、正しいパスワードでもログインできないこと"""
         for _ in range(5):
             self.client.post(
                 reverse('login'),
@@ -105,7 +105,34 @@ class LoginLockoutTest(TestCase):
             {'username': self.user.email, 'password': self.password},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, LOGIN_LOCKED_MESSAGE)
+        self.assertContains(response, INVALID_LOGIN_MESSAGE)
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+        unknown_response = self.client.post(
+            reverse('login'),
+            {'username': 'nonexistent@example.com', 'password': 'wrongpassword'},
+        )
+        self.assertEqual(
+            response.context['form'].non_field_errors(),
+            unknown_response.context['form'].non_field_errors(),
+        )
+
+    def test_admin_login_uses_the_same_lockout(self) -> None:
+        self.user.is_staff = True
+        self.user.is_superuser = True
+        self.user.save(update_fields=['is_staff', 'is_superuser'])
+        for _ in range(5):
+            self.client.post(
+                reverse('secure_admin:login'),
+                {'username': self.user.email, 'password': 'wrongpassword'},
+            )
+
+        response = self.client.post(
+            reverse('secure_admin:login'),
+            {'username': self.user.email, 'password': self.password},
+        )
+
+        self.assertEqual(response.status_code, 200)
         self.assertNotIn('_auth_user_id', self.client.session)
 
     def test_locked_attempt_does_not_extend_lock(self) -> None:
@@ -158,3 +185,13 @@ class LoginLocationResolutionTest(TestCase):
             mock_thread.assert_called_once()
             _, kwargs = mock_thread.call_args
             self.assertTrue(kwargs.get('daemon'))
+
+    def test_failed_login_does_not_start_location_thread(self) -> None:
+        """攻撃者が失敗試行ごとに外部照会スレッドを生成できないこと"""
+        with patch('auth_app.services.threading.Thread') as mock_thread:
+            self.client.post(
+                reverse('login'),
+                {'username': self.user.email, 'password': 'wrongpassword'},
+                REMOTE_ADDR='203.0.113.10',
+            )
+        mock_thread.assert_not_called()

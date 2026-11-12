@@ -1,18 +1,27 @@
 from django import forms
+from django.contrib.admin.forms import AdminAuthenticationForm
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model # ユーザーモデルを取得するため
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm, PasswordChangeForm, PasswordResetForm, SetPasswordForm
 
 from . import services
 
-LOGIN_LOCKED_MESSAGE = 'ログインの失敗が続いたため、このアカウントは一時的にロックされています。しばらくしてから再度お試しください。'
+INVALID_LOGIN_MESSAGE = 'メールアドレスとパスワードが一致しません。'
+
+
+def _invalid_login_error(form: AuthenticationForm) -> forms.ValidationError:
+    return forms.ValidationError(
+        form.error_messages['invalid_login'],
+        code='invalid_login',
+        params={'username': form.username_field.verbose_name},
+    )
 
 '''ログイン用フォーム'''
 class LoginForm(AuthenticationForm):
     username = forms.CharField(label="メールアドレス")
 
     error_messages = {
-        'invalid_login': "メールアドレスとパスワードが一致しません。",
+        'invalid_login': INVALID_LOGIN_MESSAGE,
         'inactive': "このアカウントは無効です。",
     }
 
@@ -26,7 +35,16 @@ class LoginForm(AuthenticationForm):
     def clean(self) -> dict[str, object]:
         # ロック中は認証処理自体を行わない（正しいパスワードでも拒否する）
         if services.is_login_locked(self.cleaned_data.get('username'), self.request):
-            raise forms.ValidationError(LOGIN_LOCKED_MESSAGE, code='locked')
+            raise _invalid_login_error(self)
+        return super().clean()
+
+
+class LockedAdminAuthenticationForm(AdminAuthenticationForm):
+    """通常ログインと同じ一時ロックを管理画面にも適用する。"""
+
+    def clean(self) -> dict[str, object]:
+        if services.is_login_locked(self.cleaned_data.get('username'), self.request):
+            raise _invalid_login_error(self)
         return super().clean()
 
 '''サインアップ用フォーム'''
@@ -132,11 +150,11 @@ class AccountLinkLoginForm(forms.Form):
             return cleaned_data
 
         if services.is_login_locked(email, self.request):
-            raise forms.ValidationError(LOGIN_LOCKED_MESSAGE, code='locked')
+            raise forms.ValidationError(INVALID_LOGIN_MESSAGE, code='invalid_login')
 
         user = authenticate(self.request, username=email, password=password)
         if user is None:
-            raise forms.ValidationError('メールアドレスとパスワードが一致しません。')
+            raise forms.ValidationError(INVALID_LOGIN_MESSAGE)
         if self.current_user is not None and user.pk == self.current_user.pk:
             raise forms.ValidationError('現在ログイン中のアカウントは追加できません。')
         if not user.is_active:

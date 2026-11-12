@@ -97,12 +97,12 @@ class AdminSecurityMiddlewareTest(TestCase):
             self.middleware(request)
 
     @override_settings(ADMIN_ENABLED=False)
-    def test_secure_admin_is_not_blocked(self) -> None:
-        """secure_admin 名前空間（/system-control-panel/）はブロックされない"""
+    def test_secure_admin_is_blocked(self) -> None:
+        """secure_admin 名前空間も無効時は404でブロックされる"""
         request = self.factory.get('/system-control-panel/')
         request.user = type('AnonymousUser', (), {'is_authenticated': False})()
-        response = self.middleware(request)
-        self.assertEqual(response.status_code, 200)
+        with self.assertRaises(Http404):
+            self.middleware(request)
 
     @override_settings(ADMIN_ENABLED=True)
     def test_no_blocking_when_admin_enabled(self) -> None:
@@ -120,6 +120,13 @@ class LegacyAdminUrlTest(TestCase):
         """/admin/ は500ではなく404を返す（Http404 を raise しない旧実装の回帰テスト）"""
         response = self.client.get('/admin/')
         self.assertEqual(response.status_code, 404)
+
+
+class RobotsTxtTest(TestCase):
+    def test_does_not_disclose_admin_path(self) -> None:
+        response = self.client.get('/robots.txt')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'system-control-panel')
 
 
 class MaintenanceModeComposeTest(TestCase):

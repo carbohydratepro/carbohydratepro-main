@@ -495,13 +495,12 @@ def record_login_failure(email: str | None, request: HttpRequest) -> None:
         ip_address = get_client_ip(request)
         user_agent = request.META.get('HTTP_USER_AGENT', 'Unknown')
 
-        history = LoginHistory.objects.create(
+        LoginHistory.objects.create(
             user=user,
             ip_address=ip_address,
             user_agent=user_agent,
             success=False,
         )
-        schedule_location_resolution(history)
 
         user.login_attempt_count += 1
         user.save(update_fields=['login_attempt_count'])

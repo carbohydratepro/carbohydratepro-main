@@ -487,4 +487,6 @@ def calendar_feed(request: HttpRequest, token: str) -> HttpResponse:
     """ICSカレンダーフィードを配信する（トークンURLを知っている人のみアクセス可能）。"""
     calendar_token = get_object_or_404(CalendarToken, token=token)
     content = services.build_calendar_feed(calendar_token.user)
-    return HttpResponse(content, content_type='text/calendar; charset=utf-8')
+    response = HttpResponse(content, content_type='text/calendar; charset=utf-8')
+    response['Cache-Control'] = 'private, no-store'
+    return response

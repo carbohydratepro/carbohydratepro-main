@@ -344,10 +344,15 @@ def sync_external_calendar(external_calendar: 'ExternalCalendar') -> int:
 
     content = fetch_external_ics(external_calendar.url)
     ical = ICalCalendar.from_ical(content)
-    occurrences = recurring_ical_events.of(ical).between(range_start, range_end)
+    pages = recurring_ical_events.of(ical).paginate(
+        EXTERNAL_MAX_EVENTS,
+        range_start,
+        range_end,
+    )
+    occurrences = next(iter(pages), ())
 
     events: list[ExternalEvent] = []
-    for component in occurrences[:EXTERNAL_MAX_EVENTS]:
+    for component in occurrences:
         dtstart = component.get('DTSTART')
         if dtstart is None:
             continue

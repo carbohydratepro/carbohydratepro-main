@@ -51,8 +51,7 @@ class AdminSecurityMiddleware:
                 # 名前なしのURLパターンでは url_name が None になる
                 namespace = resolved.namespace or ''
                 url_name = resolved.url_name or ''
-                # secure_admin（/system-control-panel/）は自前の権限チェックを持つため除外
-                if namespace != 'secure_admin' and ('admin' in namespace or 'admin' in url_name):
+                if 'admin' in namespace or 'admin' in url_name:
                     logger.warning(f"Blocked admin access attempt from {request.META.get('REMOTE_ADDR', 'unknown')} to {request.path}")
                     raise Http404("Page not found")
         

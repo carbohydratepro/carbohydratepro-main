@@ -42,6 +42,7 @@ class CalendarFeedTest(TestCase):
         response = self.client.get(self._feed_url())
         self.assertEqual(response.status_code, 200)
         self.assertIn('text/calendar', response['Content-Type'])
+        self.assertEqual(response['Cache-Control'], 'private, no-store')
         content = response.content.decode('utf-8')
         self.assertIn('BEGIN:VCALENDAR', content)
         self.assertIn('SUMMARY:会議', content)

@@ -177,6 +177,23 @@ class SyncExternalCalendarTest(TestCase):
             services.sync_external_calendar(self.calendar)
         self.assertEqual(self.calendar.events.count(), 5)
 
+    def test_sync_limits_recurrence_expansion_during_query(self) -> None:
+        """全件展開後ではなく、クエリ段階で取り込み件数を制限すること"""
+        query = MagicMock()
+        query.paginate.return_value = iter([[]])
+        ics = build_test_ics(self.base_date)
+        with (
+            patch('app.task.services.fetch_external_ics', return_value=ics),
+            patch('recurring_ical_events.of', return_value=query),
+        ):
+            count = services.sync_external_calendar(self.calendar)
+
+        self.assertEqual(count, 0)
+        page_size, range_start, range_end = query.paginate.call_args.args
+        self.assertEqual(page_size, services.EXTERNAL_MAX_EVENTS)
+        self.assertLess(range_start, range_end)
+        query.between.assert_not_called()
+
     def test_sync_failure_records_error_and_keeps_events(self) -> None:
         """同期失敗時はエラーを記録し、既存イベントを保持すること"""
         ics = build_test_ics(self.base_date)

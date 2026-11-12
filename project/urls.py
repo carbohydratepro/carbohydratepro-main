@@ -12,6 +12,7 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.contrib.admin.sites import AdminSite
 from django.contrib.sitemaps.views import sitemap
 from auth_app.sitemaps import PublicPagesSitemap
+from auth_app.forms import LockedAdminAuthenticationForm
 from app.media_views import protected_media
 from app.task.views import calendar_feed
 import os
@@ -21,6 +22,7 @@ class SecureAdminSite(AdminSite):
     site_header = 'システム管理'
     site_title = 'システム管理'
     index_title = 'システム管理'
+    login_form = LockedAdminAuthenticationForm
     
     def has_permission(self, request):
         # スーパーユーザーかつスタッフのみアクセス可能
@@ -47,9 +49,8 @@ def robots_txt(request: HttpRequest) -> HttpResponse:
     site_url = f"{settings.SITE_PROTOCOL}://{settings.SITE_DOMAIN}"
     lines = [
         "User-agent: *",
-        "# 認証が必要なページ・管理画面はクロール禁止",
+        "# 認証が必要なページはクロール禁止",
         "Disallow: /carbohydratepro/",
-        "Disallow: /system-control-panel/",
         "Disallow: /admin/",
         "Disallow: /password_reset/",
         "Disallow: /password_change/",
@@ -65,7 +66,7 @@ sitemaps = {
 }
 
 urlpatterns = [
-    # 推測困難な管理URL（本番環境では更に複雑にすること推奨）
+    # 本番では ADMIN_ENABLED=False のときミドルウェアが404にする
     path('system-control-panel/', secure_admin_site.urls),
     # 元の管理URLは404エラーを返す
     path('admin/', admin_not_found),

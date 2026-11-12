@@ -16,6 +16,19 @@ description: CarbohydrateProをAmazon Lightsail上の本番環境へSSH経由で
 4. 未コミット変更がある場合は原則停止する。続行にはユーザーの明示承認が必要。
 5. 実行コマンドを提示し、実行直前に最終承認を得る。
 
+### Dockerツールチェーン
+
+メンテナンスモードを有効にする前に、本番で `docker compose version` と
+`docker buildx version` を確認する。Amazon Linuxの `docker` RPMに同梱されたBuildxと、
+手動更新されたComposeの必要バージョンが食い違う場合がある。
+
+- 現行環境ではOS同梱Buildxを置き換えず、`ec2-user` の
+  `~/.docker/cli-plugins/docker-buildx` を優先している。
+- 更新時はDocker公式リリースの対象アーキテクチャを使い、`checksums.txt` とSHA-256を照合する。
+- Buildxだけの不整合を直すためにDocker Engine全体を更新・再起動しない。
+- ユーザー領域へ手動導入したBuildxは自動更新されないため、デプロイ前に必要バージョンと
+  セキュリティ修正版を再確認する。
+
 ## 実行
 
 ```bash
